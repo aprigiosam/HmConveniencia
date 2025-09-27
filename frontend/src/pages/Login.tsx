@@ -7,13 +7,13 @@ import { useAuthStore } from "../stores/authStore";
 import toast from "react-hot-toast";
 
 type LoginForm = {
-  email: string;
+  username: string;
   password: string;
 };
 
 export const LoginPage = () => {
   const { register, handleSubmit } = useForm<LoginForm>({
-    defaultValues: { email: "admin@comercio.local", password: "admin123" },
+    defaultValues: { username: "admin", password: "admin123" },
   });
   const { login, loading } = useAuthStore();
   const [submitting, setSubmitting] = useState(false);
@@ -21,12 +21,19 @@ export const LoginPage = () => {
   const location = useLocation() as { state?: { from?: { pathname?: string } } };
 
   const onSubmit = handleSubmit(async (values) => {
+    console.log('Login form submitted with values:', values);
+    console.log('Values type:', typeof values);
+    console.log('Values keys:', Object.keys(values));
+
     setSubmitting(true);
     try {
+      console.log('Calling login function...');
       await login(values);
+      console.log('Login successful!');
       toast.success("Bem-vindo de volta!");
       navigate(location.state?.from?.pathname ?? "/dashboard", { replace: true });
     } catch (error) {
+      console.error('Login failed:', error);
       toast.error((error as { message?: string }).message ?? "Não foi possível autenticar");
     } finally {
       setSubmitting(false);
@@ -42,12 +49,12 @@ export const LoginPage = () => {
         </div>
         <form className="space-y-4" onSubmit={onSubmit}>
           <Input
-            label="E-mail"
-            id="email"
-            type="email"
+            label="Usuário"
+            id="username"
+            type="text"
             required
-            placeholder="seu@email.com"
-            {...register("email")}
+            placeholder="admin"
+            {...register("username")}
           />
           <Input
             label="Senha"

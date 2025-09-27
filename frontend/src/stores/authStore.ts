@@ -1,78 +1,61 @@
-﻿import { create } from "zustand";
+import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import api, { setAuthToken } from "../services/api";
-
-type Loja = {
-  id: number;
-  nome: string;
-};
-
-type Usuario = {
-  id: number;
-  nome: string;
-  email: string;
-  perfil: "manager" | "cashier" | "stockist";
-  lojas: Loja[];
-};
-
-type LoginPayload = {
-  email: string;
-  password: string;
-};
+import { authService, User, LoginRequest } from "../services/auth";
 
 type AuthState = {
-  user: Usuario | null;
+  user: User | null;
   token: string | null;
   loading: boolean;
   error: string | null;
-  login: (payload: LoginPayload) => Promise<void>;
-  logout: () => void;
-};
-
-const fallbackUser: Usuario = {
-  id: 1,
-  nome: "Administrador",
-  email: "admin@comercio.local",
-  perfil: "manager",
-  lojas: [{ id: 1, nome: "Loja Centro" }],
+  login: (payload: LoginRequest) => Promise<void>;
+  logout: () => Promise<void>;
+  initialize: () => void;
 };
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
       loading: false,
       error: null,
-      login: async ({ email, password }) => {
+      login: async (credentials) => {
+        console.log('AuthStore login called with:', credentials);
         set({ loading: true, error: null });
         try {
-          const { data } = await api.post("/auth/login", { email, password });
-          setAuthToken(data.access);
-          set({ user: data.user, token: data.access, loading: false });
+          console.log('Calling authService.login...');
+          const response = await authService.login(credentials);
+          console.log('Login successful:', response);
+          set({
+            user: response.user,
+            token: response.token,
+            loading: false
+          });
         } catch (error) {
+          console.error('Login error:', error);
           const message = (error as { message?: string }).message ?? "Falha na autenticação";
-          // fallback offline: aceita credenciais padrão mesmo sem API
-          if (email === fallbackUser.email && password === "admin123") {
-            setAuthToken("offline-token");
-            set({ user: fallbackUser, token: "offline-token", loading: false, error: null });
-            return;
-          }
           set({ error: message, loading: false });
-          throw new Error(message);
+          throw error;
         }
       },
-      logout: () => {
-        setAuthToken(undefined);
-        set({ user: null, token: null });
+      logout: async () => {
+        set({ loading: true });
+        try {
+          await authService.logout();
+        } finally {
+          set({ user: null, token: null, loading: false });
+        }
+      },
+      initialize: () => {
+        const user = authService.initializeAuth();
+        if (user) {
+          set({ user, token: localStorage.getItem('auth_token') });
+        }
       },
     }),
     {
       name: "auth-store",
       partialize: (state) => ({ user: state.user, token: state.token }),
-      onRehydrateStorage: () => (state) => {
-        if (state?.token) setAuthToken(state.token);
-      },
     },
   ),
 );

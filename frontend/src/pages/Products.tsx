@@ -4,40 +4,40 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/Table";
 import { Badge } from "../components/ui/Badge";
+import { ProductModal } from "../components/ProductModal";
 import api from "../services/api";
 
 type Produto = {
   id: number;
   sku: string;
+  codigo_barras: string;
   nome: string;
-  categoria: string;
-  estoque: number;
-  preco_venda: number;
-  margem: number;
+  categoria_nome: string;
+  fornecedor_nome: string;
+  preco_venda: string;
+  estoque_total: number;
   ativo: boolean;
 };
 
-const fallback: Produto[] = [
-  { id: 1, sku: "COCA001", nome: "Coca-Cola 350ml", categoria: "Bebidas", estoque: 120, preco_venda: 4.5, margem: 28, ativo: true },
-  { id: 2, sku: "BALA010", nome: "Bala de menta 100g", categoria: "Conveniência", estoque: 75, preco_venda: 2.5, margem: 35, ativo: true },
-  { id: 3, sku: "LIMP01", nome: "Detergente neutro 500ml", categoria: "Limpeza", estoque: 20, preco_venda: 3.2, margem: 22, ativo: false },
-];
+const fallback: Produto[] = [];
 
 export const ProductsPage = () => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [search, setSearch] = useState("");
+  const [showModal, setShowModal] = useState(false);
+
+  const loadProdutos = async () => {
+    try {
+      const { data } = await api.get("/catalog/produtos/", { params: { search } });
+      setProdutos(data?.results ?? fallback);
+    } catch (error) {
+      console.warn("Falha ao carregar produtos", error);
+      setProdutos(fallback);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const { data } = await api.get("/catalog/produtos", { params: { search } });
-        setProdutos(data?.results ?? fallback);
-      } catch (error) {
-        console.warn("Falha ao carregar produtos", error);
-        setProdutos(fallback);
-      }
-    };
-    load();
+    loadProdutos();
   }, [search]);
 
   const filtrados = useMemo(() => {
@@ -53,7 +53,7 @@ export const ProductsPage = () => {
       <Card
         title="Produtos"
         action={
-          <Button onClick={() => alert("Fluxo de cadastro em desenvolvimento")}>Novo produto</Button>
+          <Button onClick={() => setShowModal(true)}>Novo produto</Button>
         }
       >
         <div className="grid gap-3 md:grid-cols-2">
@@ -73,9 +73,9 @@ export const ProductsPage = () => {
               <TableHead>SKU</TableHead>
               <TableHead>Produto</TableHead>
               <TableHead>Categoria</TableHead>
+              <TableHead>Fornecedor</TableHead>
               <TableHead>Estoque</TableHead>
               <TableHead>Preço</TableHead>
-              <TableHead>Margem</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -84,12 +84,10 @@ export const ProductsPage = () => {
               <TableRow key={produto.id}>
                 <TableCell className="font-mono text-xs uppercase text-slate-500">{produto.sku}</TableCell>
                 <TableCell>{produto.nome}</TableCell>
-                <TableCell>{produto.categoria}</TableCell>
-                <TableCell>{produto.estoque}</TableCell>
-                <TableCell>{produto.preco_venda.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</TableCell>
-                <TableCell>
-                  <Badge tone={produto.margem > 25 ? "success" : "warning"}>{produto.margem}%</Badge>
-                </TableCell>
+                <TableCell>{produto.categoria_nome}</TableCell>
+                <TableCell>{produto.fornecedor_nome}</TableCell>
+                <TableCell>{produto.estoque_total}</TableCell>
+                <TableCell>{parseFloat(produto.preco_venda).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</TableCell>
                 <TableCell>
                   <Badge tone={produto.ativo ? "success" : "danger"}>{produto.ativo ? "Ativo" : "Inativo"}</Badge>
                 </TableCell>
@@ -98,6 +96,12 @@ export const ProductsPage = () => {
           </TableBody>
         </Table>
       </Card>
+
+      <ProductModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSuccess={loadProdutos}
+      />
     </div>
   );
 };
