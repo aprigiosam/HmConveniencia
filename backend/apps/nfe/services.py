@@ -74,7 +74,7 @@ def criar_nfe_para_venda(venda: Venda, config: EmitenteConfig) -> NotaFiscal:
                 dados_impostos={
                     "icms": {
                         "aliquota": 18,
-                        "valor": round(item.valor_total * Decimal("0.18"), 2),
+                        "valor": float(round(item.valor_total * Decimal("0.18"), 2)),
                     }
                 },
             )
