@@ -1,0 +1,15 @@
+Django==5.2.6
+djangorestframework==3.14.0
+django-environ==0.11.2
+django-cors-headers==4.3.1
+django-filter==23.5
+psycopg[binary]==3.1.19
+redis==5.0.1
+django-redis==5.4.0
+celery==5.3.4
+drf-spectacular==0.27.0
+Pillow==10.1.0
+python-decouple==3.8
+whitenoise==6.6.0
+gunicorn==21.2.0
+coverage==7.3.2

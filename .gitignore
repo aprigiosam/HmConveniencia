@@ -1,0 +1,44 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Django
+*.log
+media/
+staticfiles/
+celerybeat-schedule
+
+# Env
+.env
+backend/.env
+venv/
+*.sqlite3
+
+# Node/Vite
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.nuxt/
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker
+*.pid
+
+# Coverage/Test
+.coverage
+htmlcov/
+pytest_cache/
+frontend/coverage/
+frontend/.eslintcache
+
+# Logs/Backups
+logs/
+backup/

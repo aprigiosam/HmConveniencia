@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: comercio_db
+      POSTGRES_USER: comercio_user
+      POSTGRES_PASSWORD: comercio_pass123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backup:/backup
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U comercio_user -d comercio_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgresql://comercio_user:comercio_pass123@db:5432/comercio_db
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=django-super-secret-key-change-in-production
+    volumes:
+      - ./backend:/app
+      - ./backup:/app/backup
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    depends_on:
+      - backend
+    environment:
+      - DATABASE_URL=postgresql://comercio_user:comercio_pass123@db:5432/comercio_db
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=django-super-secret-key-change-in-production
+    volumes:
+      - ./backend:/app
+      - ./logs:/app/logs
+    restart: unless-stopped
+    command: celery -A comercio worker -l info
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    depends_on:
+      - backend
+    environment:
+      - DATABASE_URL=postgresql://comercio_user:comercio_pass123@db:5432/comercio_db
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=django-super-secret-key-change-in-production
+    volumes:
+      - ./backend:/app
+      - ./logs:/app/logs
+    restart: unless-stopped
+    command: celery -A comercio beat -l info
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
