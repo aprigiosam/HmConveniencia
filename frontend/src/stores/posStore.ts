@@ -1,4 +1,4 @@
-﻿import { create } from "zustand";
+import { create } from "zustand";
 import api from "../services/api";
 
 export type PosProduct = {
@@ -44,7 +44,7 @@ type PosState = {
 const fallbackProdutos: PosProduct[] = [
   { id: 1, sku: "COCA001", descricao: "Coca-Cola 350ml", preco: 4.2, estoque: 120 },
   { id: 2, sku: "BALA010", descricao: "Bala de menta 100g", preco: 2.5, estoque: 80 },
-  { id: 3, sku: "PAPEL01", descricao: "Papel higiênico 4un", preco: 7.9, estoque: 60 },
+  { id: 3, sku: "PAPEL01", descricao: "Papel higienico 4un", preco: 7.9, estoque: 60 },
 ];
 
 const calcularTotais = (itens: PosCartItem[]): Totals => {
@@ -68,10 +68,22 @@ export const usePosStore = create<PosState>((set, get) => ({
   async buscarProduto(termo: string) {
     set({ carregandoProduto: true });
     try {
-      const { data } = await api.get("/sales/pdv/produtos", { params: { search: termo } });
-      return (data?.results ?? []) as PosProduct[];
+      const { data } = await api.get("/catalog/produtos/", {
+        params: {
+          search: termo,
+          page_size: 20,
+        },
+      });
+      const results = Array.isArray(data?.results) ? data.results : [];
+      return results.map((item: any) => ({
+        id: item.id,
+        sku: item.sku,
+        descricao: item.nome,
+        preco: parseFloat(item.preco_venda) || 0,
+        estoque: item.estoque_total ?? 0,
+      })) as PosProduct[];
     } catch (error) {
-      console.warn("Falha na busca de produto, usando fallback", error);
+      console.warn("Falha na busca de produto, usando dados locais", error);
       return fallbackProdutos.filter((item) =>
         item.sku.toLowerCase().includes(termo.toLowerCase()) ||
         item.descricao.toLowerCase().includes(termo.toLowerCase()),

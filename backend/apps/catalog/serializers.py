@@ -18,14 +18,50 @@ class CategoriaSerializer(serializers.ModelSerializer):
 
 
 class FornecedorSerializer(serializers.ModelSerializer):
-    produtos_count = serializers.SerializerMethodField()
+    produtos_ativos = serializers.IntegerField(read_only=True)
+    estoque_total = serializers.IntegerField(read_only=True)
+    valor_estoque = serializers.DecimalField(read_only=True, max_digits=12, decimal_places=2)
 
     class Meta:
         model = Fornecedor
-        fields = '__all__'
+        fields = [
+            'id',
+            'cnpj_cpf',
+            'nome',
+            'telefone',
+            'email',
+            'responsavel',
+            'contatos',
+            'condicoes_pagamento',
+            'prazo_medio_entrega_dias',
+            'observacoes',
+            'endereco',
+            'ativo',
+            'created_at',
+            'updated_at',
+            'produtos_ativos',
+            'estoque_total',
+            'valor_estoque',
+        ]
 
-    def get_produtos_count(self, obj):
-        return obj.produtos.count()
+    def validate_contatos(self, value):
+        if value in (None, ""):
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Formato inválido, envie uma lista de contatos.")
+        contatos_norm = []
+        for contato in value:
+            if not isinstance(contato, dict):
+                raise serializers.ValidationError("Cada contato deve ser um objeto com chaves nome/telefone/email.")
+            contatos_norm.append(
+                {
+                    "nome": contato.get("nome", ""),
+                    "telefone": contato.get("telefone", ""),
+                    "email": contato.get("email", ""),
+                    "observacao": contato.get("observacao", ""),
+                }
+            )
+        return contatos_norm
 
 
 class LoteProdutoSerializer(serializers.ModelSerializer):
@@ -68,19 +104,19 @@ class ProdutoSerializer(serializers.ModelSerializer):
         if self.instance and self.instance.sku == value:
             return value
         if Produto.objects.filter(sku=value).exists():
-            raise serializers.ValidationError("SKU já existe.")
+            raise serializers.ValidationError("SKU ja existe.")
         return value
 
     def validate_codigo_barras(self, value):
         if self.instance and self.instance.codigo_barras == value:
             return value
         if Produto.objects.filter(codigo_barras=value).exists():
-            raise serializers.ValidationError("Código de barras já existe.")
+            raise serializers.ValidationError("Codigo de barras ja existe.")
         return value
 
     def validate(self, data):
         if data.get('preco_venda', 0) < data.get('preco_custo', 0):
-            raise serializers.ValidationError("Preço de venda não pode ser menor que o preço de custo.")
+            raise serializers.ValidationError("Preco de venda nao pode ser menor que o preco de custo.")
         return data
 
 

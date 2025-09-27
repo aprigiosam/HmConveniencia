@@ -1,12 +1,10 @@
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from django.utils.decorators import method_decorator
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,20 +14,13 @@ logger = logging.getLogger(__name__)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
-    logger.info(f"Login attempt - Headers: {dict(request.headers)}")
-    logger.info(f"Login attempt - Body: {request.body}")
-    logger.info(f"Login attempt - Data: {request.data}")
-    logger.info(f"Content-Type: {request.content_type}")
-
     username = request.data.get('username')
     password = request.data.get('password')
 
-    logger.info(f"Extracted - username: {username}, password: {'***' if password else None}")
-
     if not username or not password:
-        logger.warning(f"Missing credentials - username: {username}, password: {'***' if password else None}")
+        logger.warning("Login attempt with missing credentials for user=%s", username or '<blank>')
         return Response(
-            {'error': 'Username and password are required', 'received_data': request.data},
+            {'error': 'Username and password are required'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -37,7 +28,8 @@ def login_view(request):
 
     if user:
         login(request, user)
-        token, created = Token.objects.get_or_create(user=user)
+        token, _ = Token.objects.get_or_create(user=user)
+        logger.info("User %s authenticated successfully", user.username)
         return Response({
             'message': 'Login successful',
             'user': {
@@ -49,6 +41,7 @@ def login_view(request):
             'token': token.key
         })
 
+    logger.warning("Invalid credentials for user=%s", username)
     return Response(
         {'error': 'Invalid credentials'},
         status=status.HTTP_401_UNAUTHORIZED
@@ -65,6 +58,7 @@ def logout_view(request):
             pass
 
         logout(request)
+        logger.info("User %s logged out", request.user.username)
         return Response({'message': 'Logout successful'})
 
     return Response(

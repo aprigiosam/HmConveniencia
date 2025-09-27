@@ -1,9 +1,12 @@
-from django.urls import path
-from django.http import JsonResponse
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 
-def reports_placeholder(request):
-    return JsonResponse({"message": "Reports API - Em desenvolvimento"})
+from .views import DashboardMetricsView, ReportJobViewSet
+
+router = DefaultRouter()
+router.register(r"jobs", ReportJobViewSet, basename="report-job")
 
 urlpatterns = [
-    path('', reports_placeholder, name='reports-placeholder'),
+    path("dashboard/", DashboardMetricsView.as_view(), name="dashboard-metrics"),
+    path("", include(router.urls)),
 ]

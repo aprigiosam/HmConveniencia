@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from django.utils import timezone
-from datetime import date, timedelta
+from datetime import date
 from .models import MovimentacaoEstoque, TransferenciaEstoque, InventarioEstoque, ItemInventario
 from apps.catalog.models import LoteProduto, Produto
 from apps.core.models import Loja
@@ -51,10 +50,9 @@ class LoteComVencimentoSerializer(serializers.ModelSerializer):
 
         if dias < 0:
             return "VENCIDO"
-        elif dias <= produto.dias_alerta_vencimento:
+        if dias <= produto.dias_alerta_vencimento:
             return "PROXIMO_VENCIMENTO"
-        else:
-            return "OK"
+        return "OK"
 
     def get_pode_vender(self, obj):
         if not obj.data_vencimento:
@@ -107,58 +105,78 @@ class InventarioEstoqueSerializer(serializers.ModelSerializer):
 
 
 class EntradaEstoqueSerializer(serializers.Serializer):
-    """Serializer para entrada de estoque com criação/atualização de lote"""
+    """Serializer para entrada de estoque com criacao/atualizacao de lote"""
     produto = serializers.IntegerField()
+    loja = serializers.IntegerField(required=False)
     numero_lote = serializers.CharField(max_length=100)
     data_vencimento = serializers.DateField(required=False, allow_null=True)
-    quantidade = serializers.DecimalField(max_digits=10, decimal_places=2)
+    quantidade = serializers.IntegerField(min_value=1)
     custo_unitario = serializers.DecimalField(max_digits=10, decimal_places=2)
     motivo = serializers.CharField(max_length=255, default="Entrada de estoque")
     observacoes = serializers.CharField(required=False, allow_blank=True)
 
     def validate_produto(self, value):
-        try:
-            produto = Produto.objects.get(id=value)
-            return value
-        except Produto.DoesNotExist:
-            raise serializers.ValidationError("Produto não encontrado.")
+        if not Produto.objects.filter(id=value, ativo=True).exists():
+            raise serializers.ValidationError("Produto nao encontrado.")
+        return value
+
+    def validate_loja(self, value):
+        if not Loja.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Loja nao encontrada.")
+        return value
 
     def validate_data_vencimento(self, value):
         if value and value <= date.today():
             raise serializers.ValidationError("Data de vencimento deve ser futura.")
         return value
 
-    def validate_quantidade(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Quantidade deve ser maior que zero.")
-        return value
-
-    def validate_custo_unitario(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Custo unitário deve ser maior que zero.")
-        return value
+    def validate(self, attrs):
+        loja_id = attrs.get('loja')
+        if loja_id is None:
+            lojas = list(Loja.objects.values_list('id', flat=True))
+            if len(lojas) == 1:
+                attrs['loja'] = lojas[0]
+            else:
+                raise serializers.ValidationError({'loja': 'Informe a loja para a movimentacao.'})
+        return attrs
 
 
 class AjusteEstoqueSerializer(serializers.Serializer):
     """Serializer para ajustes de estoque"""
     produto = serializers.IntegerField()
+    loja = serializers.IntegerField(required=False)
     lote = serializers.IntegerField(required=False, allow_null=True)
-    quantidade = serializers.DecimalField(max_digits=10, decimal_places=2)
+    quantidade = serializers.IntegerField(min_value=0)
     motivo = serializers.CharField(max_length=255)
     observacoes = serializers.CharField(required=False, allow_blank=True)
 
     def validate_produto(self, value):
-        try:
-            Produto.objects.get(id=value)
-            return value
-        except Produto.DoesNotExist:
-            raise serializers.ValidationError("Produto não encontrado.")
+        if not Produto.objects.filter(id=value, ativo=True).exists():
+            raise serializers.ValidationError("Produto nao encontrado.")
+        return value
+
+    def validate_loja(self, value):
+        if not Loja.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Loja nao encontrada.")
+        return value
 
     def validate_lote(self, value):
         if value:
-            try:
-                LoteProduto.objects.get(id=value)
-                return value
-            except LoteProduto.DoesNotExist:
-                raise serializers.ValidationError("Lote não encontrado.")
+            if not LoteProduto.objects.filter(id=value).exists():
+                raise serializers.ValidationError("Lote nao encontrado.")
         return value
+
+    def validate(self, attrs):
+        loja_id = attrs.get('loja')
+        if loja_id is None:
+            lojas = list(Loja.objects.values_list('id', flat=True))
+            if len(lojas) == 1:
+                attrs['loja'] = lojas[0]
+            else:
+                raise serializers.ValidationError({'loja': 'Informe a loja para a movimentacao.'})
+
+        lote_id = attrs.get('lote')
+        if lote_id:
+            if not LoteProduto.objects.filter(id=lote_id, loja_id=attrs['loja']).exists():
+                raise serializers.ValidationError({'lote': 'Lote nao pertence a loja informada.'})
+        return attrs

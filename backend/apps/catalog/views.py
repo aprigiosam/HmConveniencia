@@ -2,7 +2,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q, F
+from django.db.models import Q, F, Count, Sum, Value, DecimalField, ExpressionWrapper
+from django.db.models.functions import Coalesce
 from .models import Categoria, Fornecedor, Produto, LoteProduto
 from .serializers import (
     CategoriaSerializer, FornecedorSerializer,
@@ -24,18 +25,65 @@ class CategoriaViewSet(viewsets.ModelViewSet):
 
 
 class FornecedorViewSet(viewsets.ModelViewSet):
-    queryset = Fornecedor.objects.filter(ativo=True)
+    queryset = Fornecedor.objects.all()
     serializer_class = FornecedorSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Fornecedor.objects.filter(ativo=True)
+        queryset = Fornecedor.objects.all()
         search = self.request.query_params.get('search', None)
+        ativo = self.request.query_params.get('ativo')
+
+        valor_estoque_expr = ExpressionWrapper(
+            F('produtos__lotes__quantidade') * F('produtos__preco_custo'),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        )
+
+        queryset = queryset.annotate(
+            produtos_ativos=Count('produtos', filter=Q(produtos__ativo=True), distinct=True),
+            estoque_total=Coalesce(Sum('produtos__lotes__quantidade'), Value(0)),
+            valor_estoque=Coalesce(
+                Sum(valor_estoque_expr),
+                Value(0),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            ),
+        )
+
         if search is not None:
             queryset = queryset.filter(
                 Q(nome__icontains=search) | Q(cnpj_cpf__icontains=search)
             )
+
+        if ativo is not None:
+            if ativo.lower() in ('true', '1'):
+                queryset = queryset.filter(ativo=True)
+            elif ativo.lower() in ('false', '0'):
+                queryset = queryset.filter(ativo=False)
+
         return queryset
+
+    @action(detail=True, methods=['post'])
+    def ativar(self, request, pk=None):
+        fornecedor = self.get_object()
+        fornecedor.ativo = True
+        fornecedor.save(update_fields=['ativo'])
+        serializer = self.get_serializer(fornecedor)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def desativar(self, request, pk=None):
+        fornecedor = self.get_object()
+        fornecedor.ativo = False
+        fornecedor.save(update_fields=['ativo'])
+        serializer = self.get_serializer(fornecedor)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def produtos(self, request, pk=None):
+        fornecedor = self.get_object()
+        produtos = fornecedor.produtos.filter(ativo=True)
+        serializer = ProdutoListSerializer(produtos, many=True)
+        return Response(serializer.data)
 
 
 class ProdutoViewSet(viewsets.ModelViewSet):

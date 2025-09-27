@@ -48,8 +48,8 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
   const loadData = async () => {
     try {
       const [categoriasRes, fornecedoresRes] = await Promise.all([
-        api.get("/catalog/categorias/"),
-        api.get("/catalog/fornecedores/"),
+        api.get("/catalog/categorias/", { params: { page_size: 100 } }),
+        api.get("/catalog/fornecedores/", { params: { page_size: 100 } }),
       ]);
       setCategorias(categoriasRes.data.results || []);
       setFornecedores(fornecedoresRes.data.results || []);
@@ -65,18 +65,17 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
     try {
       await api.post("/catalog/produtos/", {
         ...formData,
-        categoria: parseInt(formData.categoria),
-        fornecedor: parseInt(formData.fornecedor),
+        categoria: parseInt(formData.categoria, 10),
+        fornecedor: parseInt(formData.fornecedor, 10),
         preco_custo: parseFloat(formData.preco_custo),
         preco_venda: parseFloat(formData.preco_venda),
-        estoque_minimo: parseInt(formData.estoque_minimo),
-        dias_alerta_vencimento: parseInt(formData.dias_alerta_vencimento),
+        estoque_minimo: parseInt(formData.estoque_minimo, 10),
+        dias_alerta_vencimento: parseInt(formData.dias_alerta_vencimento, 10),
       });
 
       onSuccess();
       onClose();
 
-      // Reset form
       setFormData({
         sku: "",
         codigo_barras: "",
@@ -94,14 +93,15 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
       });
     } catch (error: any) {
       console.error("Erro ao salvar produto:", error);
-      alert("Erro ao salvar produto: " + (error.response?.data?.detail || error.message));
+      const message = error?.message ?? "Erro ao salvar produto";
+      alert(message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   if (!isOpen) return null;
@@ -109,7 +109,7 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-semibold mb-4">Novo Produto</h2>
+        <h2 className="text-xl font-semibold mb-4">Novo produto</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -120,7 +120,7 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
               onChange={(e) => handleChange("sku", e.target.value)}
             />
             <Input
-              label="Código de Barras"
+              label="Codigo de barras"
               required
               value={formData.codigo_barras}
               onChange={(e) => handleChange("codigo_barras", e.target.value)}
@@ -128,14 +128,14 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
           </div>
 
           <Input
-            label="Nome do Produto"
+            label="Nome do produto"
             required
             value={formData.nome}
             onChange={(e) => handleChange("nome", e.target.value)}
           />
 
           <Input
-            label="Descrição"
+            label="Descricao"
             value={formData.descricao}
             onChange={(e) => handleChange("descricao", e.target.value)}
           />
@@ -187,7 +187,7 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
               onChange={(e) => handleChange("unidade", e.target.value)}
             />
             <Input
-              label="Preço de Custo"
+              label="Preco de custo"
               type="number"
               step="0.01"
               required
@@ -195,7 +195,7 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
               onChange={(e) => handleChange("preco_custo", e.target.value)}
             />
             <Input
-              label="Preço de Venda"
+              label="Preco de venda"
               type="number"
               step="0.01"
               required
@@ -206,7 +206,7 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Estoque Mínimo"
+              label="Estoque minimo"
               type="number"
               value={formData.estoque_minimo}
               onChange={(e) => handleChange("estoque_minimo", e.target.value)}
@@ -219,14 +219,14 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
                 onChange={(e) => handleChange("controla_vencimento", e.target.checked)}
               />
               <label htmlFor="controla_vencimento" className="text-sm">
-                Controla Vencimento
+                Controla vencimento
               </label>
             </div>
           </div>
 
           {formData.controla_vencimento && (
             <Input
-              label="Dias de Alerta de Vencimento"
+              label="Dias de alerta de vencimento"
               type="number"
               value={formData.dias_alerta_vencimento}
               onChange={(e) => handleChange("dias_alerta_vencimento", e.target.value)}

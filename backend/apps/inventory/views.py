@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q, F, Sum, Case, When, DecimalField
 from django.db import transaction
 from datetime import date, timedelta
+from decimal import Decimal
 from .models import MovimentacaoEstoque, TransferenciaEstoque, InventarioEstoque, ItemInventario
 from apps.catalog.models import LoteProduto, Produto
 from apps.core.models import Loja
@@ -31,7 +32,7 @@ class EstoqueViewSet(viewsets.ViewSet):
 
         hoje = date.today()
 
-        # Estatísticas gerais
+        # Estatisticas gerais
         stats = {
             'total_produtos': Produto.objects.filter(ativo=True).count(),
             'total_lotes': lotes.count(),
@@ -49,7 +50,7 @@ class EstoqueViewSet(viewsets.ViewSet):
         )
         stats['lotes_vencidos'] = lotes_vencidos.count()
 
-        # Lotes próximos ao vencimento (próximos 30 dias)
+        # Lotes proximos ao vencimento (proximos 30 dias)
         data_limite = hoje + timedelta(days=30)
         lotes_proximo_vencimento = lotes.filter(
             data_vencimento__gte=hoje,
@@ -68,7 +69,7 @@ class EstoqueViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def lotes_vencimento(self, request):
-        """Lista lotes próximos ao vencimento ou vencidos"""
+        """Lista lotes proximos ao vencimento ou vencidos"""
         loja_id = request.query_params.get('loja', None)
         status_filter = request.query_params.get('status', 'todos')  # vencidos, proximo, todos
 
@@ -101,40 +102,41 @@ class EstoqueViewSet(viewsets.ViewSet):
 
         try:
             with transaction.atomic():
-                produto = Produto.objects.get(id=data['produto'])
-                loja = Loja.objects.first()  # Usar primeira loja por padrão
+                produto = Produto.objects.select_for_update().get(id=data['produto'])
+                loja = Loja.objects.select_for_update().get(id=data['loja'])
+                quantidade_delta = int(data['quantidade'])
 
-                # Buscar ou criar lote
-                lote, created = LoteProduto.objects.get_or_create(
-                    produto=produto,
-                    numero_lote=data['numero_lote'],
-                    defaults={
-                        'loja': loja,
-                        'data_vencimento': data.get('data_vencimento'),
-                        'quantidade': 0,
-                        'custo_unitario': data['custo_unitario']
-                    }
-                )
-
-                if not created:
-                    # Atualizar lote existente
+                try:
+                    lote = LoteProduto.objects.select_for_update().get(
+                        produto=produto,
+                        loja=loja,
+                        numero_lote=data['numero_lote']
+                    )
+                    quantidade_anterior = int(lote.quantidade)
                     lote.custo_unitario = data['custo_unitario']
-                    if data.get('data_vencimento'):
+                    if data.get('data_vencimento') is not None:
                         lote.data_vencimento = data['data_vencimento']
+                except LoteProduto.DoesNotExist:
+                    lote = LoteProduto.objects.create(
+                        produto=produto,
+                        loja=loja,
+                        numero_lote=data['numero_lote'],
+                        data_vencimento=data.get('data_vencimento'),
+                        quantidade=0,
+                        custo_unitario=data['custo_unitario']
+                    )
+                    quantidade_anterior = 0
 
-                # Atualizar quantidade
-                quantidade_anterior = lote.quantidade
-                lote.quantidade += data['quantidade']
+                lote.quantidade = int(lote.quantidade) + quantidade_delta
                 lote.save()
 
-                # Registrar movimentação
                 MovimentacaoEstoque.objects.create(
                     loja=loja,
                     produto=produto,
                     lote=lote,
                     tipo=MovimentacaoEstoque.Tipo.ENTRADA,
-                    quantidade=data['quantidade'],
-                    quantidade_anterior=quantidade_anterior,
+                    quantidade=Decimal(quantidade_delta),
+                    quantidade_anterior=Decimal(quantidade_anterior),
                     motivo=data.get('motivo', 'Entrada de estoque'),
                     observacoes=data.get('observacoes', '')
                 )
@@ -145,9 +147,14 @@ class EstoqueViewSet(viewsets.ViewSet):
                     'quantidade_total': lote.quantidade
                 })
 
-        except Exception as e:
+        except (Produto.DoesNotExist, Loja.DoesNotExist) as exc:
             return Response(
-                {'error': f'Erro ao registrar entrada: {str(e)}'},
+                {'error': str(exc)},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as exc:
+            return Response(
+                {'error': f'Erro ao registrar entrada: {str(exc)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -162,42 +169,49 @@ class EstoqueViewSet(viewsets.ViewSet):
 
         try:
             with transaction.atomic():
-                produto = Produto.objects.get(id=data['produto'])
-                loja = Loja.objects.first()
+                produto = Produto.objects.select_for_update().get(id=data['produto'])
+                loja = Loja.objects.select_for_update().get(id=data['loja'])
+                quantidade_final = int(data['quantidade'])
                 lote = None
 
                 if data.get('lote'):
-                    lote = LoteProduto.objects.get(id=data['lote'])
-                    quantidade_anterior = lote.quantidade
-                    lote.quantidade = data['quantidade']
+                    lote = LoteProduto.objects.select_for_update().get(
+                        id=data['lote'],
+                        loja=loja,
+                        produto=produto
+                    )
+                    quantidade_anterior = int(lote.quantidade)
+                    lote.quantidade = quantidade_final
                     lote.save()
                 else:
-                    # Ajuste sem lote específico - usar estoque geral
                     quantidade_anterior = 0
 
-                # Registrar movimentação
                 MovimentacaoEstoque.objects.create(
                     loja=loja,
                     produto=produto,
                     lote=lote,
                     tipo=MovimentacaoEstoque.Tipo.AJUSTE,
-                    quantidade=data['quantidade'],
-                    quantidade_anterior=quantidade_anterior,
+                    quantidade=Decimal(quantidade_final),
+                    quantidade_anterior=Decimal(quantidade_anterior),
                     motivo=data['motivo'],
                     observacoes=data.get('observacoes', '')
                 )
 
                 return Response({'message': 'Ajuste realizado com sucesso'})
 
-        except Exception as e:
+        except (Produto.DoesNotExist, Loja.DoesNotExist, LoteProduto.DoesNotExist) as exc:
             return Response(
-                {'error': f'Erro ao realizar ajuste: {str(e)}'},
+                {'error': str(exc)},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as exc:
+            return Response(
+                {'error': f'Erro ao realizar ajuste: {str(exc)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'])
     def alertas_vencimento(self, request):
-        """Retorna alertas de produtos próximos ao vencimento"""
+        """Retorna alertas de produtos proximos ao vencimento"""
         loja_id = request.query_params.get('loja', None)
 
         alertas = []
@@ -313,3 +327,8 @@ class ItemInventarioViewSet(viewsets.ModelViewSet):
     queryset = ItemInventario.objects.all()
     serializer_class = ItemInventarioSerializer
     permission_classes = [IsAuthenticated]
+
+
+
+
+

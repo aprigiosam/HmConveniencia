@@ -28,6 +28,11 @@ class Fornecedor(TimeStampedModel):
     nome = models.CharField(max_length=255)
     telefone = models.CharField(max_length=32, blank=True)
     email = models.EmailField(blank=True)
+    responsavel = models.CharField(max_length=255, blank=True)
+    contatos = models.JSONField(default=list, blank=True)
+    condicoes_pagamento = models.TextField(blank=True)
+    prazo_medio_entrega_dias = models.PositiveIntegerField(default=0)
+    observacoes = models.TextField(blank=True)
     endereco = models.JSONField(default=dict, blank=True)
     ativo = models.BooleanField(default=True)
 

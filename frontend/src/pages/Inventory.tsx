@@ -31,11 +31,11 @@ type Lote = {
   numero_lote: string;
   produto_nome: string;
   produto_sku: string;
-  data_vencimento: string;
+  data_vencimento: string | null;
   quantidade: number;
   custo_unitario: string;
   status_vencimento: string;
-  dias_vencimento: number;
+  dias_vencimento: number | null;
   pode_vender: boolean;
 };
 
@@ -44,7 +44,7 @@ type Movimentacao = {
   tipo: string;
   produto_nome: string;
   produto_sku: string;
-  lote_numero: string;
+  lote_numero: string | null;
   quantidade: number;
   motivo: string;
   created_at: string;
@@ -67,8 +67,8 @@ export const InventoryPage = () => {
       const [resumoRes, alertasRes, lotesRes, movRes] = await Promise.all([
         api.get('/inventory/estoque/resumo/'),
         api.get('/inventory/estoque/alertas_vencimento/'),
-        api.get('/inventory/lotes/?com_estoque=true'),
-        api.get('/inventory/movimentacoes/')
+        api.get('/inventory/lotes/', { params: { com_estoque: true } }),
+        api.get('/inventory/movimentacoes/'),
       ]);
 
       setResumo(resumoRes.data);
@@ -80,24 +80,24 @@ export const InventoryPage = () => {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  };
+  const formatCurrency = (value: number) => (
+    value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  );
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
+  const formatDate = (dateString: string) => (
+    new Date(dateString).toLocaleDateString('pt-BR')
+  );
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'VENCIDO':
         return <Badge tone="danger">Vencido</Badge>;
       case 'PROXIMO_VENCIMENTO':
-        return <Badge tone="warning">Próximo Venc.</Badge>;
+        return <Badge tone="warning">Proximo venc.</Badge>;
       case 'OK':
         return <Badge tone="success">OK</Badge>;
       default:
-        return <Badge tone="secondary">Sem Controle</Badge>;
+        return <Badge tone="secondary">Sem controle</Badge>;
     }
   };
 
@@ -107,80 +107,96 @@ export const InventoryPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">{resumo.total_produtos}</div>
-            <div className="text-sm text-gray-600">Produtos Ativos</div>
+            <div className="text-sm text-gray-600">Produtos ativos</div>
           </div>
         </Card>
 
         <Card>
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600">{resumo.total_lotes}</div>
-            <div className="text-sm text-gray-600">Lotes em Estoque</div>
+            <div className="text-sm text-gray-600">Lotes em estoque</div>
           </div>
         </Card>
 
         <Card>
           <div className="text-center">
             <div className="text-2xl font-bold text-red-600">{resumo.lotes_vencidos}</div>
-            <div className="text-sm text-gray-600">Lotes Vencidos</div>
+            <div className="text-sm text-gray-600">Lotes vencidos</div>
           </div>
         </Card>
 
         <Card>
           <div className="text-center">
             <div className="text-2xl font-bold text-yellow-600">{resumo.lotes_proximo_vencimento}</div>
-            <div className="text-sm text-gray-600">Próx. Vencimento</div>
+            <div className="text-sm text-gray-600">Alertas de vencimento</div>
           </div>
         </Card>
       </div>
 
-      {/* Valor Total do Estoque */}
       <Card>
-        <div className="text-center">
-          <div className="text-sm text-gray-600 mb-2">Valor Total do Estoque</div>
-          <div className="text-3xl font-bold text-green-600">
-            {formatCurrency(resumo.valor_total_estoque)}
+        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+          <div className="flex gap-2">
+            <Button
+              variant={activeTab === 'resumo' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTab('resumo')}
+            >
+              Resumo
+            </Button>
+            <Button
+              variant={activeTab === 'alertas' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTab('alertas')}
+            >
+              Alertas
+            </Button>
+            <Button
+              variant={activeTab === 'lotes' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTab('lotes')}
+            >
+              Lotes
+            </Button>
+            <Button
+              variant={activeTab === 'movimentacoes' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTab('movimentacoes')}
+            >
+              Movimentacoes
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              label="Filtrar"
+              placeholder="SKU ou produto"
+              className="w-60"
+            />
           </div>
         </div>
-      </Card>
 
-      {/* Navegação por Abas */}
-      <Card>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {[
-            { label: "Resumo", value: "resumo" },
-            { label: "Alertas de Vencimento", value: "alertas" },
-            { label: "Lotes", value: "lotes" },
-            { label: "Movimentações", value: "movimentacoes" },
-          ].map((tab) => (
-            <Button
-              key={tab.value}
-              variant={activeTab === tab.value ? "primary" : "secondary"}
-              onClick={() => setActiveTab(tab.value as any)}
-            >
-              {tab.label}
-            </Button>
-          ))}
-        </div>
+        {activeTab === 'resumo' && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <p className="text-sm text-slate-500">Valor total em estoque</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-900">
+                {formatCurrency(resumo.valor_total_estoque)}
+              </p>
+            </Card>
+            <Card>
+              <p className="text-sm text-slate-500">Proximos passos sugeridos</p>
+              <ul className="mt-2 list-disc pl-5 text-sm text-slate-600">
+                <li>Revise lotes vencidos e defina destino</li>
+                <li>Antecipe reposicao para lotes com alerta</li>
+                <li>Avalie margem dos itens com maior custo</li>
+              </ul>
+            </Card>
+          </div>
+        )}
 
-        {/* Conteúdo das Abas */}
         {activeTab === 'alertas' && (
           <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Alertas de Vencimento</h3>
-              <Badge tone={alertas.length > 0 ? "danger" : "success"}>
-                {alertas.length} Alertas
-              </Badge>
-            </div>
-
             {alertas.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                🎉 Nenhum alerta de vencimento!
-              </div>
+              <p className="text-sm text-slate-500">Nenhum alerta de vencimento no momento.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -215,7 +231,7 @@ export const InventoryPage = () => {
                       <TableCell>{alerta.quantidade}</TableCell>
                       <TableCell>
                         <Badge tone={alerta.tipo === "VENCIDO" ? "danger" : "warning"}>
-                          {alerta.tipo === "VENCIDO" ? "Vencido" : "Próx. Venc."}
+                          {alerta.tipo === "VENCIDO" ? "Vencido" : "Prox. venc."}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -229,8 +245,8 @@ export const InventoryPage = () => {
         {activeTab === 'lotes' && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Lotes em Estoque</h3>
-              <Button onClick={() => setShowEntradaModal(true)}>Nova Entrada</Button>
+              <h3 className="text-lg font-semibold">Lotes em estoque</h3>
+              <Button onClick={() => setShowEntradaModal(true)}>Nova entrada</Button>
             </div>
 
             <Table>
@@ -240,7 +256,7 @@ export const InventoryPage = () => {
                   <TableHead>Lote</TableHead>
                   <TableHead>Vencimento</TableHead>
                   <TableHead>Quantidade</TableHead>
-                  <TableHead>Custo Unit.</TableHead>
+                  <TableHead>Custo unit.</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -269,7 +285,7 @@ export const InventoryPage = () => {
 
         {activeTab === 'movimentacoes' && (
           <div>
-            <h3 className="text-lg font-semibold mb-4">Movimentações Recentes</h3>
+            <h3 className="text-lg font-semibold mb-4">Movimentacoes recentes</h3>
             <Table>
               <TableHeader>
                 <TableRow>

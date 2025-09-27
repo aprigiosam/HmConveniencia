@@ -20,34 +20,20 @@ export interface LoginResponse {
 
 export const authService = {
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    console.log('AuthService login called with:', credentials);
-    console.log('Making request to:', '/auth/login/');
+    const response = await api.post('/auth/login/', credentials);
+    const data = response.data;
 
-    try {
-      const response = await api.post('/auth/login/', credentials);
-      console.log('API response:', response);
-      const data = response.data;
+    setAuthToken(data.token);
+    localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
 
-      // Set token in headers
-      setAuthToken(data.token);
-
-      // Store token in localStorage
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-
-      console.log('Login successful, data:', data);
-      return data;
-    } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
-    }
+    return data;
   },
 
   async logout(): Promise<void> {
     try {
       await api.post('/auth/logout/');
     } finally {
-      // Clear token and user data
       setAuthToken();
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
@@ -65,7 +51,7 @@ export const authService = {
 
     if (token && userStr) {
       setAuthToken(token);
-      return JSON.parse(userStr);
+      return JSON.parse(userStr) as User;
     }
 
     return null;

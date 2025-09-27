@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -75,7 +75,7 @@ export const ProductsPage = () => {
               <TableHead>Categoria</TableHead>
               <TableHead>Fornecedor</TableHead>
               <TableHead>Estoque</TableHead>
-              <TableHead>Preço</TableHead>
+              <TableHead>Preco</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>

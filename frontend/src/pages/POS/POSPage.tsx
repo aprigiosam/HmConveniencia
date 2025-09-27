@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -45,16 +45,16 @@ export const POSPage = () => {
   });
 
   const handleBuscar = async () => {
-    if (!busca) return;
+    if (!busca.trim()) return;
     const resultados = await buscarProduto(busca.trim());
     setSugestoes(resultados);
   };
 
   const handleAdicionarProduto = async () => {
-    if (!busca) return;
+    if (!busca.trim()) return;
     const [primeiro] = await buscarProduto(busca.trim());
     if (!primeiro) {
-      toast.error("Produto não encontrado");
+      toast.error("Produto nao encontrado");
       return;
     }
     adicionarItem(primeiro);
@@ -83,7 +83,7 @@ export const POSPage = () => {
       return;
     }
     definirPagamentos(pagamentos);
-    toast.success("Venda concluída");
+    toast.success("Venda concluida");
     limpar();
     setPagamentos([]);
   };
@@ -96,7 +96,7 @@ export const POSPage = () => {
             <Input
               id="campo-busca"
               label="Buscar produto (F2)"
-              placeholder="Digite nome, SKU ou código de barras"
+              placeholder="Digite nome, SKU ou codigo de barras"
               value={busca}
               onChange={(event) => setBusca(event.target.value)}
               onKeyDown={(event) => {
@@ -115,12 +115,12 @@ export const POSPage = () => {
           </div>
           {sugestoes.length > 0 && (
             <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-              <p className="mb-2 text-xs uppercase text-slate-500">Sugestões</p>
+              <p className="mb-2 text-xs uppercase text-slate-500">Sugestoes</p>
               <ul className="space-y-1">
                 {sugestoes.slice(0, 5).map((item) => (
                   <li key={item.sku} className="flex items-center justify-between">
                     <span>
-                      <strong className="font-medium text-slate-700">{item.sku}</strong> • {item.descricao}
+                      <strong className="font-medium text-slate-700">{item.sku}</strong> - {item.descricao}
                     </span>
                     <Button variant="ghost" onClick={() => adicionarItem(item)}>
                       Adicionar
@@ -138,7 +138,7 @@ export const POSPage = () => {
               <TableRow>
                 <TableHead>Produto</TableHead>
                 <TableHead className="w-28">Qtde</TableHead>
-                <TableHead className="w-28">Preço</TableHead>
+                <TableHead className="w-28">Preco</TableHead>
                 <TableHead className="w-24">Desc (%)</TableHead>
                 <TableHead className="w-16"></TableHead>
                 <TableHead className="w-28 text-right">Total</TableHead>
@@ -237,8 +237,8 @@ export const POSPage = () => {
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-xs text-slate-500">
           <p className="font-semibold text-slate-600">Atalhos</p>
           <ul className="mt-2 space-y-1">
-            <li>F2 buscar produto • Ctrl+Enter adicionar item</li>
-            <li>F4 desconto item selecionado • F8 cancelar venda • F10 finalizar</li>
+            <li>F2 buscar produto - Ctrl+Enter adicionar item</li>
+            <li>F4 desconto item selecionado - F8 cancelar venda - F10 finalizar</li>
           </ul>
         </div>
       </section>

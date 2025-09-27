@@ -14,26 +14,22 @@ type AuthState = {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       token: null,
       loading: false,
       error: null,
       login: async (credentials) => {
-        console.log('AuthStore login called with:', credentials);
         set({ loading: true, error: null });
         try {
-          console.log('Calling authService.login...');
           const response = await authService.login(credentials);
-          console.log('Login successful:', response);
           set({
             user: response.user,
             token: response.token,
             loading: false
           });
         } catch (error) {
-          console.error('Login error:', error);
-          const message = (error as { message?: string }).message ?? "Falha na autenticação";
+          const message = (error as { message?: string }).message ?? "Falha na autenticacao";
           set({ error: message, loading: false });
           throw error;
         }
