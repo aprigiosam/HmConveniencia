@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import api from "../services/api";
@@ -17,12 +17,14 @@ type ProductModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialBarcode?: string;
 };
 
-export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) => {
+export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: ProductModalProps) => {
   const [loading, setLoading] = useState(false);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const barcodeInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
     sku: "",
     codigo_barras: "",
@@ -44,6 +46,26 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
       loadData();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (initialBarcode) {
+      setFormData((prev) =>
+        prev.codigo_barras === initialBarcode ? prev : { ...prev, codigo_barras: initialBarcode },
+      );
+    }
+
+    const focusTimeout = window.setTimeout(() => {
+      barcodeInputRef.current?.focus();
+    }, 50);
+
+    return () => {
+      window.clearTimeout(focusTimeout);
+    };
+  }, [initialBarcode, isOpen]);
 
   const loadData = async () => {
     try {
@@ -122,6 +144,7 @@ export const ProductModal = ({ isOpen, onClose, onSuccess }: ProductModalProps) 
             <Input
               label="Codigo de barras"
               required
+              ref={barcodeInputRef}
               value={formData.codigo_barras}
               onChange={(e) => handleChange("codigo_barras", e.target.value)}
             />

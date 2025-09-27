@@ -10,6 +10,8 @@ import { PurchasesPage } from "../pages/Purchases";
 import { FinancePage } from "../pages/Finance";
 import { ReportsPage } from "../pages/Reports";
 import { SettingsPage } from "../pages/Settings";
+import { SuppliersPage } from "../pages/Suppliers";
+import { NFePage } from "../pages/NFe";
 
 const ProtectedShell = () => (
   <ProtectedRoute />
@@ -36,9 +38,11 @@ export const AppRoutes = () => {
             { path: "dashboard", element: <DashboardPage /> },
             { path: "pdv", element: <POSPage /> },
             { path: "produtos", element: <ProductsPage /> },
+            { path: "fornecedores", element: <SuppliersPage /> },
             { path: "estoque", element: <InventoryPage /> },
             { path: "compras", element: <PurchasesPage /> },
             { path: "financeiro", element: <FinancePage /> },
+            { path: "nf-e", element: <NFePage /> },
             { path: "relatorios", element: <ReportsPage /> },
             { path: "configuracoes", element: <SettingsPage /> },
             { path: "*", element: <Navigate to="/dashboard" replace /> },

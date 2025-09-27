@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
+
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -6,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../components/ui/Badge";
 import { ProductModal } from "../components/ProductModal";
 import api from "../services/api";
+import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 
 type Produto = {
   id: number;
@@ -25,6 +28,7 @@ export const ProductsPage = () => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
 
   const loadProdutos = async () => {
     try {
@@ -40,6 +44,15 @@ export const ProductsPage = () => {
     loadProdutos();
   }, [search]);
 
+  useBarcodeScanner({
+    onScan: (codigo) => {
+      setScannedBarcode(codigo);
+      setShowModal(true);
+      toast.success(`Código ${codigo} capturado`);
+    },
+    minLength: 4,
+  });
+
   const filtrados = useMemo(() => {
     if (!search) return produtos;
     return produtos.filter((produto) =>
@@ -53,7 +66,14 @@ export const ProductsPage = () => {
       <Card
         title="Produtos"
         action={
-          <Button onClick={() => setShowModal(true)}>Novo produto</Button>
+          <Button
+            onClick={() => {
+              setScannedBarcode(null);
+              setShowModal(true);
+            }}
+          >
+            Novo produto
+          </Button>
         }
       >
         <div className="grid gap-3 md:grid-cols-2">
@@ -99,7 +119,11 @@ export const ProductsPage = () => {
 
       <ProductModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        initialBarcode={scannedBarcode ?? undefined}
+        onClose={() => {
+          setShowModal(false);
+          setScannedBarcode(null);
+        }}
         onSuccess={loadProdutos}
       />
     </div>
