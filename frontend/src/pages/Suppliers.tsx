@@ -40,6 +40,57 @@ export const SuppliersPage = () => {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [productsBySupplier, setProductsBySupplier] = useState<Record<number, SupplierProduct[]>>({});
 
+  useEffect(() => {
+    const loadSuppliers = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchSuppliers({
+          search: search || undefined,
+          ativo: statusFilter === "all" ? undefined : statusFilter === "active",
+        });
+        setSuppliers(data?.results ?? []);
+        if (data?.results?.length && !selectedSupplier) {
+          setSelectedSupplier(data.results[0]);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar fornecedores", error);
+        toast.error("Não foi possível carregar os fornecedores");
+        setSuppliers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSuppliers();
+  }, [statusFilter, selectedSupplier]);
+
+  useEffect(() => {
+    const loadSuppliers = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchSuppliers({
+          search: search || undefined,
+          ativo: statusFilter === "all" ? undefined : statusFilter === "active",
+        });
+        setSuppliers(data?.results ?? []);
+        if (data?.results?.length && !selectedSupplier) {
+          setSelectedSupplier(data.results[0]);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar fornecedores", error);
+        toast.error("Não foi possível carregar os fornecedores");
+        setSuppliers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const timeout = setTimeout(() => {
+      loadSuppliers();
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [search, statusFilter, selectedSupplier]);
+
   const loadSuppliers = async () => {
     try {
       setLoading(true);
@@ -59,19 +110,6 @@ export const SuppliersPage = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    loadSuppliers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter]);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      loadSuppliers();
-    }, 400);
-    return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
 
   useEffect(() => {
     const loadProducts = async () => {

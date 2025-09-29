@@ -1,0 +1,38 @@
+# Multi-stage build para produção
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copiar package.json e package-lock.json
+COPY frontend/package*.json ./
+
+# Instalar dependências (incluindo dev dependencies para build)
+RUN npm ci
+
+# Copiar código fonte
+COPY frontend/ ./
+
+# Argumentos de build
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
+# Build da aplicação
+RUN npm run build
+
+# Estágio final - servidor nginx
+FROM nginx:alpine
+
+# Remover configuração padrão do nginx
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copiar build da aplicação
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copiar arquivos estáticos para servir via nginx
+COPY --from=builder /app/dist /app/dist
+
+# Expor porta
+EXPOSE 80
+
+# Comando padrão
+CMD ["nginx", "-g", "daemon off;"]

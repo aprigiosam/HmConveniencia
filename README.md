@@ -10,7 +10,7 @@ Sistema completo para gestão de comércio de bairro com PDV integrado, controle
 
 ## Como rodar o projeto
 
-### 1. Ambiente via Docker (recomendado)
+### 1. Ambiente via Docker para desenvolvimento
 
 ```bash
 docker compose up --build -d
@@ -28,16 +28,32 @@ Para encerrar:
 docker compose down
 ```
 
-### Acesso ao Sistema
+### Acesso ao Sistema (desenvolvimento)
 
-Após subir os containers, acesse:
+Após subir os containers de desenvolvimento, acesse:
 
 - **Frontend**: http://localhost:3000
 - **Credenciais padrão**:
   - Usuário: `admin`
   - Senha: `admin123`
 
-### 2. Backend local (sem Docker)
+### 2. Ambiente de Produção com Nginx (porta 8080)
+
+Use o stack de produção quando for publicar a aplicação (Nginx como proxy, build otimizado do frontend e serviços protegidos):
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+```
+
+Serviços publicados:
+
+- Frontend + Nginx: `http://localhost:8080`
+- API Django (via proxy): `http://localhost:8080/api/v1/`
+- Backend interno: `http://localhost:8001`
+
+> ✅ Configure `.env.prod` antes do primeiro deploy (senhas fortes, `ALLOWED_HOSTS`, `VITE_API_URL`, certificados, etc.). Veja `DEPLOY.md` para o passo a passo completo.
+
+### 3. Backend local (sem Docker)
 
 ```bash
 cd backend
@@ -50,7 +66,7 @@ python manage.py runserver
 
 Defina as variáveis no `.env` (exemplo em `.env.example` se existir) apontando para seu Postgres/Redis.
 
-### 3. Frontend local
+### 4. Frontend local
 
 ```bash
 cd frontend
@@ -131,13 +147,22 @@ make reset
 
 # Status dos containers
 make status
+
+# Backup do banco (dev)
+make backup NAME=antes-de-alterar
+
+# Restaurar backup (dev)
+make restore BACKUP_FILE=dev_backup_20250929_120000.sql.gz
+
+# Backup do banco (stack de produção local)
+make backup-prod NAME=homolog
 ```
 
 ## Guia Rápido de Uso
 
 ### Para Usuários Finais
 
-1. **Acesse**: http://localhost:3000
+1. **Acesse (dev)**: http://localhost:3000 ou **Produção local**: http://localhost:8080
 2. **Login**: admin / admin123
 3. **Cadastre produtos**: Menu → Produtos → + Novo Produto
 4. **Adicione estoque**: Menu → Estoque → + Entrada de Estoque
@@ -149,6 +174,15 @@ make status
 - **Django Admin**: http://localhost:8000/admin
 - **Frontend dev**: `cd frontend && npm run dev`
 - **Backend dev**: `cd backend && python manage.py runserver`
+
+## Backups & Restauração
+
+- Os dados do Postgres ficam no volume Docker, portanto mantenha backups periódicos antes de grandes mudanças.
+- Com o ambiente _dev_ rodando, execute `make backup NAME=descricao` para gerar `backup/dev_backup_<timestamp>.sql.gz` (compactado).
+- Para restaurar em desenvolvimento use `make restore BACKUP_FILE=nome_do_arquivo.sql.gz` (o comando aceita também arquivos `.sql`).
+- Se estiver usando o stack de produção local (`docker-compose.prod.yml`), utilize `make backup-prod` e `make restore-prod` — ambos requerem um `.env.prod` configurado.
+- Os arquivos são salvos em `./backup`; considere sincronizar essa pasta com um serviço externo (OneDrive, Google Drive etc.) para evitar perda de dados do notebook.
+- Sugestão: crie uma tarefa agendada (Ex.: Agendador do Windows) que rode `make backup NAME=diario` para ter cópias automáticas antes das melhorias.
 
 ## Estado Atual do Sistema
 
@@ -167,4 +201,4 @@ make status
 
 ## Licença
 
-Uso interno da Hm Conveniência.
+Uso interno / implantação controlada. Defina a política final de licenciamento antes de disponibilizar para terceiros.

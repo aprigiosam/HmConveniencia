@@ -1,4 +1,4 @@
-﻿import type { TableHTMLAttributes } from "react";
+﻿import React, { type TableHTMLAttributes } from "react";
 import { cn } from "../../utils/cn";
 
 type TableProps = TableHTMLAttributes<HTMLTableElement>;
@@ -27,6 +27,6 @@ export const TableCell = ({ className, ...props }: React.TdHTMLAttributes<HTMLTa
   <td className={cn("px-4 py-3 text-slate-700", className)} {...props} />
 );
 
-export const TableHead = ({ className, ...props }: React.ThHTMLAttributes<HTMLTableHeaderCellElement>) => (
+export const TableHead = ({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) => (
   <th className={cn("px-4 py-3 font-semibold", className)} {...props} />
 );

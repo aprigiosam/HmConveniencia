@@ -1,49 +1,87 @@
 .PHONY: help build up down logs shell migrate test install
 
+COMPOSE ?= docker compose
+COMPOSE_PROD = $(COMPOSE) -f docker-compose.prod.yml --env-file .env.prod
+
+DB_NAME ?= comercio_db
+DB_USER ?= comercio_user
+BACKUP_DIR ?= backup
+
 help: ## Mostrar ajuda
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $1, $2}'
 
 build: ## Construir containers
-	docker-compose build
+	$(COMPOSE) build
 
 up: ## Subir ambiente
-	docker-compose up -d
+	$(COMPOSE) up -d
 
 down: ## Parar ambiente
-	docker-compose down
+	$(COMPOSE) down
 
 logs: ## Ver logs
-	docker-compose logs -f
+	$(COMPOSE) logs -f
 
 shell: ## Acessar shell do backend
-	docker-compose exec backend python manage.py shell
+	$(COMPOSE) exec backend python manage.py shell
 
 migrate: ## Executar migracoes
-	docker-compose exec backend python manage.py migrate
+	$(COMPOSE) exec backend python manage.py migrate
 
 makemigrations: ## Criar migracoes
-	docker-compose exec backend python manage.py makemigrations
+	$(COMPOSE) exec backend python manage.py makemigrations
 
 createsuperuser: ## Criar superusuario
-	docker-compose exec backend python manage.py createsuperuser
+	$(COMPOSE) exec backend python manage.py createsuperuser
 
 loaddata: ## Carregar dados iniciais
-	docker-compose exec backend python manage.py shell -c "exec(open('scripts/load_initial_data.py').read())"
+	$(COMPOSE) exec backend python manage.py shell -c "exec(open('scripts/load_initial_data.py').read())"
 
 setup-vencimento: ## Configurar dados de vencimento
-	docker-compose exec backend python manage.py shell -c "exec(open('scripts/setup_vencimento.py').read())"
+	$(COMPOSE) exec backend python manage.py shell -c "exec(open('scripts/setup_vencimento.py').read())"
 
-backup: ## Fazer backup
-	@echo "Iniciando backup..."
-	docker-compose exec db pg_dump -U comercio_user comercio_db > backup/backup_$(shell date +%Y%m%d_%H%M%S).sql
-	@echo "Backup salvo em backup/"
+backup: ## Fazer backup (usar opcional NAME=descricao)
+	@mkdir -p $(BACKUP_DIR)
+	@STAMP=$${NAME:-$$(date +%Y%m%d_%H%M%S)}; \
+	FILE="$(BACKUP_DIR)/dev_backup_$${STAMP}.sql.gz"; \
+	echo "Gerando $$FILE"; \
+	$(COMPOSE) exec -T db pg_dump -U $(DB_USER) $(DB_NAME) | gzip > $$FILE; \
+	echo "Backup salvo em $$FILE"
 
-restore: ## Restaurar backup (usar BACKUP_FILE=nome_do_arquivo)
-	@if [ -z "$(BACKUP_FILE)" ]; then echo "Use: make restore BACKUP_FILE=arquivo.sql"; exit 1; fi
-	docker-compose exec -T db psql -U comercio_user -d comercio_db < backup/$(BACKUP_FILE)
+backup-prod: ## Backup do banco em producao (usar opcional NAME=descricao)
+	@if [ ! -f .env.prod ]; then echo "ERRO: Arquivo .env.prod nao encontrado. Copie .env.prod.example e configure."; exit 1; fi
+	@mkdir -p $(BACKUP_DIR)
+	@STAMP=$${NAME:-$$(date +%Y%m%d_%H%M%S)}; \
+	FILE="$(BACKUP_DIR)/prod_backup_$${STAMP}.sql.gz"; \
+	echo "Gerando $$FILE"; \
+	$(COMPOSE_PROD) exec -T db pg_dump -U $(DB_USER) $(DB_NAME) | gzip > $$FILE; \
+	echo "Backup salvo em $$FILE"
+
+restore: ## Restaurar backup (usar BACKUP_FILE=arquivo.sql[.gz])
+	@if [ -z "$(BACKUP_FILE)" ]; then echo "Use: make restore BACKUP_FILE=arquivo.sql[.gz]"; exit 1; fi
+	@if [ ! -f $(BACKUP_DIR)/$(BACKUP_FILE) ]; then echo "Arquivo $(BACKUP_DIR)/$(BACKUP_FILE) nao encontrado"; exit 1; fi
+	@echo "Restaurando $(BACKUP_DIR)/$(BACKUP_FILE)..."
+	@if echo "$(BACKUP_FILE)" | grep -q '\.gz$$'; then \
+		gunzip -c $(BACKUP_DIR)/$(BACKUP_FILE) | $(COMPOSE) exec -T db psql -U $(DB_USER) -d $(DB_NAME); \
+	else \
+		cat $(BACKUP_DIR)/$(BACKUP_FILE) | $(COMPOSE) exec -T db psql -U $(DB_USER) -d $(DB_NAME); \
+	fi
+	@echo "Restauracao concluida"
+
+restore-prod: ## Restaurar backup em producao (usar BACKUP_FILE=arquivo.sql[.gz])
+	@if [ -z "$(BACKUP_FILE)" ]; then echo "Use: make restore-prod BACKUP_FILE=arquivo.sql[.gz]"; exit 1; fi
+	@if [ ! -f .env.prod ]; then echo "ERRO: Arquivo .env.prod nao encontrado. Copie .env.prod.example e configure."; exit 1; fi
+	@if [ ! -f $(BACKUP_DIR)/$(BACKUP_FILE) ]; then echo "Arquivo $(BACKUP_DIR)/$(BACKUP_FILE) nao encontrado"; exit 1; fi
+	@echo "Restaurando $(BACKUP_DIR)/$(BACKUP_FILE) em producao..."
+	@if echo "$(BACKUP_FILE)" | grep -q '\.gz$$'; then \
+		gunzip -c $(BACKUP_DIR)/$(BACKUP_FILE) | $(COMPOSE_PROD) exec -T db psql -U $(DB_USER) -d $(DB_NAME); \
+	else \
+		cat $(BACKUP_DIR)/$(BACKUP_FILE) | $(COMPOSE_PROD) exec -T db psql -U $(DB_USER) -d $(DB_NAME); \
+	fi
+	@echo "Restauracao concluida"
 
 status: ## Verificar status dos servicos
-	docker-compose ps
+	$(COMPOSE) ps
 
 install: ## Instalacao completa
 	@echo "Instalando Sistema Comercio Pro..."
@@ -72,7 +110,7 @@ install: ## Instalacao completa
 reset: ## Reset completo (CUIDADO: apaga todos os dados)
 	@echo "ATENCAO: Esta operacao vai apagar todos os dados."
 	@read -p "Tem certeza? Digite 'reset' para confirmar: " confirm && [ "$$confirm" = "reset" ]
-	docker-compose down -v
+	$(COMPOSE) down -v
 	docker system prune -f
 	make install
 
@@ -84,8 +122,42 @@ quick-start: ## Inicio rapido para desenvolvimento
 	@echo "Sistema pronto!"
 
 dev: ## Modo desenvolvimento
-	docker-compose up
+	$(COMPOSE) up
 
-prod: ## Modo producao (usar docker-compose.prod.yml)
-	@if [ ! -f docker-compose.prod.yml ]; then echo "Arquivo docker-compose.prod.yml nao encontrado"; exit 1; fi
-	docker-compose -f docker-compose.prod.yml up -d
+prod-build: ## Construir containers para producao
+	@if [ ! -f .env.prod ]; then echo "ERRO: Arquivo .env.prod nao encontrado. Copie .env.prod.example e configure."; exit 1; fi
+	$(COMPOSE_PROD) build
+
+prod-up: ## Subir ambiente de producao
+	@if [ ! -f .env.prod ]; then echo "ERRO: Arquivo .env.prod nao encontrado. Copie .env.prod.example e configure."; exit 1; fi
+	$(COMPOSE_PROD) up -d
+
+prod-down: ## Parar ambiente de producao
+	$(COMPOSE_PROD) down
+
+prod-logs: ## Ver logs de producao
+	$(COMPOSE_PROD) logs -f
+
+prod-status: ## Status dos servicos de producao
+	$(COMPOSE_PROD) ps
+
+prod-migrate: ## Executar migracoes em producao
+	$(COMPOSE_PROD) exec backend python manage.py migrate
+
+prod-collectstatic: ## Coletar arquivos estaticos para producao
+	$(COMPOSE_PROD) exec backend python manage.py collectstatic --noinput
+
+prod-deploy: ## Deploy completo para producao
+	@if [ ! -f .env.prod ]; then echo "ERRO: Arquivo .env.prod nao encontrado. Copie .env.prod.example e configure."; exit 1; fi
+	@echo "Iniciando deploy para producao..."
+	make prod-build
+	make prod-up
+	@echo "Aguardando servicos iniciarem..."
+	sleep 30
+	make prod-migrate
+	make prod-collectstatic
+	@echo "Deploy finalizado!"
+	@echo "Verifique o status com: make prod-status"
+
+prod: ## Modo producao (alias para prod-deploy)
+	make prod-deploy

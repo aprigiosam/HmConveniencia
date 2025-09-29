@@ -97,7 +97,7 @@ export const SaleReceiptModal = ({ venda, onClose }: SaleReceiptModalProps) => {
     printWindow.document.write("<html><head><title>Cupom Fiscal</title>");
     printWindow.document.write(`<style>${styles}</style>`);
     printWindow.document.write("</head><body>");
-    printWindow.document.write(`<div class=\"header\"><h2>Cupom fiscal</h2><p>Venda nº ${venda.numero_venda}</p><p>${formatDateTime(venda.created_at)}</p>${venda.loja_nome ? `<p>Loja: ${venda.loja_nome}</p>` : ""}</div>`);
+    printWindow.document.write(`<div class="header"><h2>Cupom fiscal</h2><p>Venda nº ${venda.numero_venda}</p><p>${formatDateTime(venda.created_at)}</p>${venda.loja_nome ? `<p>Loja: ${venda.loja_nome}</p>` : ""}</div>`);
     printWindow.document.write(contentRef.current.innerHTML);
     printWindow.document.write("</body></html>");
     printWindow.document.close();

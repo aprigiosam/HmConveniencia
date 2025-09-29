@@ -1,9 +1,37 @@
 import axios from "axios";
 
-const baseURL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
+const API_VERSION_SUFFIX = "/api/v1";
 
+const ensureVersionedBaseURL = (value: string): string => {
+  const sanitized = value.trim().replace(/\/+$/, "");
+
+  if (/\/api\/v\d+$/i.test(sanitized) || /\/api\/.+/i.test(sanitized)) {
+    return sanitized;
+  }
+
+  if (/\/api$/i.test(sanitized)) {
+    return `${sanitized}/v1`;
+  }
+
+  return `${sanitized}${API_VERSION_SUFFIX}`;
+};
+
+const resolveBaseURL = (): string => {
+  const fromEnv = import.meta.env.VITE_API_URL?.trim();
+  if (fromEnv && fromEnv.length > 0) {
+    return ensureVersionedBaseURL(fromEnv);
+  }
+
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return ensureVersionedBaseURL(window.location.origin);
+  }
+
+  return ensureVersionedBaseURL("http://localhost:8000");
+};
+
+// Ensure the API client always talks to the versioned backend endpoint.
 const api = axios.create({
-  baseURL,
+  baseURL: resolveBaseURL(),
   withCredentials: true,
 });
 

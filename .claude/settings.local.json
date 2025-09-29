@@ -20,7 +20,13 @@
       "Bash(ip route:*)",
       "Read(///**)",
       "Bash(awk:*)",
-      "Bash(ip addr:*)"
+      "Bash(ip addr:*)",
+      "Bash(cd:*)",
+      "Read(//mnt/c/Users/**)",
+      "Bash(test:*)",
+      "Bash(netstat:*)",
+      "Bash(ss:*)",
+      "Bash(docker volume:*)"
     ],
     "deny": [],
     "ask": []

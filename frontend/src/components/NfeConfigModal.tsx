@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { Button } from "./ui/Button";

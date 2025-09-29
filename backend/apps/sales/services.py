@@ -49,13 +49,19 @@ def _celeridade_ordem() -> Iterable[F]:
 
 
 def _obter_lotes(venda: Venda, item: ItemVenda) -> Iterable[LoteProduto]:
-    qs = LoteProduto.objects.select_for_update().filter(
+    if item.lote_id:
+        # Se tem lote específico, buscar apenas esse lote (independente da loja para validação posterior)
+        return LoteProduto.objects.select_for_update().filter(
+            produto=item.produto,
+            pk=item.lote_id
+        )
+
+    # Se não tem lote específico, buscar lotes da mesma loja com estoque
+    return LoteProduto.objects.select_for_update().filter(
         produto=item.produto,
         loja=venda.loja,
-    )
-    if item.lote_id:
-        return qs.filter(pk=item.lote_id)
-    return qs.filter(quantidade__gt=0).order_by(*_celeridade_ordem())
+        quantidade__gt=0
+    ).order_by(*_celeridade_ordem())
 
 
 def _baixar_do_lote(

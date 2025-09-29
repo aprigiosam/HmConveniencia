@@ -2,9 +2,9 @@ services:
   db:
     image: postgres:15
     environment:
-      POSTGRES_DB: comercio_db
-      POSTGRES_USER: comercio_user
-      POSTGRES_PASSWORD: comercio_pass123
+      POSTGRES_DB: ${POSTGRES_DB:-comercio_db}
+      POSTGRES_USER: ${POSTGRES_USER:-comercio_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-comercio_pass123}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backup:/backup
@@ -41,7 +41,7 @@ services:
         condition: service_healthy
     environment:
       - DEBUG=True
-      - DATABASE_URL=postgresql://comercio_user:comercio_pass123@db:5432/comercio_db
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-comercio_user}:${POSTGRES_PASSWORD:-comercio_pass123}@db:5432/${POSTGRES_DB:-comercio_db}
       - ALLOWED_HOSTS=localhost,127.0.0.1,192.168.230.114,192.168.15.7
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=django-super-secret-key-change-in-production
@@ -58,7 +58,7 @@ services:
     depends_on:
       - backend
     environment:
-      - DATABASE_URL=postgresql://comercio_user:comercio_pass123@db:5432/comercio_db
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-comercio_user}:${POSTGRES_PASSWORD:-comercio_pass123}@db:5432/${POSTGRES_DB:-comercio_db}
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=django-super-secret-key-change-in-production
     volumes:
@@ -74,7 +74,7 @@ services:
     depends_on:
       - backend
     environment:
-      - DATABASE_URL=postgresql://comercio_user:comercio_pass123@db:5432/comercio_db
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-comercio_user}:${POSTGRES_PASSWORD:-comercio_pass123}@db:5432/${POSTGRES_DB:-comercio_db}
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=django-super-secret-key-change-in-production
     volumes:

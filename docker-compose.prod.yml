@@ -1,0 +1,133 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-comercio_db}
+      POSTGRES_USER: ${POSTGRES_USER:-comercio_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backup:/backup
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-comercio_user} -d ${POSTGRES_DB:-comercio_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - comercio_network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - comercio_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DEBUG=False
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-comercio_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-comercio_db}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+    volumes:
+      - ./backup:/app/backup
+      - ./logs:/app/logs
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    networks:
+      - comercio_network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    depends_on:
+      - backend
+    environment:
+      - DEBUG=False
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-comercio_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-comercio_db}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+    volumes:
+      - ./logs:/app/logs
+      - media_volume:/app/media
+    restart: unless-stopped
+    command: celery -A comercio worker -l info
+    networks:
+      - comercio_network
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    depends_on:
+      - backend
+    environment:
+      - DEBUG=False
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-comercio_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-comercio_db}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    command: celery -A comercio beat -l info
+    networks:
+      - comercio_network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend.prod
+      args:
+        - VITE_API_URL=${VITE_API_URL}
+    volumes:
+      - frontend_build:/app/dist
+    restart: unless-stopped
+    networks:
+      - comercio_network
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - frontend_build:/usr/share/nginx/html
+      - static_volume:/usr/share/nginx/html/static
+      - media_volume:/usr/share/nginx/html/media
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    networks:
+      - comercio_network
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+  frontend_build:
+
+networks:
+  comercio_network:
+    driver: bridge

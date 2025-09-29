@@ -55,6 +55,32 @@ export const ClientsPage = () => {
     return () => clearTimeout(handler);
   }, [search]);
 
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        setLoading(true);
+        const results = await fetchClients({
+          search: debouncedSearch || undefined,
+          ativo: statusFilter === "active" ? true : statusFilter === "inactive" ? false : undefined,
+        });
+        setClients(results);
+        if (results.length && !selectedClient) {
+          setSelectedClient(results[0]);
+        }
+        if (!results.length) {
+          setSelectedClient(null);
+        }
+      } catch (error: any) {
+        const message = error?.message ?? "Não foi possível carregar os clientes";
+        toast.error(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadClients();
+  }, [debouncedSearch, statusFilter, selectedClient]);
+
   const loadClients = async () => {
     try {
       setLoading(true);
@@ -76,11 +102,6 @@ export const ClientsPage = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    void loadClients();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, statusFilter]);
 
   const handleOpenCreate = () => {
     setModalClient(null);

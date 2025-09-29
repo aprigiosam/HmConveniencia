@@ -21,19 +21,21 @@ def _gerar_chave_fake(config: EmitenteConfig, numero: int) -> str:
     serie = str(config.serie).zfill(3)
     numero_str = str(numero).zfill(9)
     tipo_emissao = "1"
-    codigo = str(random.randint(0, 99999999)).zfill(8)
-    chave = f"{data}{cnpj}{modelo}{serie}{numero_str}{tipo_emissao}{codigo}"
+    codigo = str(random.randint(10000000, 99999999)).zfill(8)
+    chave_base = f"{data}{cnpj}{modelo}{serie}{numero_str}{tipo_emissao}{codigo}"
+    # Garantir que temos exatamente 43 dígitos antes do DV
+    chave_base = chave_base[:43].zfill(43)
     # Digito verificador (módulo 11 simplificado)
     pesos = [4, 3, 2, 9, 8, 7, 6, 5]
     soma = 0
-    for i, char in enumerate(chave):
+    for i, char in enumerate(chave_base):
         peso = pesos[i % len(pesos)]
         soma += int(char) * peso
     resto = soma % 11
     dv = 11 - resto
     if dv >= 10:
         dv = 0
-    return chave + str(dv)
+    return chave_base + str(dv)
 
 
 @transaction.atomic

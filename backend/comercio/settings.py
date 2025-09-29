@@ -103,11 +103,19 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOWED_ORIGINS = [
+DEFAULT_FRONTEND_ORIGINS = [
+    "http://localhost",
+    "http://127.0.0.1",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
     "http://frontend:3000",
 ]
+
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=DEFAULT_FRONTEND_ORIGINS)
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG  # Allow all origins in development
 
@@ -126,10 +134,7 @@ CORS_ALLOWED_HEADERS = [
 ]
 
 # CSRF trusted origins
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=DEFAULT_FRONTEND_ORIGINS)
 
 # Para desenvolvimento, vamos desabilitar CSRF para APIs
 CSRF_COOKIE_SECURE = False
