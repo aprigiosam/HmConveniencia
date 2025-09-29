@@ -1,48 +1,26 @@
-﻿# Python
+﻿# .gitignore
+printf "# Python/Django
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-*.so
-
-# Django
-*.log
-media/
-staticfiles/
-celerybeat-schedule
-backend/staticfiles/
-backend/logs/
-backend/backup/
-backend/venv/
-
-# Env
-.env
-backend/.env
+.env*
 venv/
-*.sqlite3
+.venv/
 
-# Node/Vite
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
-frontend/.nuxt/
+# Node/React
+node_modules/
+dist/
+build/
+*.log
 
-# IDE/OS
+# Docker/OS/VSCode
 .vscode/
-.idea/
 .DS_Store
 Thumbs.db
+" > .gitignore
 
-# Docker
-*.pid
-
-# Coverage/Test
-.coverage
-htmlcov/
-pytest_cache/
-frontend/coverage/
-frontend/.eslintcache
-
-# Logs/Backups
-logs/
-backup/
+# .gitattributes (padroniza LF, evita CRLF em Linux/WSL)
+printf "* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+" > .gitattributes
