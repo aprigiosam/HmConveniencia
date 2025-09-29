@@ -2,8 +2,8 @@ import axios from "axios";
 
 const API_VERSION_SUFFIX = "/api/v1";
 
-const ensureVersionedBaseURL = (value: string): string => {
-  const sanitized = value.trim().replace(/\/+$/, "");
+const ensureVersionedBaseURL = (raw: string): string => {
+  const sanitized = raw.trim().replace(/\/+$/, "");
 
   if (/\/api\/v\d+$/i.test(sanitized) || /\/api\/.+/i.test(sanitized)) {
     return sanitized;
@@ -16,10 +16,37 @@ const ensureVersionedBaseURL = (value: string): string => {
   return `${sanitized}${API_VERSION_SUFFIX}`;
 };
 
+const isAbsoluteUrl = (value: string): boolean => /^https?:\/\//i.test(value);
+
+const withWindowOrigin = (path: string): string => {
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}${path}`;
+  }
+  return `http://localhost:8000${path}`;
+};
+
+const normalizeBaseSource = (value: string): string => {
+  const trimmed = value.trim();
+
+  if (trimmed.length === 0) {
+    return trimmed;
+  }
+
+  if (isAbsoluteUrl(trimmed)) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith("/")) {
+    return withWindowOrigin(trimmed);
+  }
+
+  return trimmed;
+};
+
 const resolveBaseURL = (): string => {
-  const fromEnv = import.meta.env.VITE_API_URL?.trim();
-  if (fromEnv && fromEnv.length > 0) {
-    return ensureVersionedBaseURL(fromEnv);
+  const fromEnv = import.meta.env.VITE_API_URL;
+  if (fromEnv !== undefined) {
+    return ensureVersionedBaseURL(normalizeBaseSource(fromEnv));
   }
 
   if (typeof window !== "undefined" && window.location?.origin) {
@@ -33,6 +60,16 @@ const resolveBaseURL = (): string => {
 const api = axios.create({
   baseURL: resolveBaseURL(),
   withCredentials: true,
+});
+
+api.interceptors.request.use((config) => {
+  const url = config.url;
+
+  if (typeof url === "string" && url.startsWith("/") && !/^https?:\/\//i.test(url)) {
+    config.url = url.replace(/^\/+/u, "");
+  }
+
+  return config;
 });
 
 export const setAuthToken = (token?: string) => {

@@ -75,8 +75,10 @@ export const InventoryAdjustmentModal = ({ isOpen, onClose, onSuccess }: Invento
 
         setFormData((prev) => {
           const next = { ...prev };
-          if (!prev.loja && lojasData.length === 1) {
+          if (!prev.loja && lojasData.length > 0) {
             next.loja = String(lojasData[0].id);
+          } else if (prev.loja && !lojasData.some((loja) => String(loja.id) === prev.loja)) {
+            next.loja = lojasData.length > 0 ? String(lojasData[0].id) : "";
           }
           return next;
         });
@@ -160,12 +162,22 @@ export const InventoryAdjustmentModal = ({ isOpen, onClose, onSuccess }: Invento
     }
   }, [formData.lote, formData.loja, lotes]);
 
+  const resolvedLoja = useMemo(() => {
+    if (formData.loja && lojas.some((loja) => String(loja.id) === formData.loja)) {
+      return formData.loja;
+    }
+    if (lojas.length > 0) {
+      return String(lojas[0].id);
+    }
+    return "";
+  }, [formData.loja, lojas]);
+
   const filteredLotes = useMemo(() => {
-    if (!formData.loja) {
+    if (!resolvedLoja) {
       return lotes;
     }
-    return lotes.filter((lote) => String(lote.loja) === formData.loja);
-  }, [lotes, formData.loja]);
+    return lotes.filter((lote) => String(lote.loja) === resolvedLoja);
+  }, [lotes, resolvedLoja]);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -186,7 +198,14 @@ export const InventoryAdjustmentModal = ({ isOpen, onClose, onSuccess }: Invento
       return;
     }
 
-    if (!formData.loja) {
+    const lojaSelecionada = (() => {
+      if (formData.loja && lojas.some((loja) => String(loja.id) === formData.loja)) {
+        return formData.loja;
+      }
+      return lojas.length > 0 ? String(lojas[0].id) : "";
+    })();
+
+    if (!lojaSelecionada) {
       setErrorMessage("Selecione a loja");
       return;
     }
@@ -207,7 +226,7 @@ export const InventoryAdjustmentModal = ({ isOpen, onClose, onSuccess }: Invento
     try {
       await api.post("/inventory/estoque/ajuste_estoque/", {
         produto: parseInt(formData.produto, 10),
-        loja: parseInt(formData.loja, 10),
+        loja: parseInt(lojaSelecionada, 10),
         lote: formData.lote ? parseInt(formData.lote, 10) : undefined,
         quantidade: parseInt(formData.quantidade, 10),
         motivo: formData.motivo,
@@ -268,9 +287,9 @@ export const InventoryAdjustmentModal = ({ isOpen, onClose, onSuccess }: Invento
               <label className="mb-1 block text-sm font-medium text-gray-700">Loja</label>
               <select
                 className="w-full rounded-md border border-gray-300 px-3 py-2"
-                value={formData.loja}
+                value={resolvedLoja}
                 onChange={(event) => handleChange("loja", event.target.value)}
-                disabled={loading || submitting || lojas.length <= 1}
+                disabled={loading || submitting}
               >
                 <option value="">Selecione uma loja</option>
                 {lojas.map((loja) => (
@@ -279,8 +298,8 @@ export const InventoryAdjustmentModal = ({ isOpen, onClose, onSuccess }: Invento
                   </option>
                 ))}
               </select>
-              {lojas.length <= 1 && (
-                <p className="mt-1 text-xs text-gray-500">Loja selecionada automaticamente.</p>
+              {lojas.length <= 1 && lojas.length > 0 && (
+                <p className="mt-1 text-xs text-gray-500">Loja sugerida automaticamente; ajuste se necessário.</p>
               )}
             </div>
           </div>

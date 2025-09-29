@@ -1,11 +1,18 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import api from "../services/api";
+import { CategoryModal } from "./CategoryModal";
+import { SupplierModal } from "./SupplierModal";
 
 type Categoria = {
   id: number;
   nome: string;
+  categoria_pai: number | null;
+};
+
+type CategoriaOption = Categoria & {
+  displayName: string;
 };
 
 type Fornecedor = {
@@ -24,6 +31,8 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
   const [loading, setLoading] = useState(false);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
   const barcodeInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
     sku: "",
@@ -41,11 +50,80 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
     ativo: true,
   });
 
+  const loadData = useCallback(async () => {
+    try {
+      const [categoriasRes, fornecedoresRes] = await Promise.all([
+        api.get("/catalog/categorias/", { params: { page_size: 100 } }),
+        api.get("/catalog/fornecedores/", { params: { page_size: 100 } }),
+      ]);
+      const fetchedCategorias: Categoria[] = (categoriasRes.data.results || []).map((categoria: any) => ({
+        id: categoria.id,
+        nome: categoria.nome,
+        categoria_pai: categoria.categoria_pai ?? null,
+      }));
+      const fetchedFornecedores: Fornecedor[] = fornecedoresRes.data.results || [];
+
+      setCategorias(fetchedCategorias);
+      setFornecedores(fetchedFornecedores.sort((a, b) => a.nome.localeCompare(b.nome)));
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+    }
+  }, []);
+
+  const categoryOptions = useMemo(() => {
+    if (!categorias.length) {
+      return [] as CategoriaOption[];
+    }
+
+    const byParent = new Map<number | null, Categoria[]>();
+
+    categorias.forEach((categoria) => {
+      const parentId = categoria.categoria_pai ?? null;
+      if (!byParent.has(parentId)) {
+        byParent.set(parentId, []);
+      }
+      byParent.get(parentId)!.push(categoria);
+    });
+
+    const sortByName = (items: Categoria[]) =>
+      items
+        .slice()
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
+
+    const result: CategoriaOption[] = [];
+
+    const walk = (parentId: number | null, prefix: string) => {
+      const siblings = byParent.get(parentId);
+      if (!siblings) {
+        return;
+      }
+
+      sortByName(siblings).forEach((categoria) => {
+        const displayName = prefix ? `${prefix} › ${categoria.nome}` : categoria.nome;
+        result.push({ ...categoria, displayName });
+        walk(categoria.id, prefix ? `${prefix} › ${categoria.nome}` : categoria.nome);
+      });
+    };
+
+    walk(null, "");
+
+    // Guarantee that orphaned categories (without a valid parent) are still listed
+    const knownIds = new Set(result.map((item) => item.id));
+    categorias
+      .filter((categoria) => !knownIds.has(categoria.id))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }))
+      .forEach((categoria) => {
+        result.push({ ...categoria, displayName: categoria.nome });
+      });
+
+    return result;
+  }, [categorias]);
+
   useEffect(() => {
     if (isOpen) {
       loadData();
     }
-  }, [isOpen]);
+  }, [isOpen, loadData]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -66,19 +144,6 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
       window.clearTimeout(focusTimeout);
     };
   }, [initialBarcode, isOpen]);
-
-  const loadData = async () => {
-    try {
-      const [categoriasRes, fornecedoresRes] = await Promise.all([
-        api.get("/catalog/categorias/", { params: { page_size: 100 } }),
-        api.get("/catalog/fornecedores/", { params: { page_size: 100 } }),
-      ]);
-      setCategorias(categoriasRes.data.results || []);
-      setFornecedores(fornecedoresRes.data.results || []);
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,11 +194,12 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-semibold mb-4">Novo produto</h2>
+    <>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <h2 className="text-xl font-semibold mb-4">Novo produto</h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="SKU"
@@ -165,31 +231,43 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
                 Categoria
               </label>
               <select
                 required
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
                 value={formData.categoria}
                 onChange={(e) => handleChange("categoria", e.target.value)}
               >
                 <option value="">Selecione uma categoria</option>
-                {categorias.map((cat) => (
+                {categoryOptions.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.nome}
+                    {cat.displayName}
                   </option>
                 ))}
               </select>
+              <div className="mt-1 flex items-center justify-between text-xs">
+                <span className="text-slate-500">
+                  {!categorias.length ? "Nenhuma categoria cadastrada" : ""}
+                </span>
+                <button
+                  type="button"
+                  className="font-medium text-blue-600 hover:underline"
+                  onClick={() => setShowCategoryModal(true)}
+                >
+                  + Nova categoria
+                </button>
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
                 Fornecedor
               </label>
               <select
                 required
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
                 value={formData.fornecedor}
                 onChange={(e) => handleChange("fornecedor", e.target.value)}
               >
@@ -200,6 +278,18 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
                   </option>
                 ))}
               </select>
+              <div className="mt-1 flex items-center justify-between text-xs">
+                <span className="text-slate-500">
+                  {!fornecedores.length ? "Nenhum fornecedor cadastrado" : ""}
+                </span>
+                <button
+                  type="button"
+                  className="font-medium text-blue-600 hover:underline"
+                  onClick={() => setShowSupplierModal(true)}
+                >
+                  + Novo fornecedor
+                </button>
+              </div>
             </div>
           </div>
 
@@ -266,6 +356,48 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
           </div>
         </form>
       </div>
-    </div>
+      </div>
+
+      <CategoryModal
+        isOpen={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        onSuccess={(categoria) => {
+          if (!categoria) {
+            return;
+          }
+
+          setCategorias((prev) => {
+            const normalized: Categoria = {
+              id: categoria.id,
+              nome: categoria.nome,
+              categoria_pai: categoria.categoria_pai ?? null,
+            };
+
+            const alreadyExists = prev.some((item) => item.id === normalized.id);
+            return alreadyExists
+              ? prev.map((item) => (item.id === normalized.id ? normalized : item))
+              : [...prev, normalized];
+          });
+          setFormData((prev) => ({ ...prev, categoria: String(categoria.id) }));
+          setShowCategoryModal(false);
+        }}
+      />
+
+      <SupplierModal
+        isOpen={showSupplierModal}
+        onClose={() => setShowSupplierModal(false)}
+        onSuccess={(fornecedor) => {
+          if (!fornecedor) {
+            return;
+          }
+
+          setFornecedores((prev) =>
+            [...prev, fornecedor].sort((a, b) => a.nome.localeCompare(b.nome))
+          );
+          setFormData((prev) => ({ ...prev, fornecedor: String(fornecedor.id) }));
+          setShowSupplierModal(false);
+        }}
+      />
+    </>
   );
 };
