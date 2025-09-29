@@ -5,6 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../components/ui/Badge";
 import { Input } from "../components/ui/Input";
 import api from "../services/api";
+import { InventoryEntryModal } from "../components/InventoryEntryModal";
+import { InventoryAdjustmentModal } from "../components/InventoryAdjustmentModal";
 
 type EstoqueResumo = {
   total_produtos: number;
@@ -57,6 +59,7 @@ export const InventoryPage = () => {
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
   const [activeTab, setActiveTab] = useState<'resumo' | 'alertas' | 'lotes' | 'movimentacoes'>('resumo');
   const [showEntradaModal, setShowEntradaModal] = useState(false);
+  const [showAjusteModal, setShowAjusteModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -246,7 +249,12 @@ export const InventoryPage = () => {
           <div>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Lotes em estoque</h3>
-              <Button onClick={() => setShowEntradaModal(true)}>Nova entrada</Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => setShowAjusteModal(true)}>
+                  Ajuste de estoque
+                </Button>
+                <Button onClick={() => setShowEntradaModal(true)}>Nova entrada</Button>
+              </div>
             </div>
 
             <Table>
@@ -327,6 +335,23 @@ export const InventoryPage = () => {
           </div>
         )}
       </Card>
+
+      <InventoryEntryModal
+        isOpen={showEntradaModal}
+        onClose={() => setShowEntradaModal(false)}
+        onSuccess={() => {
+          setShowEntradaModal(false);
+          void loadData();
+        }}
+      />
+      <InventoryAdjustmentModal
+        isOpen={showAjusteModal}
+        onClose={() => setShowAjusteModal(false)}
+        onSuccess={() => {
+          setShowAjusteModal(false);
+          void loadData();
+        }}
+      />
     </div>
   );
 };

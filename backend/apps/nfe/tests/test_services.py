@@ -7,7 +7,12 @@ from apps.catalog.models import Categoria, Fornecedor, Produto
 from apps.sales.models import ItemVenda, Venda
 
 from apps.nfe.models import EmitenteConfig
-from apps.nfe.services import criar_nfe_para_venda, simular_autorizacao
+from apps.nfe.services import (
+    _gerar_chave_fake,
+    criar_nfe_para_venda,
+    gerar_preview_dados,
+    simular_autorizacao,
+)
 
 
 class NfeServiceTests(TestCase):
@@ -64,3 +69,19 @@ class NfeServiceTests(TestCase):
         self.assertEqual(nota.status, nota.Status.AUTORIZADA)
         self.assertTrue(nota.protocolo_autorizacao)
         self.assertIsNotNone(nota.dh_autorizacao)
+
+    def test_gerar_chave_fake_tem_44_digitos(self):
+        chave = _gerar_chave_fake(self.config, numero=42)
+        self.assertEqual(len(chave), 44)
+        self.assertTrue(chave.isdigit())
+
+    def test_criar_nfe_para_venda_sem_venda(self):
+        with self.assertRaisesMessage(ValueError, "Venda é obrigatória"):
+            criar_nfe_para_venda(None, self.config)
+
+    def test_gerar_preview_dados_para_consumidor_final(self):
+        preview = gerar_preview_dados(self.venda)
+
+        self.assertEqual(preview["numero_venda"], "TEST-001")
+        self.assertEqual(preview["cliente"], "Consumidor Final")
+        self.assertEqual(preview["total"], "R$ 10.00")

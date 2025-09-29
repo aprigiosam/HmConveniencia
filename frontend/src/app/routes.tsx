@@ -1,4 +1,4 @@
-﻿import { Navigate, Outlet, useRoutes } from "react-router-dom";
+import { Navigate, useRoutes } from "react-router-dom";
 import { ProtectedRoute } from "../components/layout/ProtectedRoute";
 import { AppLayout } from "../components/layout/AppLayout";
 import { LoginPage } from "../pages/Login";
@@ -13,13 +13,9 @@ import { SettingsPage } from "../pages/Settings";
 import { SuppliersPage } from "../pages/Suppliers";
 import { NFePage } from "../pages/NFe";
 
-const ProtectedShell = () => (
-  <ProtectedRoute />
-);
+const ProtectedShell = () => <ProtectedRoute />;
 
-const LayoutShell = () => (
-  <AppLayout />
-);
+const LayoutShell = () => <AppLayout />;
 
 export const AppRoutes = () => {
   const element = useRoutes([

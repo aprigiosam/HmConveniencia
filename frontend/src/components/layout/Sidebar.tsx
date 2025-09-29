@@ -11,6 +11,7 @@ import {
   CreditCard,
   LineChart,
   Settings,
+  X,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { useAuthStore } from "../../stores/authStore";
@@ -35,7 +36,12 @@ const navItems: NavItem[] = [
   { label: "Configuracoes", to: "/configuracoes", icon: Settings, roles: ["manager"] },
 ];
 
-export const Sidebar = () => {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const { user } = useAuthStore();
   const { pathname } = useLocation();
 
@@ -47,10 +53,25 @@ export const Sidebar = () => {
   const displayEmail = user?.email ?? "";
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-slate-200 bg-white">
-      <div className="px-6 py-6">
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-slate-200 bg-white shadow-lg transition-transform duration-200 ease-in-out dark:border-slate-800 dark:bg-slate-900 lg:static lg:z-auto lg:translate-x-0 lg:shadow-none",
+        isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+      )}
+    >
+      <div className="relative px-6 py-6">
         <div className="text-xl font-semibold text-blue-600">Comercio Pro</div>
-        <p className="mt-1 text-xs text-slate-500">Loja de bairro inteligente</p>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Loja de bairro inteligente</p>
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300 lg:hidden"
+            aria-label="Fechar menu de navegação"
+          >
+            <X size={16} />
+          </button>
+        ) : null}
       </div>
       <nav className="flex-1 overflow-y-auto px-3 pb-4">
         <ul className="space-y-1">
@@ -65,8 +86,8 @@ export const Sidebar = () => {
                     cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
                       isActive || active
-                        ? "bg-blue-50 text-blue-600"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                        ? "bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-200"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
                     )
                   }
                 >
@@ -78,10 +99,10 @@ export const Sidebar = () => {
           })}
         </ul>
       </nav>
-      <div className="border-t border-slate-200 px-6 py-4 text-xs text-slate-500">
-        <div className="font-semibold text-slate-700">Usuario</div>
+      <div className="border-t border-slate-200 px-6 py-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        <div className="font-semibold text-slate-700 dark:text-slate-200">Usuario</div>
         <div>{displayName}</div>
-        {displayEmail ? <div className="text-slate-400">{displayEmail}</div> : null}
+        {displayEmail ? <div className="text-slate-400 dark:text-slate-500">{displayEmail}</div> : null}
       </div>
     </aside>
   );

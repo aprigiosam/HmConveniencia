@@ -21,13 +21,50 @@ type ApiError = {
   details?: unknown;
 };
 
+const extractErrorMessage = (error: unknown): string | undefined => {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  if (Array.isArray(error)) {
+    const first = error.find((item) => typeof item === "string");
+    return typeof first === "string" ? first : undefined;
+  }
+
+  const values = Object.values(error as Record<string, unknown>);
+
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      const nested = value.find((item) => typeof item === "string" && item.trim());
+      if (typeof nested === "string") {
+        return nested;
+      }
+    }
+    if (value && typeof value === "object") {
+      const nested = extractErrorMessage(value);
+      if (nested) {
+        return nested;
+      }
+    }
+  }
+
+  return undefined;
+};
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const details = error.response?.data;
+    const fallbackMessage = error.message ?? "Erro inesperado";
+    const apiMessage = details?.detail ?? extractErrorMessage(details);
+
     const normalized: ApiError = {
       status: error.response?.status ?? 500,
-      message: error.response?.data?.detail ?? error.message ?? "Erro inesperado",
-      details: error.response?.data,
+      message: apiMessage ?? fallbackMessage,
+      details,
     };
     return Promise.reject(normalized);
   },

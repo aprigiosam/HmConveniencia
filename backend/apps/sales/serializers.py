@@ -1,5 +1,9 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from rest_framework import serializers
+
 from .models import Venda, ItemVenda, PagamentoVenda
+from .services import finalizar_venda
 
 
 class ItemVendaSerializer(serializers.ModelSerializer):
@@ -9,6 +13,10 @@ class ItemVendaSerializer(serializers.ModelSerializer):
     class Meta:
         model = ItemVenda
         fields = '__all__'
+        extra_kwargs = {
+            'venda': {'required': False},
+            'valor_total': {'required': False},
+        }
 
 
 class PagamentoVendaSerializer(serializers.ModelSerializer):
@@ -17,6 +25,9 @@ class PagamentoVendaSerializer(serializers.ModelSerializer):
     class Meta:
         model = PagamentoVenda
         fields = '__all__'
+        extra_kwargs = {
+            'venda': {'required': False},
+        }
 
 
 class VendaSerializer(serializers.ModelSerializer):
@@ -41,14 +52,24 @@ class VendaCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         itens_data = validated_data.pop('itens')
         pagamentos_data = validated_data.pop('pagamentos')
+        status_inicial = validated_data.get('status', Venda.Status.PENDENTE)
 
-        venda = Venda.objects.create(**validated_data)
+        try:
+            with transaction.atomic():
+                venda = Venda.objects.create(**validated_data)
 
-        for item_data in itens_data:
-            ItemVenda.objects.create(venda=venda, **item_data)
+                for item_data in itens_data:
+                    ItemVenda.objects.create(venda=venda, **item_data)
 
-        for pagamento_data in pagamentos_data:
-            PagamentoVenda.objects.create(venda=venda, **pagamento_data)
+                for pagamento_data in pagamentos_data:
+                    PagamentoVenda.objects.create(venda=venda, **pagamento_data)
 
-        venda.calcular_total()
+                venda.calcular_total()
+
+                if status_inicial == Venda.Status.FINALIZADA:
+                    venda = finalizar_venda(venda, status_anterior=Venda.Status.PENDENTE)
+
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({'detail': exc.messages}) from exc
+
         return venda

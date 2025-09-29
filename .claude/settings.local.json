@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose:*)",
+      "Bash(python manage.py:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(make:*)",
+      "Bash(npm test)",
+      "Bash(curl:*)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker exec:*)",
+      "Bash(python3:*)",
+      "Bash(ip route:*)",
+      "Read(///**)",
+      "Bash(awk:*)",
+      "Bash(ip addr:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

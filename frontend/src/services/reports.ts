@@ -50,8 +50,8 @@ export type ReportJob = {
 
 export const listReportJobs = async (loja?: number) => {
   const params = loja ? { loja } : undefined;
-  const { data } = await api.get<ReportJob[]>("/reports/jobs/", { params });
-  return data;
+  const { data } = await api.get<{results: ReportJob[]}>("/reports/jobs/", { params });
+  return data.results || [];
 };
 
 export const requestReportJob = async (payload: { tipo: string; loja?: number; parametros?: Record<string, unknown> }) => {

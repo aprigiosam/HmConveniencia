@@ -16,7 +16,8 @@ export type PosCartItem = PosProduct & {
 };
 
 export type PosPayment = {
-  meio: "dinheiro" | "cartao" | "pix";
+  formaPagamentoId: number;
+  nome: string;
   valor: number;
 };
 

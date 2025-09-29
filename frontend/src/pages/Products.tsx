@@ -7,6 +7,7 @@ import { Input } from "../components/ui/Input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/Table";
 import { Badge } from "../components/ui/Badge";
 import { ProductModal } from "../components/ProductModal";
+import { ProductDetailModal } from "../components/ProductDetailModal";
 import api from "../services/api";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 
@@ -29,6 +30,8 @@ export const ProductsPage = () => {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   const loadProdutos = async () => {
     try {
@@ -101,7 +104,14 @@ export const ProductsPage = () => {
           </TableHeader>
           <TableBody>
             {filtrados.map((produto) => (
-              <TableRow key={produto.id}>
+              <TableRow
+                key={produto.id}
+                onClick={() => {
+                  setSelectedProductId(produto.id);
+                  setShowDetail(true);
+                }}
+                className="cursor-pointer transition hover:bg-slate-50"
+              >
                 <TableCell className="font-mono text-xs uppercase text-slate-500">{produto.sku}</TableCell>
                 <TableCell>{produto.nome}</TableCell>
                 <TableCell>{produto.categoria_nome}</TableCell>
@@ -125,6 +135,15 @@ export const ProductsPage = () => {
           setScannedBarcode(null);
         }}
         onSuccess={loadProdutos}
+      />
+
+      <ProductDetailModal
+        isOpen={showDetail}
+        productId={selectedProductId}
+        onClose={() => {
+          setShowDetail(false);
+          setSelectedProductId(null);
+        }}
       />
     </div>
   );

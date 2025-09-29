@@ -184,7 +184,20 @@ class EstoqueViewSet(viewsets.ViewSet):
                     lote.quantidade = quantidade_final
                     lote.save()
                 else:
-                    quantidade_anterior = 0
+                    # Se não há lote específico, criar ou atualizar lote geral
+                    lote, created = LoteProduto.objects.get_or_create(
+                        produto=produto,
+                        loja=loja,
+                        numero_lote='GERAL',
+                        defaults={
+                            'quantidade': 0,
+                            'custo_unitario': produto.preco_custo,
+                            'data_vencimento': None
+                        }
+                    )
+                    quantidade_anterior = int(lote.quantidade)
+                    lote.quantidade = quantidade_final
+                    lote.save()
 
                 MovimentacaoEstoque.objects.create(
                     loja=loja,

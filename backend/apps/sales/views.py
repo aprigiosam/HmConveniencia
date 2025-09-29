@@ -2,9 +2,13 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
+from rest_framework.exceptions import ValidationError as DRFValidationError
+
 from .models import Venda, ItemVenda, PagamentoVenda
 from .serializers import VendaSerializer, VendaCreateSerializer, ItemVendaSerializer, PagamentoVendaSerializer
+from .services import finalizar_venda
 
 
 class VendaViewSet(viewsets.ModelViewSet):
@@ -36,11 +40,15 @@ class VendaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def finalizar(self, request, pk=None):
         venda = self.get_object()
-        if venda.status == Venda.Status.PENDENTE:
-            venda.status = Venda.Status.FINALIZADA
-            venda.save()
-            return Response({'status': 'Venda finalizada'})
-        return Response({'error': 'Venda não pode ser finalizada'}, status=status.HTTP_400_BAD_REQUEST)
+        if venda.status != Venda.Status.PENDENTE:
+            return Response({'error': 'Venda não pode ser finalizada'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            finalizar_venda(venda, status_anterior=Venda.Status.PENDENTE)
+        except DjangoValidationError as exc:
+            raise DRFValidationError(exc.messages)
+
+        return Response({'status': 'Venda finalizada'})
 
     @action(detail=True, methods=['post'])
     def cancelar(self, request, pk=None):
@@ -50,6 +58,16 @@ class VendaViewSet(viewsets.ModelViewSet):
             venda.save()
             return Response({'status': 'Venda cancelada'})
         return Response({'error': 'Venda não pode ser cancelada'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def perform_update(self, serializer):
+        status_anterior = serializer.instance.status
+        with transaction.atomic():
+            venda = serializer.save()
+            if status_anterior != Venda.Status.FINALIZADA and venda.status == Venda.Status.FINALIZADA:
+                try:
+                    finalizar_venda(venda, status_anterior=status_anterior)
+                except DjangoValidationError as exc:
+                    raise DRFValidationError(exc.messages)
 
 
 class ItemVendaViewSet(viewsets.ModelViewSet):
