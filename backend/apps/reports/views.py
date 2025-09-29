@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.response import Response
@@ -13,7 +15,18 @@ class DashboardMetricsView(APIView):
 
     def get(self, request, *args, **kwargs):
         loja_id = request.query_params.get("loja")
-        metrics = make_dashboard_metrics(loja_id=int(loja_id) if loja_id else None)
+        parametros: Dict[str, Any] = {}
+        data_inicio = request.query_params.get("data_inicio")
+        data_fim = request.query_params.get("data_fim")
+        if data_inicio:
+            parametros["data_inicio"] = data_inicio
+        if data_fim:
+            parametros["data_fim"] = data_fim
+
+        metrics = make_dashboard_metrics(
+            loja_id=int(loja_id) if loja_id else None,
+            parametros=parametros or None,
+        )
         return Response(metrics)
 
 

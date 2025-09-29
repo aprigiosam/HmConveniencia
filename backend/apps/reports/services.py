@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-from django.db.models import F, Q, Sum, Value
-from django.db.models.functions import Coalesce
+from django.db.models import Count, F, Max, Q, Sum, Value
+from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 
 from apps.catalog.models import Produto
 from apps.core.models import Cliente
-from apps.sales.models import ItemVenda, Venda
+from apps.sales.models import ItemVenda, PagamentoVenda, Venda
 
 Currency = Decimal
 
@@ -32,40 +32,309 @@ def _calculate_variation(atual: Decimal, anterior: Decimal) -> Optional[Decimal]
     return ((atual - anterior) / anterior) * 100
 
 
-def make_dashboard_metrics(loja_id: Optional[int] = None) -> Dict[str, Any]:
+def _to_float(valor: Optional[Decimal]) -> float:
+    if valor is None:
+        return 0.0
+    return float(valor)
+
+
+def _parse_periodo(parametros: Optional[Dict[str, Any]]) -> Tuple[timezone.datetime.date, timezone.datetime.date]:
     hoje = timezone.localdate()
-    ontem = hoje - timedelta(days=1)
-    inicio_30_dias = hoje - timedelta(days=30)
+    default_fim = hoje
+    default_inicio = hoje - timedelta(days=29)
+
+    if not parametros:
+        return default_inicio, default_fim
+
+    data_inicio_raw = parametros.get("data_inicio")
+    data_fim_raw = parametros.get("data_fim")
+
+    def _parse(value: Any) -> Optional[timezone.datetime.date]:
+        if not value:
+            return None
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError:
+                return None
+        if isinstance(value, datetime):
+            return value.date()
+        return value
+
+    data_inicio = _parse(data_inicio_raw) or default_inicio
+    data_fim = _parse(data_fim_raw) or default_fim
+
+    if data_inicio > data_fim:
+        data_inicio, data_fim = data_fim, data_inicio
+
+    return data_inicio, data_fim
+
+
+def make_sales_report(
+    loja_id: Optional[int] = None,
+    parametros: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    data_inicio, data_fim = _parse_periodo(parametros)
 
     filtro_loja = {"loja_id": loja_id} if loja_id else {}
 
-    vendas_hoje_qs = Venda.objects.filter(status=Venda.Status.FINALIZADA, created_at__date=hoje, **filtro_loja)
-    vendas_ontem_qs = Venda.objects.filter(status=Venda.Status.FINALIZADA, created_at__date=ontem, **filtro_loja)
+    vendas_qs = Venda.objects.filter(
+        status=Venda.Status.FINALIZADA,
+        created_at__date__gte=data_inicio,
+        created_at__date__lte=data_fim,
+        **filtro_loja,
+    )
 
-    faturamento_hoje = vendas_hoje_qs.aggregate(total=Coalesce(Sum("valor_total"), Value(Decimal("0"))))["total"]
-    faturamento_ontem = vendas_ontem_qs.aggregate(total=Coalesce(Sum("valor_total"), Value(Decimal("0"))))["total"]
+    totais = vendas_qs.aggregate(
+        faturamento_bruto=Coalesce(Sum("valor_subtotal"), Value(Decimal("0"))),
+        descontos=Coalesce(Sum("valor_desconto"), Value(Decimal("0"))),
+        faturamento_liquido=Coalesce(Sum("valor_total"), Value(Decimal("0"))),
+        quantidade_vendas=Count("id"),
+    )
 
-    quantidade_vendas_hoje = vendas_hoje_qs.count()
-    quantidade_vendas_ontem = vendas_ontem_qs.count()
+    quantidade_vendas = int(totais["quantidade_vendas"]) if totais["quantidade_vendas"] else 0
+    faturamento_liquido = totais["faturamento_liquido"] or Decimal("0")
 
     ticket_medio = Decimal("0")
-    if quantidade_vendas_hoje:
-        ticket_medio = faturamento_hoje / Decimal(quantidade_vendas_hoje)
+    if quantidade_vendas:
+        ticket_medio = faturamento_liquido / Decimal(quantidade_vendas)
 
-    ticket_ontem = Decimal("0")
-    if quantidade_vendas_ontem:
-        ticket_ontem = faturamento_ontem / Decimal(quantidade_vendas_ontem)
+    itens_qs = ItemVenda.objects.filter(venda__in=vendas_qs)
+    total_itens = itens_qs.aggregate(total=Coalesce(Sum("quantidade"), Value(Decimal("0"))))["total"] or Decimal("0")
 
-    variacao_faturamento = _calculate_variation(faturamento_hoje, faturamento_ontem)
-    variacao_vendas = _calculate_variation(Decimal(quantidade_vendas_hoje), Decimal(quantidade_vendas_ontem))
-    variacao_ticket = _calculate_variation(ticket_medio, ticket_ontem)
+    clientes_unicos = (
+        vendas_qs.exclude(cliente__isnull=True)
+        .values("cliente_id")
+        .distinct()
+        .count()
+    )
 
-    clientes_qs = Cliente.objects.filter(ativo=True)
-    if loja_id:
-        clientes_qs = clientes_qs.filter(vendas__loja_id=loja_id).distinct()
+    resumo = {
+        "faturamento_bruto": {
+            "valor": _to_float(totais["faturamento_bruto"]),
+            "display": _format_currency(totais["faturamento_bruto"]),
+        },
+        "descontos": {
+            "valor": _to_float(totais["descontos"]),
+            "display": _format_currency((totais["descontos"] or Decimal("0")) * -1),
+        },
+        "faturamento_liquido": {
+            "valor": _to_float(faturamento_liquido),
+            "display": _format_currency(faturamento_liquido),
+        },
+        "quantidade_vendas": {
+            "valor": quantidade_vendas,
+            "display": f"{quantidade_vendas} vendas",
+        },
+        "ticket_medio": {
+            "valor": _to_float(ticket_medio),
+            "display": _format_currency(ticket_medio),
+        },
+        "total_itens": {
+            "valor": _to_float(total_itens),
+            "display": f"{_to_float(total_itens):,.0f} itens".replace(",", "."),
+        },
+        "clientes_unicos": {
+            "valor": clientes_unicos,
+            "display": f"{clientes_unicos} clientes",
+        },
+    }
 
-    total_clientes = clientes_qs.count()
-    novos_clientes = clientes_qs.filter(created_at__gte=inicio_30_dias).count()
+    pagamentos_qs = PagamentoVenda.objects.filter(venda__in=vendas_qs)
+    pagamentos = []
+    for item in (
+        pagamentos_qs.values("forma_pagamento__id", "forma_pagamento__nome")
+        .annotate(total=Coalesce(Sum("valor"), Value(Decimal("0"))))
+        .order_by("-total")
+    ):
+        valor_total = item["total"] or Decimal("0")
+        participacao = Decimal("0")
+        if faturamento_liquido:
+            participacao = (valor_total / faturamento_liquido) * 100
+        pagamentos.append(
+            {
+                "id": item["forma_pagamento__id"],
+                "nome": item["forma_pagamento__nome"],
+                "valor": _to_float(valor_total),
+                "valor_display": _format_currency(valor_total),
+                "participacao": float(round(participacao, 2)),
+                "participacao_display": f"{float(round(participacao, 1)):.1f}%",
+            }
+        )
+
+    por_dia = []
+    for item in (
+        vendas_qs.annotate(data=TruncDate("created_at"))
+        .values("data")
+        .annotate(
+            faturamento=Coalesce(Sum("valor_total"), Value(Decimal("0"))),
+            vendas=Count("id"),
+            itens=Coalesce(Sum("itens__quantidade"), Value(Decimal("0"))),
+        )
+        .order_by("data")
+    ):
+        data = item["data"]
+        por_dia.append(
+            {
+                "data": data.isoformat() if data else None,
+                "faturamento": _to_float(item["faturamento"]),
+                "faturamento_display": _format_currency(item["faturamento"]),
+                "vendas": item["vendas"],
+                "itens": _to_float(item["itens"]),
+            }
+        )
+
+    top_produtos: List[Dict[str, Any]] = []
+    for item in (
+        itens_qs.values(
+            "produto__id",
+            "produto__sku",
+            "produto__nome",
+            "produto__categoria__nome",
+        )
+        .annotate(
+            quantidade_total=Coalesce(Sum("quantidade"), Value(Decimal("0"))),
+            faturamento_total=Coalesce(Sum("valor_total"), Value(Decimal("0"))),
+            custo_total=Coalesce(Sum(F("quantidade") * F("produto__preco_custo")), Value(Decimal("0"))),
+        )
+        .order_by("-faturamento_total")[:10]
+    ):
+        quantidade = item["quantidade_total"] or Decimal("0")
+        faturamento = item["faturamento_total"] or Decimal("0")
+        custo_total = item["custo_total"] or Decimal("0")
+        margem_percentual = Decimal("0")
+        if faturamento > 0:
+            margem_percentual = ((faturamento - custo_total) / faturamento) * 100
+        margem_float = float(round(margem_percentual, 2)) if margem_percentual else 0.0
+        top_produtos.append(
+            {
+                "produto_id": item["produto__id"],
+                "sku": item["produto__sku"],
+                "nome": item["produto__nome"],
+                "categoria": item["produto__categoria__nome"],
+                "quantidade": _to_float(quantidade),
+                "quantidade_display": f"{_to_float(quantidade):,.0f} un".replace(",", "."),
+                "faturamento": _to_float(faturamento),
+                "faturamento_display": _format_currency(faturamento),
+                "margem_percentual": margem_float,
+                "margem_display": f"{margem_float:.1f}%",
+            }
+        )
+
+    top_clientes: List[Dict[str, Any]] = []
+    for item in (
+        vendas_qs.exclude(cliente__isnull=True)
+        .values("cliente__id", "cliente__nome")
+        .annotate(
+            valor_total=Coalesce(Sum("valor_total"), Value(Decimal("0"))),
+            compras=Count("id"),
+            ultima_compra=Max("created_at"),
+        )
+        .order_by("-valor_total")[:10]
+    ):
+        valor_total = item["valor_total"] or Decimal("0")
+        compras = item["compras"] or 0
+        ticket_cliente = Decimal("0")
+        if compras:
+            ticket_cliente = valor_total / Decimal(compras)
+        ultima_compra = item["ultima_compra"]
+        top_clientes.append(
+            {
+                "cliente_id": item["cliente__id"],
+                "nome": item["cliente__nome"],
+                "compras": compras,
+                "valor": _to_float(valor_total),
+                "valor_display": _format_currency(valor_total),
+                "ticket_medio": _to_float(ticket_cliente),
+                "ticket_medio_display": _format_currency(ticket_cliente),
+                "ultima_compra": ultima_compra.isoformat() if ultima_compra else None,
+            }
+        )
+
+    return {
+        "periodo": {
+            "inicio": data_inicio.isoformat(),
+            "fim": data_fim.isoformat(),
+            "dias": (data_fim - data_inicio).days + 1,
+        },
+        "resumo": resumo,
+        "formas_pagamento": pagamentos,
+        "por_dia": por_dia,
+        "top_produtos": top_produtos,
+        "top_clientes": top_clientes,
+    }
+
+
+def make_dashboard_metrics(
+    loja_id: Optional[int] = None,
+    parametros: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    data_inicio, data_fim = _parse_periodo(parametros)
+    periodo_params = {
+        "data_inicio": data_inicio.isoformat(),
+        "data_fim": data_fim.isoformat(),
+    }
+
+    filtro_loja = {"loja_id": loja_id} if loja_id else {}
+
+    vendas_periodo_qs = Venda.objects.filter(
+        status=Venda.Status.FINALIZADA,
+        created_at__date__gte=data_inicio,
+        created_at__date__lte=data_fim,
+        **filtro_loja,
+    )
+
+    dias_periodo = (data_fim - data_inicio).days + 1
+    periodo_anterior_inicio = data_inicio - timedelta(days=dias_periodo)
+    periodo_anterior_fim = data_inicio - timedelta(days=1)
+
+    vendas_periodo_anterior_qs = Venda.objects.filter(
+        status=Venda.Status.FINALIZADA,
+        created_at__date__gte=periodo_anterior_inicio,
+        created_at__date__lte=periodo_anterior_fim,
+        **filtro_loja,
+    )
+
+    totais_atual = vendas_periodo_qs.aggregate(
+        faturamento=Coalesce(Sum("valor_total"), Value(Decimal("0"))),
+        quantidade=Count("id"),
+    )
+    totais_anterior = vendas_periodo_anterior_qs.aggregate(
+        faturamento=Coalesce(Sum("valor_total"), Value(Decimal("0"))),
+        quantidade=Count("id"),
+    )
+
+    faturamento_atual = totais_atual["faturamento"] or Decimal("0")
+    faturamento_anterior = totais_anterior["faturamento"] or Decimal("0")
+
+    quantidade_atual = totais_atual["quantidade"] or 0
+    quantidade_anterior = totais_anterior["quantidade"] or 0
+
+    ticket_atual = Decimal("0")
+    if quantidade_atual:
+        ticket_atual = faturamento_atual / Decimal(quantidade_atual)
+
+    ticket_anterior = Decimal("0")
+    if quantidade_anterior:
+        ticket_anterior = faturamento_anterior / Decimal(quantidade_anterior)
+
+    clientes_atual = (
+        vendas_periodo_qs.exclude(cliente__isnull=True)
+        .values("cliente_id")
+        .distinct()
+        .count()
+    )
+    clientes_anterior = (
+        vendas_periodo_anterior_qs.exclude(cliente__isnull=True)
+        .values("cliente_id")
+        .distinct()
+        .count()
+    )
+
+    variacao_faturamento = _calculate_variation(faturamento_atual, faturamento_anterior)
+    variacao_vendas = _calculate_variation(Decimal(quantidade_atual), Decimal(quantidade_anterior))
+    variacao_ticket = _calculate_variation(ticket_atual, ticket_anterior)
+    variacao_clientes = _calculate_variation(Decimal(clientes_atual), Decimal(clientes_anterior))
 
     produtos_qs = Produto.objects.filter(ativo=True)
     if loja_id:
@@ -75,7 +344,7 @@ def make_dashboard_metrics(loja_id: Optional[int] = None) -> Dict[str, Any]:
         estoque_total=Coalesce(Sum("lotes__quantidade", filter=Q(lotes__loja_id=loja_id) if loja_id else Q()), Value(0)),
     )
 
-    rupturas = []
+    rupturas: List[Dict[str, Any]] = []
     for produto in produtos_qs:
         estoque_minimo = produto.estoque_minimo or 0
         estoque_atual = produto.estoque_total or 0
@@ -92,93 +361,85 @@ def make_dashboard_metrics(loja_id: Optional[int] = None) -> Dict[str, Any]:
 
     rupturas.sort(key=lambda item: item["estoque"])
 
-    itens_venda_qs = ItemVenda.objects.filter(
-        venda__status=Venda.Status.FINALIZADA,
-        venda__created_at__date__gte=inicio_30_dias,
-    )
-    if loja_id:
-        itens_venda_qs = itens_venda_qs.filter(venda__loja_id=loja_id)
-
-    top_produtos: List[Dict[str, Any]] = []
-
-    produtos_agrupados = (
-        itens_venda_qs.values("produto__sku", "produto__nome", "produto__preco_custo", "produto__preco_venda")
-        .annotate(
-            quantidade_total=Coalesce(Sum("quantidade"), Value(Decimal("0"))),
-            faturamento_total=Coalesce(Sum("valor_total"), Value(Decimal("0"))),
-        )
-        .order_by("-faturamento_total")[:5]
-    )
-
-    for item in produtos_agrupados:
-        quantidade = item["quantidade_total"] or Decimal("0")
-        faturamento = item["faturamento_total"] or Decimal("0")
-        custo_unitario = item["produto__preco_custo"] or Decimal("0")
-        receita = faturamento
-        custo_total = custo_unitario * quantidade
-        margem = Decimal("0")
-        if receita > 0:
-            margem = ((receita - custo_total) / receita) * 100
-        margem_percentual = float(round(margem, 2)) if margem else 0.0
-        margem_display = f"{margem_percentual:.0f}%" if margem else "0%"
-        top_produtos.append(
-            {
-                "sku": item["produto__sku"],
-                "nome": item["produto__nome"],
-                "quantidade": float(quantidade),
-                "faturamento": float(receita),
-                "faturamento_display": _format_currency(receita),
-                "margem_percentual": margem_percentual,
-                "margem_display": margem_display,
-            }
-        )
+    sales_report = make_sales_report(loja_id=loja_id, parametros=periodo_params)
+    top_produtos = sales_report.get("top_produtos", [])[:5]
+    top_clientes = sales_report.get("top_clientes", [])[:6]
+    sales_summary = sales_report.get("resumo", {})
+    sales_trend = sales_report.get("por_dia", [])
+    payments = sales_report.get("formas_pagamento", [])
+    periodo_info = sales_report.get("periodo", {
+        "inicio": data_inicio.isoformat(),
+        "fim": data_fim.isoformat(),
+        "dias": dias_periodo,
+    })
 
     kpis = [
         {
             "id": "faturamento",
-            "title": "Faturamento hoje",
-            "value": float(faturamento_hoje),
-            "value_display": _format_currency(faturamento_hoje),
-            "change_display": f"{_format_percent(variacao_faturamento)} vs. ontem" if variacao_faturamento is not None else "Sem histórico",
+            "title": "Faturamento",
+            "value": float(faturamento_atual),
+            "value_display": _format_currency(faturamento_atual),
+            "change_display": (
+                f"{_format_percent(variacao_faturamento)} vs período anterior"
+                if variacao_faturamento is not None
+                else "Sem histórico"
+            ),
             "trend": "up" if variacao_faturamento and variacao_faturamento > 0 else "down" if variacao_faturamento and variacao_faturamento < 0 else "neutral",
         },
         {
             "id": "vendas",
-            "title": "Vendas",
-            "value": quantidade_vendas_hoje,
-            "value_display": f"{quantidade_vendas_hoje} cupons",
-            "change_display": f"{_format_percent(variacao_vendas)}" if variacao_vendas is not None else "Sem histórico",
+            "title": "Cupons",
+            "value": quantidade_atual,
+            "value_display": f"{quantidade_atual} vendas",
+            "change_display": (
+                f"{_format_percent(variacao_vendas)} vs período anterior"
+                if variacao_vendas is not None
+                else "Sem histórico"
+            ),
             "trend": "up" if variacao_vendas and variacao_vendas > 0 else "down" if variacao_vendas and variacao_vendas < 0 else "neutral",
         },
         {
             "id": "clientes_fidelidade",
-            "title": "Clientes fidelidade",
-            "value": total_clientes,
-            "value_display": f"{total_clientes}",
-            "change_display": f"+{novos_clientes} novos (30d)" if novos_clientes else "Sem novos (30d)",
-            "trend": "up" if novos_clientes else "neutral",
-        },
-        {
-            "id": "rupturas",
-            "title": "Rupturas",
-            "value": len(rupturas),
-            "value_display": f"{len(rupturas)} itens",
-            "change_display": "Monitorar estoque",
-            "trend": "down" if rupturas else "up",
+            "title": "Clientes únicos",
+            "value": clientes_atual,
+            "value_display": f"{clientes_atual} clientes",
+            "change_display": (
+                f"{_format_percent(variacao_clientes)} vs período anterior"
+                if variacao_clientes is not None
+                else "Sem histórico"
+            ),
+            "trend": "up" if variacao_clientes and variacao_clientes > 0 else "down" if variacao_clientes and variacao_clientes < 0 else "neutral",
         },
         {
             "id": "ticket_medio",
             "title": "Ticket médio",
-            "value": float(ticket_medio),
-            "value_display": _format_currency(ticket_medio),
-            "change_display": f"{_format_percent(variacao_ticket)}" if variacao_ticket is not None else "Sem histórico",
+            "value": float(ticket_atual),
+            "value_display": _format_currency(ticket_atual),
+            "change_display": (
+                f"{_format_percent(variacao_ticket)} vs período anterior"
+                if variacao_ticket is not None
+                else "Sem histórico"
+            ),
             "trend": "up" if variacao_ticket and variacao_ticket > 0 else "down" if variacao_ticket and variacao_ticket < 0 else "neutral",
+        },
+        {
+            "id": "rupturas",
+            "title": "Estoque crítico",
+            "value": len(rupturas),
+            "value_display": f"{len(rupturas)} itens",
+            "change_display": "Objetivo: 0 produtos em ruptura",
+            "trend": "down" if rupturas else "up",
         },
     ]
 
     return {
+        "periodo": periodo_info,
         "kpis": kpis,
+        "sales_summary": sales_summary,
+        "sales_trend": sales_trend,
+        "payments": payments,
         "top_produtos": top_produtos,
+        "top_clientes": top_clientes,
         "rupturas": rupturas,
     }
 
@@ -187,7 +448,10 @@ def generate_report_payload(tipo: str, loja_id: Optional[int] = None, parametros
     parametros = parametros or {}
     tipo_normalizado = tipo.strip().lower()
 
-    metrics = make_dashboard_metrics(loja_id=loja_id)
+    if "vendas" in tipo_normalizado and "completo" in tipo_normalizado:
+        return make_sales_report(loja_id=loja_id, parametros=parametros)
+
+    metrics = make_dashboard_metrics(loja_id=loja_id, parametros=parametros)
 
     if "vendas" in tipo_normalizado and "período" in tipo_normalizado:
         return {

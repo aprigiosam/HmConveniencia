@@ -12,6 +12,7 @@ import { ReportsPage } from "../pages/Reports";
 import { SettingsPage } from "../pages/Settings";
 import { SuppliersPage } from "../pages/Suppliers";
 import { NFePage } from "../pages/NFe";
+import { ClientsPage } from "../pages/Clients";
 
 const ProtectedShell = () => <ProtectedRoute />;
 
@@ -35,6 +36,7 @@ export const AppRoutes = () => {
             { path: "pdv", element: <POSPage /> },
             { path: "produtos", element: <ProductsPage /> },
             { path: "fornecedores", element: <SuppliersPage /> },
+            { path: "clientes", element: <ClientsPage /> },
             { path: "estoque", element: <InventoryPage /> },
             { path: "compras", element: <PurchasesPage /> },
             { path: "financeiro", element: <FinancePage /> },

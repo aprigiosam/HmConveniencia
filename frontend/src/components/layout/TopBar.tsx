@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { Sun, Moon, LogOut, Menu } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { Button } from "../ui/Button";
+import { useTheme } from "../../hooks/useTheme";
 
 interface TopBarProps {
   onToggleSidebar?: () => void;
@@ -9,14 +9,7 @@ interface TopBarProps {
 
 export const TopBar = ({ onToggleSidebar }: TopBarProps) => {
   const { user, logout } = useAuthStore();
-  const [theme, setTheme] = useState<"light" | "dark">(
-    document.documentElement.classList.contains("dark") ? "dark" : "light",
-  );
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-    document.documentElement.classList.toggle("dark");
-  };
+  const { theme, toggleTheme } = useTheme();
 
   const displayName = user?.username ?? "Usuario";
 

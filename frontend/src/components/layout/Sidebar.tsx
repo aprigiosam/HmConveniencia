@@ -11,6 +11,7 @@ import {
   CreditCard,
   LineChart,
   Settings,
+  Users,
   X,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
@@ -29,6 +30,7 @@ const navItems: NavItem[] = [
   { label: "Produtos", to: "/produtos", icon: PackageSearch },
   { label: "Estoque", to: "/estoque", icon: Boxes, roles: ["manager", "stockist"] },
   { label: "Fornecedores", to: "/fornecedores", icon: Truck, roles: ["manager", "stockist"] },
+  { label: "Clientes", to: "/clientes", icon: Users, roles: ["manager"] },
   { label: "Compras", to: "/compras", icon: Building2, roles: ["manager", "stockist"] },
   { label: "NF-e", to: "/nf-e", icon: FileText, roles: ["manager"] },
   { label: "Financeiro", to: "/financeiro", icon: CreditCard, roles: ["manager"] },

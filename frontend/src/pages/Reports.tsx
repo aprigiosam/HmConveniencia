@@ -1,5 +1,5 @@
-﻿import { useEffect, useMemo, useState } from "react";
-import { format } from "date-fns";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { format, subDays } from "date-fns";
 import ptBR from "date-fns/locale/pt-BR";
 import toast from "react-hot-toast";
 
@@ -7,6 +7,8 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/Table";
 import { Badge } from "../components/ui/Badge";
+import { Input } from "../components/ui/Input";
+import { SalesReportModal } from "../components/SalesReportModal";
 import { listReportJobs, ReportJob, requestReportJob } from "../services/reports";
 
 const quickReports = [
@@ -29,6 +31,11 @@ export const ReportsPage = () => {
   const [jobs, setJobs] = useState<ReportJob[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [executando, setExecutando] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<ReportJob | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  const [dataInicio, setDataInicio] = useState(() => format(subDays(new Date(), 29), "yyyy-MM-dd"));
+  const [dataFim, setDataFim] = useState(() => format(new Date(), "yyyy-MM-dd"));
 
   const loadJobs = async () => {
     try {
@@ -61,6 +68,35 @@ export const ReportsPage = () => {
     }
   };
 
+  const handleGerarRelatorioCompleto = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const inicio = new Date(dataInicio);
+    const fim = new Date(dataFim);
+
+    if (inicio > fim) {
+      toast.error("Data inicial não pode ser maior que a final");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+      await requestReportJob({
+        tipo: "Relatório de vendas completo",
+        parametros: {
+          data_inicio: dataInicio,
+          data_fim: dataFim,
+        },
+      });
+      toast.success("Relatório completo enviado para processamento");
+      await loadJobs();
+    } catch (error) {
+      const message = (error as { message?: string }).message ?? "Falha ao gerar relatório completo";
+      toast.error(message);
+    } finally {
+      setExecutando(false);
+    }
+  };
+
   const jobsOrdenados = useMemo(
     () => [...jobs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
     [jobs],
@@ -75,12 +111,53 @@ export const ReportsPage = () => {
 
   const handleDownload = (job: ReportJob) => {
     if (job.status !== "CONCLUIDO") return;
+    if (job.tipo?.toLowerCase().includes("completo")) {
+      setSelectedReport(job);
+      setShowModal(true);
+      return;
+    }
+
     console.info("Payload do relatório", job.payload);
     toast.success("Relatório disponível nos dados retornados pela API.");
   };
 
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedReport(null);
+  };
+
+  const todayFormatted = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
+
   return (
     <div className="space-y-6">
+      <Card title="Relatório de vendas completo">
+        <form className="grid gap-4 md:grid-cols-[repeat(3,minmax(0,1fr))] md:items-end" onSubmit={handleGerarRelatorioCompleto}>
+          <Input
+            type="date"
+            label="Data inicial"
+            value={dataInicio}
+            max={todayFormatted}
+            onChange={(event) => setDataInicio(event.target.value)}
+          />
+          <Input
+            type="date"
+            label="Data final"
+            value={dataFim}
+            max={todayFormatted}
+            min={dataInicio}
+            onChange={(event) => setDataFim(event.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button type="submit" disabled={executando} fullWidth>
+              Gerar relatório completo
+            </Button>
+          </div>
+        </form>
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+          O relatório inclui resumo financeiro, participação por forma de pagamento, evolução diária e ranking dos principais produtos e clientes.
+        </p>
+      </Card>
+
       <Card title="Relatórios rápidos">
         <div className="flex flex-wrap gap-3">
           {quickReports.map((tipo) => (
@@ -142,6 +219,8 @@ export const ReportsPage = () => {
           </TableBody>
         </Table>
       </Card>
+
+      <SalesReportModal report={selectedReport} isOpen={showModal} onClose={handleCloseModal} />
     </div>
   );
 };

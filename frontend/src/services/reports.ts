@@ -9,29 +9,103 @@ type DashboardKpi = {
   trend: "up" | "down" | "neutral";
 };
 
-export type DashboardMetricsResponse = {
-  kpis: DashboardKpi[];
-  top_produtos: {
-    sku: string;
-    nome: string;
-    quantidade: number;
-    faturamento: number;
-    faturamento_display: string;
-    margem_percentual: number;
-    margem_display: string;
-  }[];
-  rupturas: {
-    sku: string;
-    nome: string;
-    estoque: number;
-    estoque_display: string;
-    estoque_minimo: number;
-  }[];
+type SummaryMetric = {
+  valor: number;
+  display: string;
 };
 
-export const fetchDashboardMetrics = async (loja?: number) => {
-  const params = loja ? { loja } : undefined;
-  const { data } = await api.get<DashboardMetricsResponse>("/reports/dashboard/", { params });
+export type SalesSummaryKey =
+  | "faturamento_bruto"
+  | "descontos"
+  | "faturamento_liquido"
+  | "quantidade_vendas"
+  | "ticket_medio"
+  | "total_itens"
+  | "clientes_unicos";
+
+type DashboardTopProduct = {
+  sku: string;
+  nome: string;
+  quantidade: number;
+  quantidade_display: string;
+  faturamento: number;
+  faturamento_display: string;
+  margem_percentual: number;
+  margem_display: string;
+};
+
+type DashboardTopClient = {
+  cliente_id: number | null;
+  nome: string;
+  compras: number;
+  valor: number;
+  valor_display: string;
+  ticket_medio: number;
+  ticket_medio_display: string;
+  ultima_compra: string | null;
+};
+
+type DashboardPayment = {
+  id: number | null;
+  nome: string;
+  valor: number;
+  valor_display: string;
+  participacao: number;
+  participacao_display: string;
+};
+
+type DashboardTrendPoint = {
+  data: string;
+  faturamento: number;
+  faturamento_display: string;
+  vendas: number;
+  itens: number;
+};
+
+type DashboardRuptura = {
+  sku: string;
+  nome: string;
+  estoque: number;
+  estoque_display: string;
+  estoque_minimo: number;
+};
+
+export type DashboardMetricsResponse = {
+  periodo: {
+    inicio: string;
+    fim: string;
+    dias: number;
+  };
+  kpis: DashboardKpi[];
+  sales_summary: Partial<Record<SalesSummaryKey, SummaryMetric>>;
+  sales_trend: DashboardTrendPoint[];
+  payments: DashboardPayment[];
+  top_produtos: DashboardTopProduct[];
+  top_clientes: DashboardTopClient[];
+  rupturas: DashboardRuptura[];
+};
+
+type DashboardMetricsParams = {
+  loja?: number;
+  dataInicio?: string;
+  dataFim?: string;
+};
+
+export const fetchDashboardMetrics = async (params?: DashboardMetricsParams) => {
+  const query: Record<string, string | number> = {};
+  if (typeof params?.loja === "number") {
+    query.loja = params.loja;
+  }
+  if (params?.dataInicio) {
+    query.data_inicio = params.dataInicio;
+  }
+  if (params?.dataFim) {
+    query.data_fim = params.dataFim;
+  }
+
+  const { data } = await api.get<DashboardMetricsResponse>("/reports/dashboard/", {
+    params: Object.keys(query).length ? query : undefined,
+  });
   return data;
 };
 
