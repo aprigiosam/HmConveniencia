@@ -129,6 +129,7 @@ A aplicação usa Vite; configure `VITE_API_URL` no `.env` caso não use o padr�
 
 ## Comandos Úteis
 
+### Sistema
 ```bash
 # Subir sistema completo
 make up
@@ -139,23 +140,56 @@ make logs
 # Parar sistema
 make down
 
-# Backup do banco
-make backup
-
-# Resetar sistema (CUIDADO: apaga dados)
-make reset
-
 # Status dos containers
 make status
 
+# Resetar sistema (CUIDADO: apaga dados)
+make reset
+```
+
+### Backup e Restauração
+```bash
 # Backup do banco (dev)
 make backup NAME=antes-de-alterar
 
 # Restaurar backup (dev)
 make restore BACKUP_FILE=dev_backup_20250929_120000.sql.gz
 
-# Backup do banco (stack de produção local)
+# Backup do banco (produção)
 make backup-prod NAME=homolog
+```
+
+### Testes e Qualidade
+```bash
+# Executar todos os testes
+make test
+
+# Testes apenas do backend
+make test-backend
+
+# Testes apenas do frontend
+make test-frontend
+
+# Testes com relatório de coverage
+make test-coverage
+
+# Lint do código
+make lint
+```
+
+### Monitoramento
+```bash
+# Verificar saúde do sistema
+make health-check
+
+# Ver métricas do sistema
+make metrics
+
+# Logs de monitoramento em tempo real
+make logs-monitoring
+
+# Abrir dashboard de monitoramento
+make monitor
 ```
 
 ## Guia Rápido de Uso
@@ -172,8 +206,27 @@ make backup-prod NAME=homolog
 
 - **API Documentation**: http://localhost:8000/api/docs
 - **Django Admin**: http://localhost:8000/admin
+- **Dashboard de Monitoramento**: http://localhost:3000/monitoring
+- **Health Check**: http://localhost:8000/api/v1/health/
+- **Métricas**: http://localhost:8000/api/v1/monitoring/metrics/
 - **Frontend dev**: `cd frontend && npm run dev`
 - **Backend dev**: `cd backend && python manage.py runserver`
+
+### Executando Testes
+
+```bash
+# Todos os testes
+./scripts/run_tests.sh
+
+# Apenas backend
+./scripts/run_tests.sh --backend-only
+
+# Apenas frontend
+./scripts/run_tests.sh --frontend-only
+
+# Com coverage
+./scripts/run_tests.sh --coverage
+```
 
 ## Backups & Restauração
 
@@ -191,13 +244,64 @@ make backup-prod NAME=homolog
 - Gestão completa de estoque via interface
 - Todas as funcionalidades acessíveis pelo frontend
 - Sistema preparado para usuários não-técnicos
+- **Suite de testes implementada** (Backend + Frontend)
+- **Sistema de monitoramento em tempo real**
+- **Health checks e métricas de performance**
+- **Logs estruturados e centralizados**
+
+## Monitoramento e Observabilidade
+
+### 🏥 Health Checks
+- **Endpoint**: `/api/v1/health/`
+- **Verifica**: Database, Redis, tempo de resposta
+- **Status**: healthy/unhealthy com detalhes
+
+### 📊 Métricas do Sistema
+- **Endpoint**: `/api/v1/monitoring/metrics/`
+- **Dados**: Vendas, produtos, performance
+- **Atualizações**: Tempo real
+
+### 📈 Dashboard de Monitoramento
+- **URL**: `http://localhost:3000/monitoring`
+- **Recursos**: Métricas visuais, alerts, status dos serviços
+- **Auto-refresh**: Atualizações automáticas a cada 30s
+
+### 📝 Logs Estruturados
+- **Localização**: `backend/logs/`
+- **Arquivos**:
+  - `monitoring.log` - Requests e performance
+  - `errors.log` - Erros do sistema
+  - `performance.log` - Requests lentas
+  - `django.log` - Logs gerais
+- **Rotação**: Automática (10MB por arquivo)
+
+## Testes Automatizados
+
+### 🧪 Coverage de Testes
+- **Backend (Django)**: Models, Views, APIs, Autenticação
+- **Frontend (React)**: Components, Stores, Services, Utils
+- **Integração**: Health checks, endpoints críticos
+
+### 🚀 Execução
+```bash
+# Executar todos os testes
+make test
+
+# Com relatório de coverage
+make test-coverage
+
+# Apenas uma parte
+make test-backend
+make test-frontend
+```
 
 ## Próximos Passos (Opcionais)
 
 - Integração real com SEFAZ/SP (substituir simulador NFe)
-- Relatórios avançados de vendas
-- Sistema de backup automatizado
+- Alertas por email/Slack para erros críticos
+- Dashboard avançado de BI
 - App mobile para PDV
+- Integração com sistemas de pagamento
 
 ## Licença
 

@@ -20,14 +20,22 @@ type Fornecedor = {
   nome: string;
 };
 
+type LoteProduto = {
+  numero_lote: string;
+  data_vencimento?: string;
+  quantidade: number;
+  custo_unitario: number;
+};
+
 type ProductModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   initialBarcode?: string;
+  mode?: 'create' | 'entry';
 };
 
-export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: ProductModalProps) => {
+export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode, mode = 'create' }: ProductModalProps) => {
   const [loading, setLoading] = useState(false);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
@@ -49,6 +57,15 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
     dias_alerta_vencimento: "0",
     ativo: true,
   });
+
+  const [loteData, setLoteData] = useState<LoteProduto>({
+    numero_lote: "",
+    data_vencimento: "",
+    quantidade: 0,
+    custo_unitario: 0,
+  });
+
+  const [createWithEntry, setCreateWithEntry] = useState(mode === 'entry');
 
   const loadData = useCallback(async () => {
     try {
@@ -150,7 +167,7 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
     setLoading(true);
 
     try {
-      await api.post("/catalog/produtos/", {
+      const productData = {
         ...formData,
         categoria: parseInt(formData.categoria, 10),
         fornecedor: parseInt(formData.fornecedor, 10),
@@ -158,33 +175,55 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
         preco_venda: parseFloat(formData.preco_venda),
         estoque_minimo: parseInt(formData.estoque_minimo, 10),
         dias_alerta_vencimento: parseInt(formData.dias_alerta_vencimento, 10),
-      });
+      };
+
+      // Se está criando com entrada de estoque, incluir dados do lote na criação
+      if (createWithEntry && loteData.numero_lote && loteData.quantidade > 0) {
+        productData.lote_inicial = {
+          numero_lote: loteData.numero_lote,
+          data_vencimento: loteData.data_vencimento || null,
+          quantidade: loteData.quantidade,
+          custo_unitario: loteData.custo_unitario || parseFloat(formData.preco_custo),
+        };
+      }
+
+      const productResponse = await api.post("/catalog/produtos/", productData);
 
       onSuccess();
       onClose();
-
-      setFormData({
-        sku: "",
-        codigo_barras: "",
-        nome: "",
-        descricao: "",
-        categoria: "",
-        fornecedor: "",
-        unidade: "UN",
-        preco_custo: "",
-        preco_venda: "",
-        estoque_minimo: "0",
-        controla_vencimento: false,
-        dias_alerta_vencimento: "0",
-        ativo: true,
-      });
+      resetForm();
     } catch (error: any) {
       console.error("Erro ao salvar produto:", error);
-      const message = error?.message ?? "Erro ao salvar produto";
+      const message = error?.response?.data?.message || error?.message || "Erro ao salvar produto";
       alert(message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      sku: "",
+      codigo_barras: "",
+      nome: "",
+      descricao: "",
+      categoria: "",
+      fornecedor: "",
+      unidade: "UN",
+      preco_custo: "",
+      preco_venda: "",
+      estoque_minimo: "0",
+      controla_vencimento: false,
+      dias_alerta_vencimento: "0",
+      ativo: true,
+    });
+    setLoteData({
+      numero_lote: "",
+      data_vencimento: "",
+      quantidade: 0,
+      custo_unitario: 0,
+    });
+    setCreateWithEntry(mode === 'entry');
   };
 
   const handleChange = (field: string, value: any) => {
@@ -196,8 +235,10 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-          <h2 className="text-xl font-semibold mb-4">Novo produto</h2>
+        <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+          <h2 className="text-xl font-semibold mb-4">
+            {mode === 'entry' ? 'Novo Produto com Entrada de Estoque' : 'Novo Produto'}
+          </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -346,8 +387,70 @@ export const ProductModal = ({ isOpen, onClose, onSuccess, initialBarcode }: Pro
             />
           )}
 
+          {/* Opção para criar com entrada de estoque */}
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-2 mb-4">
+              <input
+                type="checkbox"
+                id="create_with_entry"
+                checked={createWithEntry}
+                onChange={(e) => setCreateWithEntry(e.target.checked)}
+              />
+              <label htmlFor="create_with_entry" className="text-sm font-medium">
+                Criar produto com entrada inicial de estoque
+              </label>
+            </div>
+
+            {createWithEntry && (
+              <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-sm font-semibold text-gray-700">Informações do Lote</h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Número do Lote"
+                    required={createWithEntry}
+                    value={loteData.numero_lote}
+                    onChange={(e) => setLoteData(prev => ({ ...prev, numero_lote: e.target.value }))}
+                    placeholder="Ex: LT001, 2024001, etc."
+                  />
+                  <Input
+                    label="Quantidade"
+                    type="number"
+                    min="1"
+                    required={createWithEntry}
+                    value={loteData.quantidade}
+                    onChange={(e) => setLoteData(prev => ({ ...prev, quantidade: parseInt(e.target.value) || 0 }))}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Data de Vencimento (opcional)"
+                    type="date"
+                    value={loteData.data_vencimento}
+                    onChange={(e) => setLoteData(prev => ({ ...prev, data_vencimento: e.target.value }))}
+                  />
+                  <Input
+                    label="Custo Unitário (opcional)"
+                    type="number"
+                    step="0.01"
+                    value={loteData.custo_unitario}
+                    onChange={(e) => setLoteData(prev => ({ ...prev, custo_unitario: parseFloat(e.target.value) || 0 }))}
+                    placeholder="Deixe vazio para usar o preço de custo"
+                  />
+                </div>
+
+                <div className="text-xs text-gray-600">
+                  <p>• O número do lote deve ser único para este produto</p>
+                  <p>• Se não informar custo unitário, será usado o preço de custo do produto</p>
+                  <p>• A movimentação de entrada será registrada automaticamente</p>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="secondary" onClick={onClose}>
+            <Button type="button" variant="secondary" onClick={() => { resetForm(); onClose(); }}>
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>

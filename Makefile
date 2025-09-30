@@ -161,3 +161,61 @@ prod-deploy: ## Deploy completo para producao
 
 prod: ## Modo producao (alias para prod-deploy)
 	make prod-deploy
+
+# ==========================================
+# TESTES E QUALIDADE
+# ==========================================
+
+.PHONY: test test-backend test-frontend test-coverage lint
+
+# Executa todos os testes
+test: ## Executar todos os testes
+	@echo "🧪 Executando todos os testes..."
+	./scripts/run_tests.sh
+
+# Executa apenas testes do backend
+test-backend: ## Executar testes do backend
+	@echo "🐍 Executando testes do backend..."
+	./scripts/run_tests.sh --backend-only
+
+# Executa apenas testes do frontend
+test-frontend: ## Executar testes do frontend
+	@echo "⚛️ Executando testes do frontend..."
+	./scripts/run_tests.sh --frontend-only
+
+# Executa testes com coverage
+test-coverage: ## Executar testes com coverage
+	@echo "📊 Executando testes com coverage..."
+	./scripts/run_tests.sh --coverage
+
+# Lint do código
+lint: ## Executar lint do codigo
+	@echo "🔍 Executando lint..."
+	cd frontend && npm run lint
+	cd backend && python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+
+# ==========================================
+# MONITORAMENTO
+# ==========================================
+
+.PHONY: monitor health-check logs-monitoring metrics
+
+# Verifica saúde do sistema
+health-check: ## Verificar saude do sistema
+	@echo "🏥 Verificando saúde do sistema..."
+	@curl -s http://localhost:8000/api/v1/health/ | python -m json.tool || echo "❌ Sistema indisponível"
+
+# Monitora o sistema em tempo real
+monitor: ## Abrir dashboard de monitoramento
+	@echo "📊 Abrindo dashboard de monitoramento..."
+	@echo "Acesse: http://localhost:3000/monitoring"
+
+# Mostra logs de monitoramento
+logs-monitoring: ## Ver logs de monitoramento em tempo real
+	@echo "📊 Logs de monitoramento em tempo real..."
+	@tail -f backend/logs/monitoring.log 2>/dev/null | grep -E "(ERROR|WARNING|Request:|Slow)" --color=always || echo "Arquivo de log ainda não existe"
+
+# Mostra métricas do sistema
+metrics: ## Mostrar metricas do sistema
+	@echo "📈 Métricas do sistema:"
+	@curl -s http://localhost:8000/api/v1/monitoring/metrics/ | python -m json.tool || echo "❌ Não foi possível obter métricas"

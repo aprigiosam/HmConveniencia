@@ -26,7 +26,11 @@
       "Bash(test:*)",
       "Bash(netstat:*)",
       "Bash(ss:*)",
-      "Bash(docker volume:*)"
+      "Bash(docker volume:*)",
+      "Bash(chmod:*)",
+      "Bash(npx tsc:*)",
+      "Read(//mnt/c/Program Files/Odoo 19.0.20250923/server/addons/**)",
+      "Read(//mnt/c/Program Files/Odoo 19.0.20250923/server/**)"
     ],
     "deny": [],
     "ask": []

@@ -7,7 +7,8 @@ from django.db.models.functions import Coalesce
 from .models import Categoria, Fornecedor, Produto, LoteProduto
 from .serializers import (
     CategoriaSerializer, FornecedorSerializer,
-    ProdutoSerializer, ProdutoListSerializer, LoteProdutoSerializer
+    ProdutoSerializer, ProdutoListSerializer, LoteProdutoSerializer,
+    ProdutoComLoteSerializer
 )
 
 
@@ -93,6 +94,11 @@ class ProdutoViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'list':
             return ProdutoListSerializer
+        elif self.action == 'create':
+            # Check if request has lot data to decide which serializer to use
+            if hasattr(self.request, 'data') and 'lote_inicial' in self.request.data:
+                return ProdutoComLoteSerializer
+            return ProdutoSerializer
         return ProdutoSerializer
 
     def get_queryset(self):
