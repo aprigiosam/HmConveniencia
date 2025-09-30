@@ -81,19 +81,20 @@ A aplicação usa Vite; configure `VITE_API_URL` no `.env` caso não use o padr�
 ## Estrutura principal
 
 - `backend/` – Django 5 + DRF
-  - `apps/catalog` – produtos, categorias, fornecedores, combos, grids, listas de preço, promoções
+  - `apps/catalog` – produtos, categorias, fornecedores, combos, grids, listas de preço, promoções (CRUD completo)
   - `apps/inventory` – controle de estoque e lotes
   - `apps/sales` – vendas, pagamentos, sessões PDV, programa de fidelidade
   - `apps/finance` – contas a pagar/receber, fluxo de caixa
   - `apps/nfe` – emissão simulada de NF-e SP
   - `apps/reports` – métricas de dashboard e relatórios
   - `apps/purchases` – gestão de compras
-  - `apps/core` – modelos compartilhados (Loja, Cliente, etc)
+  - `apps/core` – modelos compartilhados (Loja, Cliente, etc) + middleware CORS
 - `frontend/` – React 18 + TypeScript + Zustand + Tailwind
-  - `src/pages` – telas (Dashboard, POS, Produtos, Fornecedores, Grids, Financeiro, NF-e etc.)
-  - `src/services` – chamadas REST tipadas centralizadas
+  - `src/pages` – telas (Dashboard, POS, Produtos, Fornecedores, Grids, Promoções, Financeiro, NF-e etc.)
+  - `src/components` – modais CRUD reutilizáveis (ComboModal, PromocaoModal, GridModal, ListaPrecoModal)
+  - `src/services` – chamadas REST tipadas centralizadas (inclui formaPagamentoService corrigido)
   - `src/stores` – estados globais (auth, POS)
-  - `src/types` – tipos TypeScript alinhados com backend
+  - `src/types` – tipos TypeScript alinhados com backend (com tipo e percentual_desconto em ListaPreco)
 
 ## Funcionalidades Principais
 
@@ -204,6 +205,7 @@ A aplicação usa Vite; configure `VITE_API_URL` no `.env` caso não use o padr�
   - Posicionamento livre (X/Y)
   - Cores e tamanhos personalizados
   - Compartilhamento entre usuários
+  - Modal CRUD completo com validações
 
 #### 🚀 **Recursos Avançados (FASE 5)**
 
@@ -214,6 +216,7 @@ A aplicação usa Vite; configure `VITE_API_URL` no `.env` caso não use o padr�
   - Produtos fabricados com ingredientes
   - Controle de custo e margem
   - Baixa automática de estoque
+  - Modal CRUD completo com gestão de produtos do combo
 
 - **Programa de Fidelidade**
   - Sistema de pontos por compra
@@ -230,6 +233,7 @@ A aplicação usa Vite; configure `VITE_API_URL` no `.env` caso não use o padr�
   - VIP e promocionais
   - Múltiplos tipos de desconto
   - Sistema de prioridades
+  - Modal CRUD com suporte a tipo e percentual de desconto
 
 - **Promoções Automáticas**
   - Leve X Pague Y
@@ -238,6 +242,7 @@ A aplicação usa Vite; configure `VITE_API_URL` no `.env` caso não use o padr�
   - Desconto em categoria
   - Cashback em pontos
   - Aplicação automática no PDV
+  - Modal CRUD com gestão de datas e tipos de promoção
 
 ### 📦 Gestão de Estoque
 
@@ -387,6 +392,8 @@ make monitor
 - **Sistema de monitoramento em tempo real**
 - **Health checks e métricas de performance**
 - **Logs estruturados e centralizados**
+- **Modais CRUD completos** para Combos, Promoções, Grids e Listas de Preço
+- **CORS configurado** para suporte a OPTIONS preflight requests
 
 ## Monitoramento e Observabilidade
 
@@ -462,11 +469,12 @@ Para informações completas sobre as funcionalidades implementadas, consulte:
 - ✅ Atalhos de teclado completos
 - ✅ Produtos favoritos
 - ✅ Grid personalizável
-- ✅ Combos de produtos
+- ✅ Combos de produtos (com modal CRUD completo)
 - ✅ Produtos compostos
 - ✅ Programa de fidelidade
-- ✅ Listas de preços avançadas
-- ✅ Promoções automáticas
+- ✅ Listas de preços avançadas (com modal CRUD)
+- ✅ Promoções automáticas (com modal CRUD)
+- ✅ Grids personalizáveis (com modal CRUD e editor visual)
 
 ### Em Desenvolvimento / Próximas Fases
 - [ ] Balança digital integrada

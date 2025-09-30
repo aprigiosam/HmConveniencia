@@ -35,7 +35,10 @@
       "Bash(git add:*)",
       "Bash(docker ps:*)",
       "Bash(docker cp:*)",
-      "Bash(TOKEN=\"7a5f8c7ebe40daf8a745239e4a027c8cad8a7b0f\")"
+      "Bash(TOKEN=\"7a5f8c7ebe40daf8a745239e4a027c8cad8a7b0f\")",
+      "Bash(git log:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: implement full CRUD modals and fix CORS issues\n\n- Add ComboModal with complete CRUD functionality\n- Add PromocaoModal with date/type handling\n- Add ListaPrecoModal with tipo and percentual_desconto\n- Fix CORS middleware to handle OPTIONS preflight requests\n- Update catalog ViewSets to remove user.loja dependency\n- Create migrations for ProdutoCombo, Promocao, ListaPreco models\n- Fix formaPagamentoService endpoint from /sales/metodos-pagamento/ to /formas-pagamento/\n- Add populate_db.py script with test data (users, products, categories, suppliers, clients)\n- Add nginx.conf for production deployment\n- Update ListaPreco type with tipo and percentual_desconto fields\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
