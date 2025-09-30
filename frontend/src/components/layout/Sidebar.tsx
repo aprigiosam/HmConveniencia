@@ -14,6 +14,9 @@ import {
   Users,
   X,
   Grid,
+  Package,
+  Tag,
+  Percent,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { useAuthStore } from "../../stores/authStore";
@@ -30,6 +33,9 @@ const navItems: NavItem[] = [
   { label: "PDV", to: "/pdv", icon: ShoppingCart, roles: ["manager", "cashier"] },
   { label: "Grids PDV", to: "/grids", icon: Grid, roles: ["manager"] },
   { label: "Produtos", to: "/produtos", icon: PackageSearch },
+  { label: "Combos", to: "/combos", icon: Package, roles: ["manager"] },
+  { label: "Promoções", to: "/promocoes", icon: Tag, roles: ["manager"] },
+  { label: "Listas de Preço", to: "/listas-preco", icon: Percent, roles: ["manager"] },
   { label: "Estoque", to: "/estoque", icon: Boxes, roles: ["manager", "stockist"] },
   { label: "Fornecedores", to: "/fornecedores", icon: Truck, roles: ["manager", "stockist"] },
   { label: "Clientes", to: "/clientes", icon: Users, roles: ["manager"] },

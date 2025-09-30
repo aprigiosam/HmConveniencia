@@ -15,6 +15,9 @@ import { NFePage } from "../pages/NFe";
 import { ClientsPage } from "../pages/Clients";
 import { GridsPage } from "../pages/Grids";
 import { GridEditorPage } from "../pages/GridEditorPage";
+import { CombosPage } from "../pages/Combos";
+import { PromocoesPage } from "../pages/Promocoes";
+import { ListasPrecoPage } from "../pages/ListasPreco";
 
 const ProtectedShell = () => <ProtectedRoute />;
 
@@ -39,6 +42,9 @@ export const AppRoutes = () => {
             { path: "grids", element: <GridsPage /> },
             { path: "grids/:id/edit", element: <GridEditorPage /> },
             { path: "produtos", element: <ProductsPage /> },
+            { path: "combos", element: <CombosPage /> },
+            { path: "promocoes", element: <PromocoesPage /> },
+            { path: "listas-preco", element: <ListasPrecoPage /> },
             { path: "fornecedores", element: <SuppliersPage /> },
             { path: "clientes", element: <ClientsPage /> },
             { path: "estoque", element: <InventoryPage /> },

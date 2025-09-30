@@ -2,29 +2,13 @@ import { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
-import api from '../../services/api';
+import { sessaoService } from '../../services';
 import toast from 'react-hot-toast';
 import { ValidationModal } from './ValidationModal';
-
-// Define the types for the session data
-interface Session {
-  id: number;
-  codigo: string;
-  status: 'ABERTA' | 'FECHADA';
-  aberta_em: string;
-  fechada_em: string | null;
-  saldo_inicial: number;
-  responsavel_nome: string;
-}
-
-interface ValidationResult {
-  pode_fechar: boolean;
-  avisos: string[];
-  bloqueios: string[];
-}
+import type { SessaoPDV, ValidationResult } from '../../types';
 
 export const SessionManager = () => {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<SessaoPDV | null>(null);
   const [loading, setLoading] = useState(true);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
@@ -33,10 +17,10 @@ export const SessionManager = () => {
     setLoading(true);
     try {
       // Assuming the store ID is 1 for now. This should be dynamic in a real app.
-      const response = await api.get('/sales/sessoes/sessao_aberta/?loja=1');
-      setSession(response.data);
+      const data = await sessaoService.getAberta(1);
+      setSession(data);
     } catch (error: any) {
-      if (error.response?.status === 404) {
+      if (error.status === 404) {
         setSession(null);
       } else {
         toast.error('Erro ao buscar sessão de caixa.');
@@ -62,11 +46,11 @@ export const SessionManager = () => {
 
     try {
       // Assuming the store ID is 1 for now.
-      const response = await api.post('/sales/sessoes/', {
+      const data = await sessaoService.create({
         loja: 1,
         saldo_inicial: initialBalanceValue,
       });
-      setSession(response.data);
+      setSession(data);
       toast.success('Caixa aberto com sucesso!');
     } catch (error) {
       toast.error('Erro ao abrir o caixa.');
@@ -77,8 +61,8 @@ export const SessionManager = () => {
     if (!session) return;
 
     try {
-      const response = await api.get(`/sales/sessoes/${session.id}/validar_fechamento/`);
-      setValidationResult(response.data);
+      const data = await sessaoService.validarFechamento(session.id);
+      setValidationResult(data);
       setIsValidationModalOpen(true);
     } catch (error) {
       toast.error('Erro ao validar fechamento de caixa.');
@@ -101,9 +85,7 @@ export const SessionManager = () => {
     }
 
     try {
-      await api.post(`/sales/sessoes/${session.id}/fechar/`, {
-        saldo_fechamento_real: finalBalanceValue,
-      });
+      await sessaoService.fechar(session.id, finalBalanceValue);
       setSession(null);
       toast.success('Caixa fechado com sucesso!');
     } catch (error) {
@@ -143,7 +125,7 @@ export const SessionManager = () => {
                   {new Intl.NumberFormat('pt-BR', {
                     style: 'currency',
                     currency: 'BRL',
-                  }).format(session.saldo_inicial)}
+                  }).format(Number(session.saldo_inicial))}
                 </p>
               </div>
             </div>

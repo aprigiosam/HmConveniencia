@@ -3,29 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
-import api from '../services/api';
+import { gridService } from '../services';
 import toast from 'react-hot-toast';
 import { GridModal } from '../components/grids/GridModal';
-
-interface Grid {
-  id: number;
-  nome: string;
-  loja: number;
-  usuario: number | null;
-}
+import type { GridProdutoPDV } from '../types';
 
 export const GridsPage = () => {
-  const [grids, setGrids] = useState<Grid[]>([]);
+  const [grids, setGrids] = useState<GridProdutoPDV[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedGrid, setSelectedGrid] = useState<Grid | undefined>(undefined);
+  const [selectedGrid, setSelectedGrid] = useState<GridProdutoPDV | undefined>(undefined);
   const navigate = useNavigate();
 
   const fetchGrids = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/catalog/grids/');
-      setGrids(response.data.results);
+      const data = await gridService.list();
+      setGrids(data.results);
     } catch (error) {
       toast.error('Erro ao buscar grids.');
     } finally {
@@ -42,7 +36,7 @@ export const GridsPage = () => {
     setIsModalOpen(true);
   };
 
-  const handleEditGridName = (grid: Grid) => {
+  const handleEditGridName = (grid: GridProdutoPDV) => {
     setSelectedGrid(grid);
     setIsModalOpen(true);
   };
@@ -54,7 +48,7 @@ export const GridsPage = () => {
   const handleDeleteGrid = async (gridId: number) => {
     if (window.confirm('Tem certeza que deseja deletar este grid?')) {
       try {
-        await api.delete(`/catalog/grids/${gridId}/`);
+        await gridService.delete(gridId);
         toast.success('Grid deletado com sucesso!');
         fetchGrids();
       } catch (error) {
@@ -101,7 +95,7 @@ export const GridsPage = () => {
                     <Button variant="secondary" onClick={() => handleEditGridLayout(grid.id)} className="mr-2">
                       Editar Layout
                     </Button>
-                    <Button variant="danger" onClick={() => handleDeleteGrid(grid.id)}>
+                    <Button variant="destructive" onClick={() => handleDeleteGrid(grid.id)}>
                       Deletar
                     </Button>
                   </TableCell>

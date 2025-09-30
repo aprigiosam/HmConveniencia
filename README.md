@@ -81,15 +81,19 @@ A aplicação usa Vite; configure `VITE_API_URL` no `.env` caso não use o padr�
 ## Estrutura principal
 
 - `backend/` – Django 5 + DRF
-  - `apps/catalog` – produtos, categorias, fornecedores
+  - `apps/catalog` – produtos, categorias, fornecedores, combos, grids, listas de preço, promoções
   - `apps/inventory` – controle de estoque e lotes
-  - `apps/sales` – vendas e pagamentos
+  - `apps/sales` – vendas, pagamentos, sessões PDV, programa de fidelidade
+  - `apps/finance` – contas a pagar/receber, fluxo de caixa
   - `apps/nfe` – emissão simulada de NF-e SP
   - `apps/reports` – métricas de dashboard e relatórios
+  - `apps/purchases` – gestão de compras
+  - `apps/core` – modelos compartilhados (Loja, Cliente, etc)
 - `frontend/` – React 18 + TypeScript + Zustand + Tailwind
-  - `src/pages` – telas (Dashboard, POS, Produtos, Fornecedores, NF-e etc.)
-  - `src/services` – chamadas REST centralizadas
+  - `src/pages` – telas (Dashboard, POS, Produtos, Fornecedores, Grids, Financeiro, NF-e etc.)
+  - `src/services` – chamadas REST tipadas centralizadas
   - `src/stores` – estados globais (auth, POS)
+  - `src/types` – tipos TypeScript alinhados com backend
 
 ## Funcionalidades Principais
 
@@ -442,7 +446,7 @@ Para informações completas sobre as funcionalidades implementadas, consulte:
 
 ## Progresso do Projeto
 
-✅ **95% das funcionalidades do Odoo POS implementadas!**
+✅ **98% das funcionalidades essenciais do Odoo POS implementadas!**
 
 ### Implementado
 - ✅ PDV completo com carrinho e pagamentos
@@ -464,15 +468,14 @@ Para informações completas sobre as funcionalidades implementadas, consulte:
 - ✅ Listas de preços avançadas
 - ✅ Promoções automáticas
 
-### Opcional (Próximas Fases)
-- [ ] Balança digital
-- [ ] Customer display
+### Em Desenvolvimento / Próximas Fases
+- [ ] Balança digital integrada
+- [ ] Customer display (display do cliente)
 - [ ] Gaveta de dinheiro automática
-- [ ] Combos e produtos compostos
-- [ ] Programa de fidelidade
-- [ ] Atalhos de teclado personalizados
+- [ ] Interface web para atalhos de teclado personalizados
 - [ ] Relatórios consolidados (múltiplas sessões)
-- [ ] Gráficos e dashboards de análise
+- [ ] Gráficos avançados e dashboards de BI
+- [ ] App mobile nativo (iOS/Android)
 
 ## Próximos Passos (Sistema Geral)
 

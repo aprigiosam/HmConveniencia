@@ -3,26 +3,21 @@ import { useParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { GridEditor } from '../components/grids/GridEditor';
-import api from '../services/api';
+import { gridService } from '../services';
 import toast from 'react-hot-toast';
-
-interface Grid {
-  id: number;
-  nome: string;
-  itens: any[]; // TODO: Define the type for grid items
-}
+import type { GridProdutoPDV } from '../types';
 
 export const GridEditorPage = () => {
   const { id } = useParams<{ id: string }>();
-  const [grid, setGrid] = useState<Grid | null>(null);
+  const [grid, setGrid] = useState<GridProdutoPDV | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchGrid = async () => {
       setLoading(true);
       try {
-        const response = await api.get(`/catalog/grids/${id}/`);
-        setGrid(response.data);
+        const data = await gridService.get(Number(id));
+        setGrid(data);
       } catch (error) {
         toast.error('Erro ao buscar grid.');
       } finally {

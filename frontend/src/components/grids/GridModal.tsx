@@ -2,17 +2,12 @@ import { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
-import api from '../../services/api';
+import { gridService } from '../../services';
 import toast from 'react-hot-toast';
-
-interface Grid {
-  id?: number;
-  nome: string;
-  loja: number;
-}
+import type { GridProdutoPDV } from '../../types';
 
 interface GridModalProps {
-  grid?: Grid;
+  grid?: GridProdutoPDV;
   onClose: () => void;
   onSave: () => void;
 }
@@ -40,10 +35,10 @@ export const GridModal = ({ grid, onClose, onSave }: GridModalProps) => {
 
     try {
       if (grid?.id) {
-        await api.put(`/catalog/grids/${grid.id}/`, payload);
+        await gridService.update(grid.id, payload);
         toast.success('Grid atualizado com sucesso!');
       } else {
-        await api.post('/catalog/grids/', payload);
+        await gridService.create(payload);
         toast.success('Grid criado com sucesso!');
       }
       onSave();
