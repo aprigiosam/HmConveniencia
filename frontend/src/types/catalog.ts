@@ -154,6 +154,8 @@ export interface ListaPreco {
   id: number;
   nome: string;
   descricao?: string;
+  tipo: 'NORMAL' | 'ATACADO' | 'PROMOCIONAL' | 'PERSONALIZADA';
+  percentual_desconto?: string;
   ativo: boolean;
   data_inicio?: string;
   data_fim?: string;

@@ -281,8 +281,7 @@ class ProdutoFavoritoViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return ProdutoFavorito.objects.filter(
-            usuario=self.request.user,
-            loja=self.request.user.loja
+            usuario=self.request.user
         )
 
     @action(detail=True, methods=['post'])
@@ -303,10 +302,7 @@ class GridProdutoPDVViewSet(viewsets.ModelViewSet):
         return GridProdutoPDVSerializer
 
     def get_queryset(self):
-        return GridProdutoPDV.objects.filter(
-            loja=self.request.user.loja,
-            ativo=True
-        )
+        return GridProdutoPDV.objects.filter(ativo=True)
 
     @action(detail=True, methods=['post'])
     def adicionar_produto(self, request, pk=None):
@@ -344,7 +340,7 @@ class ListaPrecoViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = ListaPreco.objects.filter(loja=self.request.user.loja)
+        queryset = ListaPreco.objects.all()
         ativa = self.request.query_params.get('ativa')
 
         if ativa is not None:
@@ -365,7 +361,7 @@ class PromocaoViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Promocao.objects.filter(loja=self.request.user.loja)
+        queryset = Promocao.objects.all()
         ativa = self.request.query_params.get('ativa')
 
         if ativa is not None:
@@ -401,7 +397,7 @@ class UsoPromocaoViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = UsoPromocao.objects.filter(promocao__loja=self.request.user.loja)
+        queryset = UsoPromocao.objects.all()
         promocao_id = self.request.query_params.get('promocao_id')
         cliente_id = self.request.query_params.get('cliente_id')
 

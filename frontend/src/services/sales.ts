@@ -62,34 +62,34 @@ export const sessaoService = {
 };
 
 // ========================================
-// MÉTODOS DE PAGAMENTO
+// FORMAS DE PAGAMENTO
 // ========================================
 
-export const metodoPagamentoService = {
+export const formaPagamentoService = {
   list: async (params?: Record<string, unknown>) => {
-    const response = await api.get<PaginatedResponse<MetodoPagamento>>('/sales/metodos-pagamento/', {
+    const response = await api.get<PaginatedResponse<MetodoPagamento>>('/formas-pagamento/', {
       params,
     });
     return response.data;
   },
 
   get: async (id: number) => {
-    const response = await api.get<MetodoPagamento>(`/sales/metodos-pagamento/${id}/`);
+    const response = await api.get<MetodoPagamento>(`/formas-pagamento/${id}/`);
     return response.data;
   },
 
   create: async (data: Partial<MetodoPagamento>) => {
-    const response = await api.post<MetodoPagamento>('/sales/metodos-pagamento/', data);
+    const response = await api.post<MetodoPagamento>('/formas-pagamento/', data);
     return response.data;
   },
 
   update: async (id: number, data: Partial<MetodoPagamento>) => {
-    const response = await api.put<MetodoPagamento>(`/sales/metodos-pagamento/${id}/`, data);
+    const response = await api.put<MetodoPagamento>(`/formas-pagamento/${id}/`, data);
     return response.data;
   },
 
   delete: async (id: number) => {
-    await api.delete(`/sales/metodos-pagamento/${id}/`);
+    await api.delete(`/formas-pagamento/${id}/`);
   },
 };
 

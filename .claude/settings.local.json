@@ -30,7 +30,12 @@
       "Bash(chmod:*)",
       "Bash(npx tsc:*)",
       "Read(//mnt/c/Program Files/Odoo 19.0.20250923/server/addons/**)",
-      "Read(//mnt/c/Program Files/Odoo 19.0.20250923/server/**)"
+      "Read(//mnt/c/Program Files/Odoo 19.0.20250923/server/**)",
+      "Bash(mkdir:*)",
+      "Bash(git add:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker cp:*)",
+      "Bash(TOKEN=\"7a5f8c7ebe40daf8a745239e4a027c8cad8a7b0f\")"
     ],
     "deny": [],
     "ask": []

@@ -6,10 +6,13 @@ import { Badge } from '../components/ui/Badge';
 import { listaPrecoService } from '../services';
 import toast from 'react-hot-toast';
 import type { ListaPreco } from '../types';
+import { ListaPrecoModal } from '../components/listas-preco/ListaPrecoModal';
 
 export const ListasPrecoPage = () => {
   const [listas, setListas] = useState<ListaPreco[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedLista, setSelectedLista] = useState<ListaPreco | undefined>(undefined);
 
   const fetchListas = async () => {
     setLoading(true);
@@ -57,7 +60,7 @@ export const ListasPrecoPage = () => {
     <div className="space-y-6">
       <Card title="Listas de Preços">
         <div className="mb-4">
-          <Button onClick={() => toast('Modal de criação será implementado')}>
+          <Button onClick={() => { setSelectedLista(undefined); setIsModalOpen(true); }}>
             Criar Nova Lista
           </Button>
         </div>
@@ -98,6 +101,13 @@ export const ListasPrecoPage = () => {
                   <TableCell>
                     <Button
                       variant="secondary"
+                      onClick={() => { setSelectedLista(lista); setIsModalOpen(true); }}
+                      className="mr-2"
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      variant="secondary"
                       onClick={() => handleToggleStatus(lista.id, lista.ativo)}
                       className="mr-2"
                     >
@@ -119,6 +129,13 @@ export const ListasPrecoPage = () => {
           </TableBody>
         </Table>
       </Card>
+      {isModalOpen && (
+        <ListaPrecoModal
+          lista={selectedLista}
+          onClose={() => setIsModalOpen(false)}
+          onSave={() => { setIsModalOpen(false); fetchListas(); }}
+        />
+      )}
     </div>
   );
 };

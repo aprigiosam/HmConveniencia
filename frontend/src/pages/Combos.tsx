@@ -6,10 +6,13 @@ import { Badge } from '../components/ui/Badge';
 import { comboService } from '../services';
 import toast from 'react-hot-toast';
 import type { ProdutoCombo } from '../types';
+import { ComboModal } from '../components/combos/ComboModal';
 
 export const CombosPage = () => {
   const [combos, setCombos] = useState<ProdutoCombo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCombo, setSelectedCombo] = useState<ProdutoCombo | undefined>(undefined);
 
   const fetchCombos = async () => {
     setLoading(true);
@@ -57,7 +60,7 @@ export const CombosPage = () => {
     <div className="space-y-6">
       <Card title="Combos de Produtos">
         <div className="mb-4">
-          <Button onClick={() => toast('Modal de criação será implementado')}>
+          <Button onClick={() => { setSelectedCombo(undefined); setIsModalOpen(true); }}>
             Criar Novo Combo
           </Button>
         </div>
@@ -108,6 +111,13 @@ export const CombosPage = () => {
                   <TableCell>
                     <Button
                       variant="secondary"
+                      onClick={() => { setSelectedCombo(combo); setIsModalOpen(true); }}
+                      className="mr-2"
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      variant="secondary"
                       onClick={() => handleToggleStatus(combo.id, combo.ativo)}
                       className="mr-2"
                     >
@@ -129,6 +139,13 @@ export const CombosPage = () => {
           </TableBody>
         </Table>
       </Card>
+      {isModalOpen && (
+        <ComboModal
+          combo={selectedCombo}
+          onClose={() => setIsModalOpen(false)}
+          onSave={() => { setIsModalOpen(false); fetchCombos(); }}
+        />
+      )}
     </div>
   );
 };

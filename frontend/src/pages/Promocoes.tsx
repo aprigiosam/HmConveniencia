@@ -6,10 +6,13 @@ import { Badge } from '../components/ui/Badge';
 import { promocaoService } from '../services';
 import toast from 'react-hot-toast';
 import type { Promocao } from '../types';
+import { PromocaoModal } from '../components/promocoes/PromocaoModal';
 
 export const PromocoesPage = () => {
   const [promocoes, setPromocoes] = useState<Promocao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPromocao, setSelectedPromocao] = useState<Promocao | undefined>(undefined);
 
   const fetchPromocoes = async () => {
     setLoading(true);
@@ -67,7 +70,7 @@ export const PromocoesPage = () => {
     <div className="space-y-6">
       <Card title="Promoções">
         <div className="mb-4">
-          <Button onClick={() => toast('Modal de criação será implementado')}>
+          <Button onClick={() => { setSelectedPromocao(undefined); setIsModalOpen(true); }}>
             Criar Nova Promoção
           </Button>
         </div>
@@ -113,6 +116,13 @@ export const PromocoesPage = () => {
                   <TableCell>
                     <Button
                       variant="secondary"
+                      onClick={() => { setSelectedPromocao(promocao); setIsModalOpen(true); }}
+                      className="mr-2"
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      variant="secondary"
                       onClick={() => handleToggleStatus(promocao.id, promocao.ativo)}
                       className="mr-2"
                     >
@@ -134,6 +144,13 @@ export const PromocoesPage = () => {
           </TableBody>
         </Table>
       </Card>
+      {isModalOpen && (
+        <PromocaoModal
+          promocao={selectedPromocao}
+          onClose={() => setIsModalOpen(false)}
+          onSave={() => { setIsModalOpen(false); fetchPromocoes(); }}
+        />
+      )}
     </div>
   );
 };
