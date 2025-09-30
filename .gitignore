@@ -1,26 +1,42 @@
-﻿# .gitignore
-printf "# Python/Django
+# Python/Django
 __pycache__/
 *.py[cod]
-.env*
+*.so
+*.egg
+*.egg-info
+dist/
+build/
+.Python
+.env
+.env.*
 venv/
 .venv/
+env/
+ENV/
+*.db
+*.sqlite3
+*.log
 
 # Node/React
 node_modules/
-dist/
-build/
-*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-# Docker/OS/VSCode
+# IDEs
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
 Thumbs.db
-" > .gitignore
+desktop.ini
 
-# .gitattributes (padroniza LF, evita CRLF em Linux/WSL)
-printf "* text=auto eol=lf
-*.bat text eol=crlf
-*.cmd text eol=crlf
-*.ps1 text eol=crlf
-" > .gitattributes
+# Backups
+*.bak
+*.backup
+*.old

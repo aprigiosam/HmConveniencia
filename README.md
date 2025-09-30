@@ -2,6 +2,8 @@
 
 Sistema completo para gestão de comércio de bairro com PDV integrado, controle de estoque, gestão de fornecedores, relatórios e emissão simulada de NF-e (São Paulo).
 
+> **🎯 Infraestrutura Simplificada!** O projeto foi recentemente otimizado para facilitar a manutenção e navegação. Veja [SIMPLIFICACAO.md](./SIMPLIFICACAO.md) para detalhes sobre as melhorias realizadas.
+
 ## Requisitos
 
 - Docker e Docker Compose
@@ -198,6 +200,40 @@ A aplicação usa Vite; configure `VITE_API_URL` no `.env` caso não use o padr�
   - Posicionamento livre (X/Y)
   - Cores e tamanhos personalizados
   - Compartilhamento entre usuários
+
+#### 🚀 **Recursos Avançados (FASE 5)**
+
+- **Combos e Produtos Compostos**
+  - Combos fixos e flexíveis
+  - Cálculo automático de economia
+  - Itens opcionais e substituíveis
+  - Produtos fabricados com ingredientes
+  - Controle de custo e margem
+  - Baixa automática de estoque
+
+- **Programa de Fidelidade**
+  - Sistema de pontos por compra
+  - 4 níveis (Bronze, Prata, Ouro, Diamante)
+  - Multiplicador no aniversário
+  - Cashback em pontos
+  - Recompensas resgatáveis
+  - Expiração de pontos configurável
+
+- **Listas de Preços Avançadas**
+  - Preços por grupo de clientes
+  - Preços por horário/dia da semana
+  - Atacado (quantidade mínima)
+  - VIP e promocionais
+  - Múltiplos tipos de desconto
+  - Sistema de prioridades
+
+- **Promoções Automáticas**
+  - Leve X Pague Y
+  - Desconto progressivo
+  - Compre X Ganhe Y
+  - Desconto em categoria
+  - Cashback em pontos
+  - Aplicação automática no PDV
 
 ### 📦 Gestão de Estoque
 
@@ -402,10 +438,11 @@ Para informações completas sobre as funcionalidades implementadas, consulte:
 - **[FASE2_HARDWARE.md](./FASE2_HARDWARE.md)** - Impressora Térmica e Leitor de Código de Barras
 - **[FASE3_RELATORIOS.md](./FASE3_RELATORIOS.md)** - Relatórios X/Z e Validações de Fechamento
 - **[FASE4_UX.md](./FASE4_UX.md)** - Atalhos de Teclado, Favoritos e Produtividade
+- **[FASE5_AVANCADO.md](./FASE5_AVANCADO.md)** - Combos, Fidelidade, Preços e Promoções
 
 ## Progresso do Projeto
 
-✅ **92% das funcionalidades do Odoo POS implementadas!**
+✅ **95% das funcionalidades do Odoo POS implementadas!**
 
 ### Implementado
 - ✅ PDV completo com carrinho e pagamentos
@@ -421,6 +458,11 @@ Para informações completas sobre as funcionalidades implementadas, consulte:
 - ✅ Atalhos de teclado completos
 - ✅ Produtos favoritos
 - ✅ Grid personalizável
+- ✅ Combos de produtos
+- ✅ Produtos compostos
+- ✅ Programa de fidelidade
+- ✅ Listas de preços avançadas
+- ✅ Promoções automáticas
 
 ### Opcional (Próximas Fases)
 - [ ] Balança digital
