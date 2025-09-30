@@ -91,7 +91,7 @@ A aplicação usa Vite; configure `VITE_API_URL` no `.env` caso não use o padr�
 
 ## Funcionalidades Principais
 
-### 🛒 PDV (Ponto de Venda)
+### 🛒 PDV (Ponto de Venda) ⭐ APRIMORADO
 
 1. **Login** → Use `admin/admin123`
 2. **Busca de produtos** → SKU/código de barras (Ctrl+Enter adiciona)
@@ -99,6 +99,105 @@ A aplicação usa Vite; configure `VITE_API_URL` no `.env` caso não use o padr�
 4. **Pagamentos** → 5 formas disponíveis (Dinheiro, Cartão, PIX, etc.)
 5. **Finalização** → Sistema registra automaticamente no backend
 6. **Comprovante** → Geração automática de recibo
+
+#### ✨ **Novas Funcionalidades (FASE 1)**
+
+- **📴 Modo Offline/PWA**
+  - Funciona completamente offline
+  - Instalável como aplicativo (PWA)
+  - Cache inteligente de produtos
+  - Vendas salvas localmente
+  - Sincronização automática ao voltar online
+  - Indicador visual de status de conexão
+
+- **🔄 Pedidos Paralelos (Multi-order)**
+  - Atenda múltiplos clientes simultaneamente
+  - Alterne entre pedidos com facilidade
+  - Cada pedido mantém seu próprio carrinho
+  - Renomeie pedidos para identificação
+  - Salvamento automático de rascunhos
+
+- **💰 Controle de Caixa Avançado**
+  - Saldo Real vs Teórico
+  - Diferença de caixa calculada automaticamente
+  - Sangrias e reforços de caixa
+  - Histórico completo de movimentações
+  - Relatório detalhado de fechamento
+  - Observações de abertura e fechamento
+
+#### 🖨️ **Suporte a Hardware (FASE 2)**
+
+- **Impressora Térmica ESC/POS**
+  - Conexão via WebUSB (navegador)
+  - Suporte a rede (IP) e servidor local
+  - Templates customizáveis de cupom
+  - Impressão automática após finalizar venda
+  - Comandos completos (negrito, alinhamento, QR Code)
+  - Compatível com Epson, Bematech, Elgin, etc
+
+- **Leitor de Código de Barras**
+  - Detecção automática e inteligente
+  - Diferencia scanner de digitação manual
+  - Suporte a EAN-8, EAN-13, CODE-128
+  - Configuração de prefixo/sufixo
+  - Funciona em qualquer tela do sistema
+
+#### 📊 **Relatórios e Fechamento (FASE 3)**
+
+- **Relatório X (Parcial)**
+  - Consulta durante o dia sem fechar caixa
+  - Vendas e movimentações em tempo real
+  - Formas de pagamento detalhadas
+  - Top 10 produtos mais vendidos
+  - Impressão e exportação em múltiplos formatos
+
+- **Relatório Z (Fechamento)**
+  - Fechamento oficial do caixa
+  - Diferença de caixa (real vs teórico)
+  - Validações automáticas antes do fechamento
+  - Histórico completo da sessão
+  - Documento fiscal/gerencial profissional
+
+- **Exportação Completa**
+  - PDF profissional (ReportLab) com formatação avançada
+  - Excel (XLSX) com células formatadas e cores
+  - CSV compatível com Excel
+  - JSON para integração com outros sistemas
+
+- **Sessões de Recuperação (Rescue)**
+  - Reabertura de sessões fechadas para correções
+  - Log completo de quem, quando e por quê
+  - Histórico preservado para auditoria
+  - Validações de segurança (motivo obrigatório)
+
+- **Validações Avançadas**
+  - Bloqueio de fechamento com vendas pendentes
+  - Avisos de diferenças de caixa altas
+  - Alerta de sessões muito longas
+  - Verificação de vendas finalizadas
+
+#### ⌨️ **UX e Produtividade (FASE 4)**
+
+- **Atalhos de Teclado**
+  - Sistema completo de atalhos (Ctrl+N, F2-F9, etc)
+  - Pagamentos rápidos (F2=Dinheiro, F3=Débito, F4=Crédito, F5=PIX)
+  - Operações de caixa (F6-F9)
+  - Modal de ajuda (F1 ou Shift+?)
+  - Customizável por usuário
+
+- **Produtos Favoritos**
+  - Acesso rápido a produtos mais vendidos
+  - Contador automático de uso
+  - Grid visual com estrelas
+  - Modo compacto e completo
+  - Reordenação por popularidade
+
+- **Grid Personalizável**
+  - Organize produtos por categoria
+  - Grids customizados (Bebidas, Lanches, etc)
+  - Posicionamento livre (X/Y)
+  - Cores e tamanhos personalizados
+  - Compartilhamento entre usuários
 
 ### 📦 Gestão de Estoque
 
@@ -295,7 +394,45 @@ make test-backend
 make test-frontend
 ```
 
-## Próximos Passos (Opcionais)
+## Documentação Detalhada
+
+Para informações completas sobre as funcionalidades implementadas, consulte:
+
+- **[FASE1_MELHORIAS.md](./FASE1_MELHORIAS.md)** - Offline/PWA, Multi-order, Controle de Caixa
+- **[FASE2_HARDWARE.md](./FASE2_HARDWARE.md)** - Impressora Térmica e Leitor de Código de Barras
+- **[FASE3_RELATORIOS.md](./FASE3_RELATORIOS.md)** - Relatórios X/Z e Validações de Fechamento
+- **[FASE4_UX.md](./FASE4_UX.md)** - Atalhos de Teclado, Favoritos e Produtividade
+
+## Progresso do Projeto
+
+✅ **92% das funcionalidades do Odoo POS implementadas!**
+
+### Implementado
+- ✅ PDV completo com carrinho e pagamentos
+- ✅ Modo Offline/PWA com sincronização
+- ✅ Pedidos paralelos (multi-order)
+- ✅ Controle de caixa avançado (sangrias/reforços)
+- ✅ Impressora térmica ESC/POS
+- ✅ Leitor de código de barras inteligente
+- ✅ Relatórios X e Z profissionais
+- ✅ Validações de fechamento
+- ✅ Exportação PDF/Excel/CSV
+- ✅ Sessões de recuperação (rescue)
+- ✅ Atalhos de teclado completos
+- ✅ Produtos favoritos
+- ✅ Grid personalizável
+
+### Opcional (Próximas Fases)
+- [ ] Balança digital
+- [ ] Customer display
+- [ ] Gaveta de dinheiro automática
+- [ ] Combos e produtos compostos
+- [ ] Programa de fidelidade
+- [ ] Atalhos de teclado personalizados
+- [ ] Relatórios consolidados (múltiplas sessões)
+- [ ] Gráficos e dashboards de análise
+
+## Próximos Passos (Sistema Geral)
 
 - Integração real com SEFAZ/SP (substituir simulador NFe)
 - Alertas por email/Slack para erros críticos

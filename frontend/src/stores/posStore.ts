@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import api from "../services/api";
+import { dbManager } from "../utils/indexedDB";
 
 export type PosProduct = {
   id: number;
@@ -32,6 +33,7 @@ type PosState = {
   pagamentos: PosPayment[];
   clienteNome?: string;
   carregandoProduto: boolean;
+  isOfflineMode: boolean;
   buscarProduto: (termo: string) => Promise<PosProduct[]>;
   adicionarItem: (produto: PosProduct, quantidade?: number) => void;
   atualizarQuantidade: (sku: string, quantidade: number) => void;
@@ -66,32 +68,70 @@ export const usePosStore = create<PosState>((set, get) => ({
   itens: [],
   pagamentos: [],
   carregandoProduto: false,
+  isOfflineMode: false,
   async buscarProduto(termo: string) {
     set({ carregandoProduto: true });
-    try {
-      const { data } = await api.get("/catalog/produtos/", {
-        params: {
-          search: termo,
-          page_size: 20,
-        },
-      });
-      const results = Array.isArray(data?.results) ? data.results : [];
-      return results.map((item: any) => ({
-        id: item.id,
-        sku: item.sku,
-        descricao: item.nome,
-        preco: parseFloat(item.preco_venda) || 0,
-        estoque: item.estoque_total ?? 0,
-      })) as PosProduct[];
-    } catch (error) {
-      console.warn("Falha na busca de produto, usando dados locais", error);
-      return fallbackProdutos.filter((item) =>
-        item.sku.toLowerCase().includes(termo.toLowerCase()) ||
-        item.descricao.toLowerCase().includes(termo.toLowerCase()),
-      );
-    } finally {
-      set({ carregandoProduto: false });
+
+    // Tenta buscar online primeiro
+    if (navigator.onLine) {
+      try {
+        const { data } = await api.get("/catalog/produtos/", {
+          params: {
+            search: termo,
+            page_size: 20,
+          },
+        });
+        const results = Array.isArray(data?.results) ? data.results : [];
+        const produtos = results.map((item: any) => ({
+          id: item.id,
+          sku: item.sku,
+          descricao: item.nome,
+          preco: parseFloat(item.preco_venda) || 0,
+          estoque: item.estoque_total ?? 0,
+        })) as PosProduct[];
+
+        // Cacheia produtos para uso offline
+        if (produtos.length > 0) {
+          await dbManager.cacheProducts(results);
+        }
+
+        set({ carregandoProduto: false, isOfflineMode: false });
+        return produtos;
+      } catch (error) {
+        console.warn("Falha na busca online, tentando cache local", error);
+      }
     }
+
+    // Modo offline: busca no IndexedDB
+    try {
+      set({ isOfflineMode: true });
+      const cachedProducts = await dbManager.getCachedProducts(termo);
+
+      if (cachedProducts.length > 0) {
+        const produtos = cachedProducts.map((item) => ({
+          id: item.id,
+          sku: item.sku,
+          descricao: item.nome,
+          preco: item.preco_venda,
+          estoque: item.estoque_total,
+        })) as PosProduct[];
+
+        set({ carregandoProduto: false });
+        return produtos;
+      }
+    } catch (error) {
+      console.error("Erro ao buscar produtos no cache:", error);
+    }
+
+    // Fallback final: produtos hardcoded
+    console.warn("Usando produtos fallback");
+    const produtos = fallbackProdutos.filter((item) =>
+      item.sku.toLowerCase().includes(termo.toLowerCase()) ||
+      item.descricao.toLowerCase().includes(termo.toLowerCase()),
+    );
+
+    set({ carregandoProduto: false });
+    return produtos;
   },
   adicionarItem(produto, quantidade = 1) {
     set((state) => {
