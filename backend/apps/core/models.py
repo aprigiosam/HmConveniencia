@@ -115,7 +115,8 @@ class SequenciaDocumento(TimeStampedModel):
         números por loja/código e evitando condições de corrida com ``select_for_update``.
         """
 
-        if not loja_id := getattr(loja, "pk", None):  # pragma: no cover - guard clause direta
+        loja_id = getattr(loja, "pk", None)
+        if not loja_id:  # pragma: no cover - guard clause direta
             raise ValueError("Loja precisa estar persistida para gerar sequência")
 
         with transaction.atomic():

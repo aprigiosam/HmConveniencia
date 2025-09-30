@@ -12,7 +12,7 @@ from apps.catalog.models import LoteProduto
 from apps.core.models import Loja
 from apps.inventory.models import MovimentacaoEstoque
 
-from .models import ItemVenda, SessaoPDV, Venda
+from ..models import ItemVenda, SessaoPDV, Venda
 
 
 def _normalizar_quantidade(item: ItemVenda) -> int:
