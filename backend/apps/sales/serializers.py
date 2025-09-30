@@ -1,8 +1,17 @@
+"""
+Serializers consolidados de vendas
+Inclui: Vendas, Sessões PDV, Programa de Fidelidade
+"""
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from rest_framework import serializers
 
-from .models import Venda, ItemVenda, PagamentoVenda, SessaoPDV, MovimentacaoCaixa
+from .models import (
+    Venda, ItemVenda, PagamentoVenda, SessaoPDV, MovimentacaoCaixa,
+    ProgramaFidelidade, ClienteFidelidade, MovimentacaoPontos,
+    Recompensa, ResgatePontos
+)
 from .services import finalizar_venda, obter_ou_criar_sessao_aberta
 
 
@@ -185,4 +194,140 @@ class SessaoReaberturaSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "O motivo deve ter pelo menos 10 caracteres"
             )
+        return value
+
+
+# ========================================
+# PROGRAMA DE FIDELIDADE
+# ========================================
+
+class ProgramaFidelidadeSerializer(serializers.ModelSerializer):
+    """Serializer para programa de fidelidade"""
+
+    class Meta:
+        model = ProgramaFidelidade
+        fields = [
+            'id', 'nome', 'ativo',
+            'pontos_por_real', 'valor_minimo_compra',
+            'pontos_por_real_desconto', 'pontos_minimos_resgate',
+            'pontos_maximos_resgate_venda', 'percentual_maximo_desconto',
+            'pontos_expiram', 'dias_validade_pontos',
+            'multiplicador_aniversario', 'bonus_cadastro'
+        ]
+
+
+class MovimentacaoPontosSerializer(serializers.ModelSerializer):
+    """Serializer para movimentações de pontos"""
+
+    class Meta:
+        model = MovimentacaoPontos
+        fields = [
+            'id', 'tipo', 'pontos', 'saldo_anterior', 'saldo_novo',
+            'motivo', 'venda_id', 'data', 'created_at'
+        ]
+
+
+class ClienteFidelidadeSerializer(serializers.ModelSerializer):
+    """Serializer para cliente no programa de fidelidade"""
+
+    cliente_nome = serializers.CharField(source='cliente.nome', read_only=True)
+    cliente_cpf = serializers.CharField(source='cliente.cpf', read_only=True)
+    programa_nome = serializers.CharField(source='programa.nome', read_only=True)
+    ultimas_movimentacoes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ClienteFidelidade
+        fields = [
+            'id', 'cliente', 'cliente_nome', 'cliente_cpf',
+            'programa', 'programa_nome',
+            'pontos_atual', 'pontos_total_acumulado', 'pontos_total_usado',
+            'nivel', 'data_adesao', 'ativo',
+            'ultimas_movimentacoes'
+        ]
+        read_only_fields = [
+            'pontos_atual', 'pontos_total_acumulado', 'pontos_total_usado',
+            'nivel', 'data_adesao'
+        ]
+
+    def get_ultimas_movimentacoes(self, obj):
+        movimentacoes = obj.movimentacoes.all()[:5]
+        return MovimentacaoPontosSerializer(movimentacoes, many=True).data
+
+
+class RecompensaSerializer(serializers.ModelSerializer):
+    """Serializer para recompensas"""
+
+    produto_nome = serializers.CharField(source='produto.nome', read_only=True)
+    disponivel = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Recompensa
+        fields = [
+            'id', 'nome', 'descricao', 'tipo',
+            'pontos_necessarios', 'valor_desconto',
+            'produto', 'produto_nome', 'quantidade',
+            'imagem', 'ativa', 'quantidade_disponivel',
+            'validade_inicio', 'validade_fim', 'ordem',
+            'disponivel'
+        ]
+
+    def get_disponivel(self, obj):
+        disponivel, motivo = obj.esta_disponivel()
+        return {
+            'disponivel': disponivel,
+            'motivo': motivo if not disponivel else None
+        }
+
+
+class ResgatePontosSerializer(serializers.ModelSerializer):
+    """Serializer para resgates de pontos"""
+
+    cliente_nome = serializers.CharField(
+        source='cliente_fidelidade.cliente.nome',
+        read_only=True
+    )
+    recompensa_nome = serializers.CharField(
+        source='recompensa.nome',
+        read_only=True
+    )
+
+    class Meta:
+        model = ResgatePontos
+        fields = [
+            'id', 'cliente_fidelidade', 'cliente_nome',
+            'recompensa', 'recompensa_nome',
+            'pontos_gastos', 'status', 'venda_id',
+            'data_utilizacao', 'created_at'
+        ]
+        read_only_fields = ['pontos_gastos', 'created_at']
+
+
+class AplicarPontosSerializer(serializers.Serializer):
+    """Serializer para aplicar pontos em uma venda"""
+
+    pontos = serializers.IntegerField(min_value=1)
+
+    def validate_pontos(self, value):
+        cliente_fidelidade = self.context.get('cliente_fidelidade')
+
+        if not cliente_fidelidade:
+            raise serializers.ValidationError("Cliente fidelidade não fornecido")
+
+        if value > cliente_fidelidade.pontos_atual:
+            raise serializers.ValidationError(
+                f"Cliente possui apenas {cliente_fidelidade.pontos_atual} pontos disponíveis"
+            )
+
+        programa = cliente_fidelidade.programa
+        if value < programa.pontos_minimos_resgate:
+            raise serializers.ValidationError(
+                f"Mínimo de {programa.pontos_minimos_resgate} pontos para resgate"
+            )
+
+        if programa.pontos_maximos_resgate_venda > 0:
+            if value > programa.pontos_maximos_resgate_venda:
+                raise serializers.ValidationError(
+                    f"Máximo de {programa.pontos_maximos_resgate_venda} pontos por venda"
+                )
+
         return value

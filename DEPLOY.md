@@ -25,22 +25,20 @@ cd comercio-pro
 
 ### 2. Configurar Variáveis de Ambiente
 ```bash
-# Copiar template de produção
-cp .env.prod.example .env.prod
+# Copiar template
+cp .env.example .env
 
 # Editar configurações (IMPORTANTE!)
-nano .env.prod
+nano .env
 ```
 
-**Variáveis obrigatórias em `.env.prod`:**
+**Variáveis obrigatórias em `.env`:**
 ```env
 POSTGRES_PASSWORD=SuaSenhaSeguraAqui123!
 SECRET_KEY=sua-chave-django-de-50-caracteres-super-secreta-aqui
 ALLOWED_HOSTS=seu-dominio.com,www.seu-dominio.com
 CSRF_TRUSTED_ORIGINS=https://seu-dominio.com,https://www.seu-dominio.com
 VITE_API_URL=https://seu-dominio.com/api/v1
-HTTP_PORT=8080
-HTTPS_PORT=443
 ```
 
 ### 3. Configurar SSL (Opcional mas Recomendado)
@@ -54,26 +52,26 @@ mkdir -p nginx/ssl
 
 ### 4. Deploy
 ```bash
-# Deploy completo (usa docker-compose diretamente)
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# Deploy completo de produção
+docker compose up --profile prod -d --build
 
-# OU usando Makefile (certifique-se de que o .env.prod está pronto)
-make prod-deploy
+# Aplicar migrações
+docker compose exec backend python manage.py migrate
 
-# Sequência manual
-make prod-build
-make prod-up
-make prod-migrate
-make prod-collectstatic
+# Coletar arquivos estáticos
+docker compose exec backend python manage.py collectstatic --noinput
+
+# Criar superusuário
+docker compose exec backend python manage.py createsuperuser
 ```
 
 ### 5. Verificar Deploy
 ```bash
 # Verificar status dos serviços
-make prod-status
+docker compose ps
 
 # Ver logs
-make prod-logs
+docker compose logs -f
 
 # Verificar saúde da aplicação
 curl http://seu-dominio.com/health
@@ -83,24 +81,28 @@ curl http://seu-dominio.com/health
 
 ```bash
 # Parar ambiente
-make prod-down
-
-# Backup do banco
-make backup-prod NAME=antes-atualizacao
-
-# Restaurar backup
-make restore-prod BACKUP_FILE=prod_backup_20231201_120000.sql.gz
+docker compose down
 
 # Ver logs específicos
-docker-compose -f docker-compose.prod.yml logs backend
-docker-compose -f docker-compose.prod.yml logs frontend
-docker-compose -f docker-compose.prod.yml logs nginx
+docker compose logs backend
+docker compose logs frontend
+docker compose logs nginx
+
+# Ver logs em tempo real
+docker compose logs -f backend
 
 # Executar comando no backend
-docker-compose -f docker-compose.prod.yml exec backend python manage.py shell
+docker compose exec backend python manage.py shell
 
-# Criar superusuário
-docker-compose -f docker-compose.prod.yml exec backend python manage.py createsuperuser
+# Backup do banco
+docker compose exec db pg_dump -U comercio_user comercio_db | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# Restaurar backup
+gunzip < backup_file.sql.gz | docker compose exec -T db psql -U comercio_user comercio_db
+
+# Reiniciar serviço específico
+docker compose restart backend
+docker compose restart nginx
 ```
 
 ## 🛡️ Segurança Implementada
@@ -128,13 +130,13 @@ docker-compose -f docker-compose.prod.yml exec backend python manage.py createsu
 ### Logs
 ```bash
 # Logs gerais
-make prod-logs
+docker compose logs
 
 # Logs com filtro
-docker-compose -f docker-compose.prod.yml logs --tail=100 -f backend
+docker compose logs --tail=100 -f backend
 
 # Logs de erro do Nginx
-docker-compose -f docker-compose.prod.yml exec nginx tail -f /var/log/nginx/error.log
+docker compose exec nginx tail -f /var/log/nginx/error.log
 ```
 
 ### Health Checks
@@ -148,30 +150,32 @@ docker-compose -f docker-compose.prod.yml exec nginx tail -f /var/log/nginx/erro
 ### Atualizar Aplicação
 ```bash
 # Fazer backup
-make backup
+docker compose exec db pg_dump -U comercio_user comercio_db | gzip > backup_antes_update.sql.gz
 
 # Atualizar código
 git pull origin main
 
 # Rebuild e redeploy
-make prod-build
-make prod-up
-make prod-migrate
-make prod-collectstatic
+docker compose up --profile prod -d --build
+
+# Aplicar migrações
+docker compose exec backend python manage.py migrate
+
+# Coletar estáticos
+docker compose exec backend python manage.py collectstatic --noinput
 
 # Verificar funcionamento
-make prod-status
+docker compose ps
 ```
 
 ### Rollback em Caso de Problema
 ```bash
 # Voltar para versão anterior
 git checkout [COMMIT_ANTERIOR]
-make prod-build
-make prod-up
+docker compose up --profile prod -d --build
 
 # Ou restaurar backup do banco
-make restore BACKUP_FILE=backup_antes_da_atualizacao.sql
+gunzip < backup_antes_update.sql.gz | docker compose exec -T db psql -U comercio_user comercio_db
 ```
 
 ## 🚨 Troubleshooting
@@ -179,10 +183,10 @@ make restore BACKUP_FILE=backup_antes_da_atualizacao.sql
 ### Problema: Serviços não sobem
 ```bash
 # Verificar logs
-make prod-logs
+docker compose logs
 
 # Verificar configuração
-cat .env.prod
+cat .env
 
 # Verificar portas em uso
 netstat -tulpn | grep :80
@@ -192,22 +196,22 @@ netstat -tulpn | grep :443
 ### Problema: Erro de conexão com banco
 ```bash
 # Verificar se PostgreSQL está rodando
-make prod-status
+docker compose ps
 
 # Verificar conectividade
-docker-compose -f docker-compose.prod.yml exec backend python manage.py dbshell
+docker compose exec backend python manage.py dbshell
 ```
 
 ### Problema: Frontend não carrega
 ```bash
-# Verificar se build foi feito
-docker-compose -f docker-compose.prod.yml exec frontend ls /app/dist
+# Verificar se build foi feito (produção)
+docker compose exec frontend-prod ls /usr/share/nginx/html
 
 # Verificar configuração do Nginx
-docker-compose -f docker-compose.prod.yml exec nginx nginx -t
+docker compose exec nginx nginx -t
 
 # Recarregar Nginx
-docker-compose -f docker-compose.prod.yml exec nginx nginx -s reload
+docker compose exec nginx nginx -s reload
 ```
 
 ## 📞 Suporte
