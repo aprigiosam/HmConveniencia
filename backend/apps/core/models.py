@@ -1,5 +1,6 @@
 from django.db import models, transaction
 from django.db.models import F
+from django.contrib.auth.models import User # Import User model
 
 from django.utils.text import slugify
 
@@ -136,3 +137,11 @@ class SequenciaDocumento(TimeStampedModel):
             sequencia.refresh_from_db(fields=["proximo_numero"])
 
         return sequencia._formatar(numero_atual)
+
+
+class Profile(TimeStampedModel):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    loja = models.ForeignKey(Loja, on_delete=models.PROTECT, null=True, blank=True)
+
+    def __str__(self):
+        return f"Profile for {self.user.username}"

@@ -13,6 +13,8 @@ import { SettingsPage } from "../pages/Settings";
 import { SuppliersPage } from "../pages/Suppliers";
 import { NFePage } from "../pages/NFe";
 import { ClientsPage } from "../pages/Clients";
+import { GridsPage } from "../pages/Grids";
+import { GridEditorPage } from "../pages/GridEditorPage";
 
 const ProtectedShell = () => <ProtectedRoute />;
 
@@ -34,6 +36,8 @@ export const AppRoutes = () => {
             { index: true, element: <Navigate to="dashboard" replace /> },
             { path: "dashboard", element: <DashboardPage /> },
             { path: "pdv", element: <POSPage /> },
+            { path: "grids", element: <GridsPage /> },
+            { path: "grids/:id/edit", element: <GridEditorPage /> },
             { path: "produtos", element: <ProductsPage /> },
             { path: "fornecedores", element: <SuppliersPage /> },
             { path: "clientes", element: <ClientsPage /> },

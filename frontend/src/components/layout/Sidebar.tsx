@@ -13,6 +13,7 @@ import {
   Settings,
   Users,
   X,
+  Grid,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { useAuthStore } from "../../stores/authStore";
@@ -27,6 +28,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "PDV", to: "/pdv", icon: ShoppingCart, roles: ["manager", "cashier"] },
+  { label: "Grids PDV", to: "/grids", icon: Grid, roles: ["manager"] },
   { label: "Produtos", to: "/produtos", icon: PackageSearch },
   { label: "Estoque", to: "/estoque", icon: Boxes, roles: ["manager", "stockist"] },
   { label: "Fornecedores", to: "/fornecedores", icon: Truck, roles: ["manager", "stockist"] },

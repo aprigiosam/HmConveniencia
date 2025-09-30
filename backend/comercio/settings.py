@@ -20,7 +20,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-    'corsheaders',
+    # 'corsheaders', # Removed
     'django_filters',
     'drf_spectacular',
     'apps.core',
@@ -34,7 +34,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'apps.core.middleware.custom_cors_middleware.CustomCorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -121,9 +121,7 @@ CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=DEFAULT_FRONTEND
 if "http://localhost:8080" not in CORS_ALLOWED_ORIGINS:
     CORS_ALLOWED_ORIGINS.append("http://localhost:8080")
 
-CORS_ALLOW_ALL_ORIGINS = DEBUG  # Allow all origins in development
-
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False  # Explicitly set to False to respect CORS_ALLOWED_ORIGINS when credentials are sent
 
 CORS_ALLOWED_HEADERS = [
     'accept',
@@ -135,6 +133,7 @@ CORS_ALLOWED_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'Access-Control-Allow-Credentials',
 ]
 
 # CSRF trusted origins
@@ -154,3 +153,6 @@ CELERY_RESULT_BACKEND = env('REDIS_URL')
 
 # Logging desabilitado temporariamente para deploy
 # LOGGING = {}
+
+# Custom User Profile
+AUTH_PROFILE_MODULE = 'core.Profile'

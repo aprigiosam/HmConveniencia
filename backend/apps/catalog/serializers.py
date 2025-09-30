@@ -451,8 +451,7 @@ class GridProdutoPDVCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         itens_data = validated_data.pop('itens', [])
-        request = self.context.get('request')
-        validated_data['loja'] = request.user.loja
+        validated_data['loja'] = request.user.profile.loja
         validated_data['usuario'] = request.user
         grid = GridProdutoPDV.objects.create(**validated_data)
         for item_data in itens_data:
