@@ -6,11 +6,13 @@ from typing import Iterable
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F
+from django.utils import timezone
 
 from apps.catalog.models import LoteProduto
+from apps.core.models import Loja
 from apps.inventory.models import MovimentacaoEstoque
 
-from .models import ItemVenda, Venda
+from .models import ItemVenda, SessaoPDV, Venda
 
 
 def _normalizar_quantidade(item: ItemVenda) -> int:
@@ -156,3 +158,30 @@ def finalizar_venda(venda: Venda, *, status_anterior: str | None = None) -> Vend
     venda_atualizada.status = Venda.Status.FINALIZADA
     venda_atualizada.save(update_fields=["status", "updated_at"])
     return venda_atualizada
+
+
+@transaction.atomic
+def obter_ou_criar_sessao_aberta(
+    loja: Loja,
+    *,
+    responsavel: object | None = None,
+) -> SessaoPDV:
+    """Retorna a sessão PDV ativa para a loja ou cria uma nova."""
+
+    if not getattr(loja, "pk", None):  # pragma: no cover - guarda trivial
+        raise ValidationError("Loja inválida para abertura de sessão")
+
+    sessao = (
+        SessaoPDV.objects.select_for_update()
+        .filter(loja=loja, status=SessaoPDV.Status.ABERTA)
+        .order_by("-aberta_em")
+        .first()
+    )
+    if sessao:
+        return sessao
+
+    return SessaoPDV.objects.create(
+        loja=loja,
+        responsavel=responsavel,
+        aberta_em=timezone.now(),
+    )

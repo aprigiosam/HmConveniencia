@@ -8,7 +8,7 @@ from apps.catalog.models import Categoria, Fornecedor, LoteProduto, Produto
 from apps.core.models import Cliente, Loja
 from apps.inventory.models import MovimentacaoEstoque
 from apps.sales.models import ItemVenda, Venda
-from apps.sales.services import finalizar_venda
+from apps.sales.services import finalizar_venda, obter_ou_criar_sessao_aberta
 
 
 class FinalizarVendaServiceTests(TestCase):
@@ -47,10 +47,12 @@ class FinalizarVendaServiceTests(TestCase):
 
     def _nova_venda(self, quantidade: Decimal, *, lote=None, status=Venda.Status.PENDENTE) -> Venda:
         numero = next(self._sequencia)
+        sessao = obter_ou_criar_sessao_aberta(self.loja)
+
         venda = Venda.objects.create(
             loja=self.loja,
             cliente=Cliente.objects.create(cpf=f"000.000.000-{numero:02d}", nome=f"Cliente {numero}"),
-            numero_venda=f"VENDA-{numero:03d}",
+            sessao=sessao,
             status=status,
         )
         ItemVenda.objects.create(
@@ -71,7 +73,9 @@ class FinalizarVendaServiceTests(TestCase):
         self.lote_principal.refresh_from_db()
 
         self.assertEqual(venda_finalizada.status, Venda.Status.FINALIZADA)
+        self.assertIsNotNone(venda_finalizada.sessao)
         self.assertEqual(venda_finalizada.valor_total, Decimal("50.00"))
+        self.assertRegex(venda_finalizada.numero_venda, r"^MATR-\d{6}-POS$")
         self.assertEqual(self.lote_principal.quantidade, 8)
         movimentacao = MovimentacaoEstoque.objects.get(
             motivo=f"Venda {venda_finalizada.numero_venda}"

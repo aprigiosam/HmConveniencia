@@ -3,7 +3,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from .models import Venda, ItemVenda, PagamentoVenda
-from .services import finalizar_venda
+from .services import finalizar_venda, obter_ou_criar_sessao_aberta
 
 
 class ItemVendaSerializer(serializers.ModelSerializer):
@@ -48,11 +48,18 @@ class VendaCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Venda
         fields = '__all__'
+        extra_kwargs = {
+            'numero_venda': {'required': False, 'allow_blank': True},
+        }
 
     def create(self, validated_data):
         itens_data = validated_data.pop('itens')
         pagamentos_data = validated_data.pop('pagamentos')
         status_inicial = validated_data.get('status', Venda.Status.PENDENTE)
+
+        loja = validated_data.get('loja')
+        if not validated_data.get('sessao') and loja:
+            validated_data['sessao'] = obter_ou_criar_sessao_aberta(loja)
 
         try:
             with transaction.atomic():
