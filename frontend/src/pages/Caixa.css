@@ -2,6 +2,18 @@
   padding: 20px;
 }
 
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.caixa-page h2 {
+  margin: 0;
+  color: var(--dark-text);
+}
+
 .form-abrir-caixa {
   display: flex;
   gap: 10px;
@@ -11,9 +23,18 @@
 
 .caixa-info {
   padding: 15px;
-  background-color: #f9f9f9;
+  background-color: var(--light-bg);
   border-radius: 8px;
   margin-top: 15px;
+  border: 1px solid var(--border-color);
+}
+
+.caixa-info p {
+  margin-bottom: 5px;
+}
+
+.caixa-info p:last-child {
+  margin-bottom: 0;
 }
 
 .header-buttons {
@@ -36,17 +57,19 @@
 }
 
 .modal-content {
-  background-color: white;
-  padding: 25px;
-  border-radius: 8px;
+  background-color: var(--card-bg);
+  padding: 30px;
+  border-radius: 10px;
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 25px var(--shadow-light);
 }
 
 .modal-content h3 {
   margin-top: 0;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
+  font-size: 22px;
+  color: var(--dark-text);
 }
 
 .modal-content form {
@@ -59,5 +82,5 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 30px;
 }

@@ -2,6 +2,7 @@
 Models simples para PDV - HMConveniencia
 """
 from django.db import models
+from django.core.validators import MinValueValidator
 from decimal import Decimal
 
 
@@ -11,7 +12,13 @@ class Cliente(models.Model):
     telefone = models.CharField('Telefone', max_length=20, blank=True)
     cpf = models.CharField('CPF', max_length=14, blank=True, unique=True, null=True)
     endereco = models.TextField('Endereço', blank=True)
-    limite_credito = models.DecimalField('Limite de Crédito', max_digits=10, decimal_places=2, default=0)
+    limite_credito = models.DecimalField(
+        'Limite de Crédito',
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(Decimal('0.00'), message='Limite de crédito não pode ser negativo')]
+    )
     ativo = models.BooleanField('Ativo', default=True)
     created_at = models.DateTimeField('Criado em', auto_now_add=True)
     updated_at = models.DateTimeField('Atualizado em', auto_now=True)
@@ -57,9 +64,26 @@ class Categoria(models.Model):
 class Produto(models.Model):
     """Produto - campos essenciais"""
     nome = models.CharField('Nome', max_length=200)
-    preco = models.DecimalField('Preço', max_digits=10, decimal_places=2)
-    preco_custo = models.DecimalField('Preço de Custo', max_digits=10, decimal_places=2, default=0)
-    estoque = models.DecimalField('Estoque', max_digits=10, decimal_places=2, default=0)
+    preco = models.DecimalField(
+        'Preço',
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'), message='Preço deve ser maior que zero')]
+    )
+    preco_custo = models.DecimalField(
+        'Preço de Custo',
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(Decimal('0.00'), message='Preço de custo não pode ser negativo')]
+    )
+    estoque = models.DecimalField(
+        'Estoque',
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(Decimal('0.00'), message='Estoque não pode ser negativo')]
+    )
     codigo_barras = models.CharField('Código de Barras', max_length=50, blank=True)
     categoria = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='produtos', verbose_name='Categoria')
     ativo = models.BooleanField('Ativo', default=True)

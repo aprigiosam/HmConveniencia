@@ -3,7 +3,17 @@ URLs da API - HMConveniencia
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ClienteViewSet, ProdutoViewSet, VendaViewSet, CaixaViewSet, BackupViewSet, CategoriaViewSet
+from .views import (
+    ClienteViewSet,
+    ProdutoViewSet,
+    VendaViewSet,
+    CaixaViewSet,
+    BackupViewSet,
+    CategoriaViewSet,
+    login,
+    logout,
+    me
+)
 
 router = DefaultRouter()
 router.register('clientes', ClienteViewSet, basename='cliente')
@@ -15,4 +25,7 @@ router.register('categorias', CategoriaViewSet, basename='categoria')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('auth/login/', login, name='login'),
+    path('auth/logout/', logout, name='logout'),
+    path('auth/me/', me, name='me'),
 ]

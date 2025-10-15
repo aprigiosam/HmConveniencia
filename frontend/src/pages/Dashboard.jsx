@@ -4,25 +4,25 @@ import './Dashboard.css'
 
 function Dashboard() {
   const [stats, setStats] = useState(null)
-  const [vendas, setVendas] = useState([])
   const [loading, setLoading] = useState(true)
   const [backupLoading, setBackupLoading] = useState(false)
 
   useEffect(() => {
     loadData()
+    // Atualiza a cada 30 segundos
+    const interval = setInterval(loadData, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   const loadData = async () => {
     try {
-      const [statsRes, vendasRes] = await Promise.all([
-        getDashboard(),
-        getVendas({ periodo: 'hoje' })
-      ])
+      const statsRes = await getDashboard()
       setStats(statsRes.data)
-      setVendas(vendasRes.data.results || vendasRes.data)
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
-      alert('Erro ao carregar dados do dashboard')
+      if (!stats) { // Só mostra erro na primeira carga
+        alert('Erro ao carregar dados do dashboard')
+      }
     } finally {
       setLoading(false)
     }
@@ -61,6 +61,41 @@ function Dashboard() {
           </div>
         </div>
 
+        {/* ALERTA VERMELHO: Contas Vencidas */}
+        {stats?.contas_receber?.vencidas?.quantidade > 0 && (
+          <div className="stat-card stat-danger">
+            <div className="stat-icon">🚨</div>
+            <div className="stat-content">
+              <h3>Contas Vencidas</h3>
+              <p className="stat-value">R$ {stats?.contas_receber?.vencidas?.total?.toFixed(2) || '0.00'}</p>
+              <span className="stat-label">{stats?.contas_receber?.vencidas?.quantidade} contas atrasadas</span>
+            </div>
+          </div>
+        )}
+
+        <div className="stat-card">
+          <div className="stat-icon">📋</div>
+          <div className="stat-content">
+            <h3>Contas a Receber</h3>
+            <p className="stat-value">R$ {stats?.contas_receber?.total?.toFixed(2) || '0.00'}</p>
+            <span className="stat-label">{stats?.contas_receber?.quantidade || 0} pendentes</span>
+            {stats?.contas_receber?.vencendo_hoje?.quantidade > 0 && (
+              <span className="stat-warning">⚠️ {stats.contas_receber.vencendo_hoje.quantidade} vencendo hoje</span>
+            )}
+          </div>
+        </div>
+
+        {stats?.caixa && (
+          <div className="stat-card stat-success">
+            <div className="stat-icon">💵</div>
+            <div className="stat-content">
+              <h3>Caixa Aberto</h3>
+              <p className="stat-value">R$ {stats.caixa.valor_atual?.toFixed(2) || '0.00'}</p>
+              <span className="stat-label">Inicial: R$ {stats.caixa.valor_inicial?.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
+
         <div className="stat-card">
           <div className="stat-icon">⚠️</div>
           <div className="stat-content">
@@ -80,42 +115,9 @@ function Dashboard() {
         >
           {backupLoading ? 'Iniciando Backup...' : '☁️ Fazer Backup Agora'}
         </button>
-      </div>
-
-      <div className="card">
-        <h3>📝 Últimas Vendas</h3>
-        {vendas.length === 0 ? (
-          <p style={{textAlign: 'center', padding: '20px', color: '#666'}}>
-            Nenhuma venda hoje
-          </p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Número</th>
-                <th>Hora</th>
-                <th>Pagamento</th>
-                <th>Total</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vendas.map(venda => (
-                <tr key={venda.id}>
-                  <td>{venda.numero}</td>
-                  <td>{new Date(venda.created_at).toLocaleTimeString('pt-BR')}</td>
-                  <td>{venda.forma_pagamento}</td>
-                  <td>R$ {parseFloat(venda.total).toFixed(2)}</td>
-                  <td>
-                    <span className={`badge badge-${venda.status.toLowerCase()}`}>
-                      {venda.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <small style={{marginLeft: '15px', color: '#666'}}>
+          Atualização automática a cada 30 segundos
+        </small>
       </div>
     </div>
   )

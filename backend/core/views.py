@@ -2,9 +2,12 @@
 Views da API - HMConveniencia
 """
 from django.core.management import call_command
+from django.contrib.auth import authenticate
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import AllowAny
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from datetime import timedelta
@@ -184,6 +187,7 @@ class VendaViewSet(viewsets.ModelViewSet):
     def dashboard(self, request):
         """Retorna estatísticas para o dashboard"""
         hoje = timezone.now().date()
+        agora = timezone.now()
 
         # Vendas de hoje
         vendas_hoje = Venda.objects.filter(
@@ -203,8 +207,78 @@ class VendaViewSet(viewsets.ModelViewSet):
             quantidade=Count('id')
         )
 
-        serializer = VendaSerializer(vendas_hoje, many=True)
-        return Response(serializer.data)
+        # CONTAS A RECEBER - Informações críticas
+        contas_pendentes = Venda.objects.filter(
+            status='FINALIZADA',
+            status_pagamento='PENDENTE'
+        )
+
+        total_a_receber = contas_pendentes.aggregate(total=Sum('total'))['total'] or Decimal('0')
+
+        # Contas vencidas (ALERTA VERMELHO)
+        contas_vencidas = contas_pendentes.filter(
+            data_vencimento__lt=hoje
+        )
+        total_vencido = contas_vencidas.aggregate(total=Sum('total'))['total'] or Decimal('0')
+        quantidade_vencidas = contas_vencidas.count()
+
+        # Contas vencendo hoje
+        contas_vencendo_hoje = contas_pendentes.filter(
+            data_vencimento=hoje
+        )
+        quantidade_vencendo_hoje = contas_vencendo_hoje.count()
+
+        # Status do Caixa
+        caixa_aberto = Caixa.objects.filter(status='ABERTO').first()
+        caixa_info = None
+        if caixa_aberto:
+            # Calcula vendas em dinheiro desde abertura
+            vendas_dinheiro = Venda.objects.filter(
+                created_at__gte=caixa_aberto.data_abertura,
+                forma_pagamento='DINHEIRO',
+                status='FINALIZADA'
+            ).aggregate(total=Sum('total'))['total'] or Decimal('0')
+
+            # Movimentações
+            movimentacoes = caixa_aberto.movimentacoes.aggregate(
+                sangrias=Sum('valor', filter=Q(tipo='SANGRIA')),
+                suprimentos=Sum('valor', filter=Q(tipo='SUPRIMENTO'))
+            )
+            total_sangrias = movimentacoes['sangrias'] or Decimal('0')
+            total_suprimentos = movimentacoes['suprimentos'] or Decimal('0')
+
+            valor_atual = (caixa_aberto.valor_inicial + vendas_dinheiro
+                          + total_suprimentos - total_sangrias)
+
+            caixa_info = {
+                'id': caixa_aberto.id,
+                'aberto_desde': caixa_aberto.data_abertura,
+                'valor_inicial': float(caixa_aberto.valor_inicial),
+                'valor_atual': float(valor_atual),
+                'vendas_dinheiro': float(vendas_dinheiro)
+            }
+
+        return Response({
+            'vendas_hoje': {
+                'total': float(total_hoje),
+                'quantidade': quantidade_vendas,
+            },
+            'estoque_baixo': estoque_baixo,
+            'vendas_por_pagamento': list(vendas_por_pagamento),
+            'contas_receber': {
+                'total': float(total_a_receber),
+                'quantidade': contas_pendentes.count(),
+                'vencidas': {
+                    'total': float(total_vencido),
+                    'quantidade': quantidade_vencidas
+                },
+                'vencendo_hoje': {
+                    'quantidade': quantidade_vencendo_hoje
+                }
+            },
+            'caixa': caixa_info,
+            'data': hoje.isoformat(),
+        })
 
     @action(detail=True, methods=['post'])
     def cancelar(self, request, pk=None):
@@ -355,3 +429,66 @@ class CaixaViewSet(viewsets.ViewSet):
         caixas = Caixa.objects.filter(status='FECHADO')
         serializer = CaixaSerializer(caixas, many=True)
         return Response(serializer.data)
+
+
+# ========== AUTENTICAÇÃO ==========
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login(request):
+    """Autentica usuário e retorna token"""
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    if not username or not password:
+        return Response(
+            {'error': 'Username e password são obrigatórios'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    user = authenticate(username=username, password=password)
+
+    if user is None:
+        return Response(
+            {'error': 'Credenciais inválidas'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    # Cria ou recupera o token
+    token, created = Token.objects.get_or_create(user=user)
+
+    return Response({
+        'token': token.key,
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+        }
+    })
+
+
+@api_view(['POST'])
+def logout(request):
+    """Remove o token do usuário"""
+    try:
+        request.user.auth_token.delete()
+        return Response({'message': 'Logout realizado com sucesso'})
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def me(request):
+    """Retorna informações do usuário autenticado"""
+    return Response({
+        'id': request.user.id,
+        'username': request.user.username,
+        'email': request.user.email,
+        'first_name': request.user.first_name,
+        'last_name': request.user.last_name,
+    })

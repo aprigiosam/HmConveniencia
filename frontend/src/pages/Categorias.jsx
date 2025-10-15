@@ -141,9 +141,10 @@ function Categorias() {
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Nome *</label>
+                <label htmlFor="nome">Nome *</label>
                 <input
                   type="text"
+                  id="nome"
                   value={formData.nome}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   required

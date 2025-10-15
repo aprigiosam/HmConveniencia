@@ -2,12 +2,17 @@
   padding: 20px;
 }
 
+.historico-caixa-page h2 {
+  margin-bottom: 25px;
+  color: var(--dark-text);
+}
+
 .diferenca-negativa {
-  color: #e53935; /* Vermelho */
+  color: var(--danger-color); /* Vermelho */
   font-weight: bold;
 }
 
 .diferenca-positiva {
-  color: #43a047; /* Verde */
+  color: var(--success-color); /* Verde */
   font-weight: bold;
 }

@@ -1,5 +1,6 @@
 .contas-receber-page h2 {
   margin: 0;
+  color: var(--dark-text);
 }
 
 .page-header {
@@ -10,7 +11,7 @@
 }
 
 .total-box {
-  background: #007bff;
+  background: var(--primary-color);
   color: white;
   padding: 15px 25px;
   border-radius: 8px;
@@ -18,6 +19,7 @@
   flex-direction: column;
   align-items: center;
   gap: 5px;
+  box-shadow: 0 4px 12px var(--shadow-light);
 }
 
 .total-box span {
@@ -31,17 +33,17 @@
 }
 
 .row-vencida {
-  background: #fff3cd !important;
+  background-color: #fde0df !important; /* Light red for overdue rows */
 }
 
 .badge-vencida {
-  background: #dc3545;
+  background-color: var(--danger-color);
   color: white;
 }
 
 .badge-pendente {
-  background: #ffc107;
-  color: #333;
+  background-color: var(--warning-color);
+  color: var(--dark-text);
 }
 
 .btn-sm {

@@ -1,3 +1,18 @@
 .relatorio-lucro-page {
   padding: 20px;
 }
+
+.relatorio-lucro-page h2 {
+  margin-bottom: 25px;
+  color: var(--dark-text);
+}
+
+.diferenca-negativa {
+  color: var(--danger-color); /* Vermelho */
+  font-weight: bold;
+}
+
+.diferenca-positiva {
+  color: var(--success-color); /* Verde */
+  font-weight: bold;
+}

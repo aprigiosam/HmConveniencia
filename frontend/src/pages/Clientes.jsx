@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getClientes, createCliente, updateCliente, deleteCliente } from '../services/api'
-import './Produtos.css'
+import './Clientes.css'
 
 function Clientes() {
   const [clientes, setClientes] = useState([])
@@ -84,7 +84,7 @@ function Clientes() {
   }
 
   return (
-    <div className="produtos-page">
+    <div className="clientes-page">
       <div className="page-header">
         <h2>👥 Clientes</h2>
         <button
@@ -113,7 +113,7 @@ function Clientes() {
                 <td>{cliente.nome}</td>
                 <td>{cliente.telefone || '-'}</td>
                 <td>{cliente.cpf || '-'}</td>
-                <td style={{color: cliente.saldo_devedor > 0 ? '#dc3545' : '#28a745'}}>
+                <td style={{color: cliente.saldo_devedor > 0 ? 'var(--danger-color)' : 'var(--success-color)'}}>
                   R$ {parseFloat(cliente.saldo_devedor || 0).toFixed(2)}
                 </td>
                 <td>R$ {parseFloat(cliente.limite_credito).toFixed(2)}</td>
@@ -201,7 +201,7 @@ function Clientes() {
                   value={formData.limite_credito}
                   onChange={(e) => setFormData({...formData, limite_credito: e.target.value})}
                 />
-                <small style={{color: '#666', display: 'block', marginTop: '5px'}}>
+                <small style={{color: 'var(--light-text)', display: 'block', marginTop: '5px'}}>
                   0 = sem limite
                 </small>
               </div>

@@ -103,6 +103,7 @@ class VendaCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError({
                     'cliente_id': 'Cliente é obrigatório para vendas fiado'
                 })
+
             # Verifica se cliente existe
             try:
                 cliente = Cliente.objects.get(id=data['cliente_id'])
@@ -110,6 +111,34 @@ class VendaCreateSerializer(serializers.Serializer):
                     raise serializers.ValidationError({
                         'cliente_id': 'Cliente está inativo'
                     })
+
+                # VALIDAÇÃO CRÍTICA: Verifica limite de crédito
+                # Calcula o total da venda
+                total_venda = Decimal('0')
+                for item in data.get('itens', []):
+                    try:
+                        produto = Produto.objects.get(id=int(item['produto_id']))
+                        quantidade = Decimal(item['quantidade'])
+                        total_venda += produto.preco * quantidade
+                    except (Produto.DoesNotExist, ValueError, KeyError):
+                        pass  # Será validado em validate_itens
+
+                # Aplica desconto
+                total_venda -= data.get('desconto', Decimal('0'))
+
+                # Verifica se cliente pode comprar fiado
+                if not cliente.pode_comprar_fiado(total_venda):
+                    saldo_atual = cliente.saldo_devedor()
+                    limite = cliente.limite_credito
+                    disponivel = limite - saldo_atual
+                    raise serializers.ValidationError({
+                        'cliente_id': f'Cliente estourou limite de crédito. '
+                                     f'Limite: R$ {limite:.2f}, '
+                                     f'Deve: R$ {saldo_atual:.2f}, '
+                                     f'Disponível: R$ {disponivel:.2f}, '
+                                     f'Tentando: R$ {total_venda:.2f}'
+                    })
+
             except Cliente.DoesNotExist:
                 raise serializers.ValidationError({
                     'cliente_id': 'Cliente não encontrado'

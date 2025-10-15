@@ -1,6 +1,6 @@
 .dashboard h2 {
   margin-bottom: 25px;
-  color: #333;
+  color: var(--dark-text);
 }
 
 .stats-grid {
@@ -11,10 +11,10 @@
 }
 
 .stat-card {
-  background: white;
+  background: var(--card-bg);
   padding: 25px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px var(--shadow-light);
   display: flex;
   gap: 20px;
   align-items: center;
@@ -22,31 +22,71 @@
 
 .stat-icon {
   font-size: 48px;
+  color: var(--primary-color);
 }
 
 .stat-content h3 {
   font-size: 14px;
-  color: #666;
+  color: var(--light-text);
   margin-bottom: 8px;
 }
 
 .stat-value {
   font-size: 32px;
   font-weight: 700;
-  color: #007bff;
+  color: var(--dark-text);
   margin: 0;
 }
 
 .stat-label {
   font-size: 13px;
-  color: #999;
+  color: var(--light-text);
+  display: block;
+}
+
+.stat-warning {
+  display: block;
+  font-size: 12px;
+  color: var(--warning-color);
+  font-weight: 600;
+  margin-top: 5px;
+}
+
+.stat-card.stat-danger {
+  border-left: 4px solid var(--danger-color);
+  animation: pulse-danger 2s infinite;
+}
+
+.stat-card.stat-danger .stat-icon {
+  color: var(--danger-color);
+}
+
+.stat-card.stat-danger .stat-value {
+  color: var(--danger-color);
+}
+
+.stat-card.stat-success {
+  border-left: 4px solid var(--success-color);
+}
+
+.stat-card.stat-success .stat-icon {
+  color: var(--success-color);
+}
+
+@keyframes pulse-danger {
+  0%, 100% {
+    box-shadow: 0 4px 12px var(--shadow-light);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(255, 77, 79, 0.3);
+  }
 }
 
 .loading {
   text-align: center;
   padding: 50px;
   font-size: 18px;
-  color: #666;
+  color: var(--light-text);
 }
 
 .badge {
@@ -58,16 +98,16 @@
 }
 
 .badge-finalizada {
-  background: #d4edda;
-  color: #155724;
+  background: var(--success-color);
+  color: white;
 }
 
 .badge-aberta {
-  background: #fff3cd;
-  color: #856404;
+  background: var(--warning-color);
+  color: var(--dark-text);
 }
 
 .badge-cancelada {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--danger-color);
+  color: white;
 }

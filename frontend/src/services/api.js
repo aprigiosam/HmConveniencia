@@ -7,6 +7,34 @@ const api = axios.create({
   },
 });
 
+// Interceptor para adicionar token em todas as requisições
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Token ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Interceptor para tratar erros de autenticação
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token inválido ou expirado
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Clientes
 export const getClientes = (params = {}) => api.get('/clientes/', { params });
 export const getCliente = (id) => api.get(`/clientes/${id}/`);
@@ -52,5 +80,10 @@ export const getHistoricoCaixa = () => api.get('/caixa/historico/');
 
 // Backup
 export const triggerBackup = () => api.post('/backup/trigger_backup/');
+
+// Autenticação
+export const login = (username, password) => api.post('/auth/login/', { username, password });
+export const logout = () => api.post('/auth/logout/');
+export const getMe = () => api.get('/auth/me/');
 
 export default api;

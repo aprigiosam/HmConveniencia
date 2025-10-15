@@ -1,5 +1,6 @@
 
 import pytest
+import time
 from rest_framework.test import APIClient
 from django.contrib.auth.models import User
 from decimal import Decimal
@@ -155,3 +156,58 @@ def test_receber_pagamento_venda_fiado(api_client, setup_data):
     # Verifica que o saldo devedor do cliente foi zerado
     cliente.refresh_from_db()
     assert cliente.saldo_devedor() == Decimal("0.00")
+
+
+@pytest.mark.django_db
+def test_produtos_mais_lucrativos(api_client):
+    """Testa o relatório de produtos mais lucrativos."""
+    # Cria produtos com preço de custo
+    produto_alto_lucro = Produto.objects.create(nome="Produto Alto Lucro", preco=Decimal("20.00"), preco_custo=Decimal("10.00"), estoque=10)
+    produto_baixo_lucro = Produto.objects.create(nome="Produto Baixo Lucro", preco=Decimal("15.00"), preco_custo=Decimal("12.00"), estoque=10)
+    produto_sem_custo = Produto.objects.create(nome="Produto Sem Custo", preco=Decimal("5.00"), estoque=10)
+
+    # Cria vendas para os produtos
+    venda_data_1 = {
+        "forma_pagamento": "DINHEIRO",
+        "itens": [
+            {"produto_id": str(produto_alto_lucro.id), "quantidade": "5"}, # Lucro: 5 * (20-10) = 50
+            {"produto_id": str(produto_baixo_lucro.id), "quantidade": "2"}  # Lucro: 2 * (15-12) = 6
+        ]
+    }
+    api_client.post('/api/vendas/', venda_data_1, format='json')
+
+    time.sleep(1) # Garante um timestamp diferente para a próxima venda
+
+    venda_data_2 = {
+        "forma_pagamento": "DINHEIRO",
+        "itens": [
+            {"produto_id": str(produto_alto_lucro.id), "quantidade": "2"}  # Lucro: 2 * (20-10) = 20
+        ]
+    }
+    api_client.post('/api/vendas/', venda_data_2, format='json')
+
+    time.sleep(1) # Garante um timestamp diferente para a próxima venda
+
+    # Venda para produto sem custo (não deve aparecer no relatório)
+    venda_data_3 = {
+        "forma_pagamento": "DINHEIRO",
+        "itens": [
+            {"produto_id": str(produto_sem_custo.id), "quantidade": "3"}
+        ]
+    }
+    api_client.post('/api/vendas/', venda_data_3, format='json')
+
+    response = api_client.get('/api/produtos/mais_lucrativos/')
+    assert response.status_code == 200
+
+    results = response.data
+    assert len(results) == 2 # Apenas produtos com custo definido
+
+    # Verifica a ordenação e os valores
+    assert results[0]['nome_produto'] == "Produto Alto Lucro"
+    assert Decimal(results[0]['lucro_total']) == Decimal("70.00") # 50 + 20
+    assert Decimal(results[0]['total_vendido']) == Decimal("7.00")
+
+    assert results[1]['nome_produto'] == "Produto Baixo Lucro"
+    assert Decimal(results[1]['lucro_total']) == Decimal("6.00")
+    assert Decimal(results[1]['total_vendido']) == Decimal("2.00")

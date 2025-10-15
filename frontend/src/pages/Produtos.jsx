@@ -47,11 +47,18 @@ function Produtos() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    const dataToSend = { ...formData };
+    if (dataToSend.categoria === '') {
+      dataToSend.categoria = null; // Envia null se a categoria não for selecionada
+    } else {
+      dataToSend.categoria = parseInt(dataToSend.categoria, 10); // Converte para inteiro
+    }
+
     try {
       if (editingProduct) {
-        await updateProduto(editingProduct.id, formData)
+        await updateProduto(editingProduct.id, dataToSend)
       } else {
-        await createProduto(formData)
+        await createProduto(dataToSend)
       }
 
       setShowModal(false)
@@ -170,9 +177,10 @@ function Produtos() {
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Nome *</label>
+                <label htmlFor="nome">Nome *</label>
                 <input
                   type="text"
+                  id="nome"
                   value={formData.nome}
                   onChange={(e) => setFormData({...formData, nome: e.target.value})}
                   required
@@ -182,9 +190,10 @@ function Produtos() {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Preço (R$) *</label>
+                  <label htmlFor="preco">Preço (R$) *</label>
                   <input
                     type="number"
+                    id="preco"
                     step="0.01"
                     value={formData.preco}
                     onChange={(e) => setFormData({...formData, preco: e.target.value})}
@@ -193,9 +202,10 @@ function Produtos() {
                 </div>
 
                 <div className="form-group">
-                  <label>Preço de Custo (R$)</label>
+                  <label htmlFor="preco_custo">Preço de Custo (R$)</label>
                   <input
                     type="number"
+                    id="preco_custo"
                     step="0.01"
                     value={formData.preco_custo}
                     onChange={(e) => setFormData({...formData, preco_custo: e.target.value})}
@@ -203,9 +213,10 @@ function Produtos() {
                 </div>
 
                 <div className="form-group">
-                  <label>Estoque *</label>
+                  <label htmlFor="estoque">Estoque *</label>
                   <input
                     type="number"
+                    id="estoque"
                     step="0.01"
                     value={formData.estoque}
                     onChange={(e) => setFormData({...formData, estoque: e.target.value})}
@@ -215,8 +226,9 @@ function Produtos() {
               </div>
 
               <div className="form-group">
-                <label>Categoria</label>
+                <label htmlFor="categoria">Categoria</label>
                 <select
+                  id="categoria"
                   value={formData.categoria}
                   onChange={(e) => setFormData({...formData, categoria: e.target.value})}
                 >
@@ -228,9 +240,10 @@ function Produtos() {
               </div>
 
               <div className="form-group">
-                <label>Código de Barras</label>
+                <label htmlFor="codigo_barras">Código de Barras</label>
                 <input
                   type="text"
+                  id="codigo_barras"
                   value={formData.codigo_barras}
                   onChange={(e) => setFormData({...formData, codigo_barras: e.target.value})}
                 />
