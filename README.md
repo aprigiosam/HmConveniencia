@@ -51,9 +51,30 @@ Acesse: http://localhost:5173
 
 ## 🌐 Deploy no Render (Gratuito)
 
-1. Crie conta no [Render](https://render.com)
-2. Conecte seu repositório GitHub
-3. Siga as instruções em `DEPLOY.md`
+### Backend (Web Service)
+1. Crie um **Web Service** no Render
+2. Conecte ao repositório GitHub
+3. Configure:
+   - **Build Command**: `cd backend && pip install -r requirements.txt`
+   - **Start Command**: `cd backend && gunicorn hmconveniencia.wsgi:application`
+   - **Root Directory**: deixe em branco
+4. Adicione as variáveis de ambiente:
+   - `DATABASE_URL`: (automático do Render PostgreSQL)
+   - `SECRET_KEY`: gere uma chave segura
+   - `ALLOWED_HOSTS`: `seu-app.onrender.com`
+   - `DEBUG`: `False`
+
+### Frontend (Static Site)
+1. Crie um **Static Site** no Render
+2. Conecte ao mesmo repositório GitHub
+3. Configure:
+   - **Build Command**: `cd frontend && npm install && npm run build`
+   - **Publish Directory**: `frontend/dist`
+   - **Root Directory**: deixe em branco
+4. **IMPORTANTE**: Adicione a variável de ambiente:
+   - `VITE_API_URL`: `https://seu-backend.onrender.com/api`
+
+> ⚠️ **Atenção**: O frontend PRECISA da variável `VITE_API_URL` configurada no Render apontando para a URL do backend, caso contrário o sistema não conseguirá se comunicar com a API.
 
 ## 📊 Banco de Dados
 
