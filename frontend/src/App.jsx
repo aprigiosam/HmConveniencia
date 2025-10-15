@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import { AppShell, Navbar, Header, Text, MediaQuery, Burger, Group, NavLink, Button, Menu } from '@mantine/core';
+import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Box } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle } from 'react-icons/fa';
 
@@ -42,7 +42,7 @@ function AppContent() {
   const location = useLocation();
 
   useEffect(() => {
-    localDB.init().then(() => console.log('IndexedDB inicializado'));
+    localDB.init();
     syncManager.init();
     return () => syncManager.stop();
   }, []);
@@ -64,53 +64,60 @@ function AppContent() {
 
   return (
     <AppShell
+      header={{ height: 60 }}
+      navbar={{
+        width: 300,
+        breakpoint: 'sm',
+        collapsed: { mobile: !opened },
+      }}
       padding="md"
-      navbarOffsetBreakpoint="sm"
-      asideOffsetBreakpoint="sm"
-      navbar={<Navbar p="md" hidden={!opened} width={{ sm: 200, lg: 300 }}>
+    >
+      <AppShell.Header>
+        <Group h="100%" px="md" justify="space-between">
+          <Group>
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+            <img src="/logo.jpeg" alt="HM Conveniência" style={{ height: '40px', borderRadius: '4px' }} />
+            <Text fw={500} size="lg" style={{ color: '#FF6B35' }}>HM Conveniência</Text>
+          </Group>
+          <Menu shadow="md" width={200}>
+            <Menu.Target>
+              <Button variant="subtle" color="gray"><FaUserCircle size={24} /></Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item leftSection={<FaSignOutAlt />} onClick={handleLogout}>Sair</Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+      </AppShell.Header>
+
+      <AppShell.Navbar p="md">
         {navLinks.map((link) => (
           <NavLink
             key={link.label}
             label={link.label}
-            icon={link.icon}
+            leftSection={link.icon}
             component={Link}
             to={link.path}
             active={location.pathname === link.path}
             onClick={toggle}
           />
         ))}
-      </Navbar>}
-      header={<Header height={{ base: 60, md: 70 }} p="md">
-        <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-          <MediaQuery largerThan="sm" styles={{ display: 'none' }}>
-            <Burger opened={opened} onClick={toggle} size="sm" mr="xl" />
-          </MediaQuery>
-          <Group position="apart" style={{ width: '100%' }}>
-            <Text weight={500} size="lg">HM Conveniência</Text>
-            <Menu shadow="md" width={200}>
-              <Menu.Target>
-                <Button variant="subtle" color="gray"><FaUserCircle size={24} /></Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item icon={<FaSignOutAlt />} onClick={handleLogout}>Sair</Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-        </div>
-      </Header>}
-    >
-      <SyncStatus />
-      <Routes>
-        <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-        <Route path="/pdv" element={<PrivateRoute><PDV /></PrivateRoute>} />
-        <Route path="/produtos" element={<PrivateRoute><Produtos /></PrivateRoute>} />
-        <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
-        <Route path="/contas-receber" element={<PrivateRoute><ContasReceber /></PrivateRoute>} />
-        <Route path="/caixa" element={<PrivateRoute><Caixa /></PrivateRoute>} />
-        <Route path="/caixa/historico" element={<PrivateRoute><HistoricoCaixa /></PrivateRoute>} />
-        <Route path="/relatorios/lucro" element={<PrivateRoute><RelatorioLucro /></PrivateRoute>} />
-        <Route path="/categorias" element={<PrivateRoute><Categorias /></PrivateRoute>} />
-      </Routes>
+      </AppShell.Navbar>
+
+      <AppShell.Main>
+        <SyncStatus />
+        <Routes>
+          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/pdv" element={<PrivateRoute><PDV /></PrivateRoute>} />
+          <Route path="/produtos" element={<PrivateRoute><Produtos /></PrivateRoute>} />
+          <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
+          <Route path="/contas-receber" element={<PrivateRoute><ContasReceber /></PrivateRoute>} />
+          <Route path="/caixa" element={<PrivateRoute><Caixa /></PrivateRoute>} />
+          <Route path="/caixa/historico" element={<PrivateRoute><HistoricoCaixa /></PrivateRoute>} />
+          <Route path="/relatorios/lucro" element={<PrivateRoute><RelatorioLucro /></PrivateRoute>} />
+          <Route path="/categorias" element={<PrivateRoute><Categorias /></PrivateRoute>} />
+        </Routes>
+      </AppShell.Main>
     </AppShell>
   );
 }

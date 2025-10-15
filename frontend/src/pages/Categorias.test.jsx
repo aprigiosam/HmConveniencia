@@ -1,6 +1,6 @@
-import { customRender as render, screen, fireEvent, waitFor } from '../setupTests.jsx';
+import { render, screen, waitFor } from '../setupTests.jsx';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
 import Categorias from './Categorias';
 import * as api from '../services/api';
 
@@ -8,10 +8,6 @@ const mockCategorias = [
   { id: 1, nome: 'Eletrônicos', ativo: true, created_at: new Date().toISOString() },
   { id: 2, nome: 'Alimentos', ativo: false, created_at: new Date().toISOString() },
 ];
-
-const renderWithRouter = (ui) => {
-  return render(ui, { wrapper: BrowserRouter });
-};
 
 describe('Categorias Component', () => {
   beforeEach(() => {
@@ -28,19 +24,20 @@ describe('Categorias Component', () => {
       data: { id: 3, nome: 'Bebidas', ativo: true, created_at: new Date().toISOString() },
     });
 
-    renderWithRouter(<Categorias />);
+    render(<Categorias />);
 
     expect(await screen.findByText('Eletrônicos')).toBeInTheDocument();
     expect(screen.getByText('Alimentos')).toBeInTheDocument();
 
     const newCategoryButton = screen.getByRole('button', { name: /Nova Categoria/i });
-    fireEvent.click(newCategoryButton);
+    await userEvent.click(newCategoryButton);
+    await screen.findByRole('dialog'); // Wait for the modal to appear
 
     const nomeInput = screen.getByLabelText('Nome');
     const salvarButton = screen.getByRole('button', { name: /Criar/i });
 
-    fireEvent.change(nomeInput, { target: { value: 'Bebidas' } });
-    fireEvent.click(salvarButton);
+    await userEvent.type(nomeInput, 'Bebidas');
+    await userEvent.click(salvarButton);
 
     await waitFor(() => {
       expect(createCategoriaMock).toHaveBeenCalledWith({ nome: 'Bebidas', ativo: true });
@@ -56,26 +53,21 @@ describe('Categorias Component', () => {
   it('deve permitir editar uma categoria existente', async () => {
     const getCategoriasMock = vi.spyOn(api, 'getCategorias')
       .mockResolvedValueOnce({ data: { results: mockCategorias } })
-      .mockResolvedValueOnce({ data: { results: [{ id: 1, nome: 'Eletrônicos Atualizados', ativo: false, created_at: new Date().toISOString() }, mockCategorias[1]] } });
-
-    const updateCategoriaMock = vi.spyOn(api, 'updateCategoria').mockResolvedValue({
-      data: { id: 1, nome: 'Eletrônicos Atualizados', ativo: false, created_at: new Date().toISOString() },
-    });
-
-    renderWithRouter(<Categorias />);
+    render(<Categorias />);
 
     expect(await screen.findByText('Eletrônicos')).toBeInTheDocument();
 
     const editButtons = screen.getAllByLabelText('Editar');
-    fireEvent.click(editButtons[0]);
+    await userEvent.click(editButtons[0]);
+    await screen.findByRole('dialog'); // Wait for the modal to appear
 
     const nomeInput = screen.getByLabelText('Nome');
     const ativoSwitch = screen.getByLabelText('Ativo');
     const salvarButton = screen.getByRole('button', { name: /Salvar/i });
 
-    fireEvent.change(nomeInput, { target: { value: 'Eletrônicos Atualizados' } });
-    fireEvent.click(ativoSwitch); // Desativa
-    fireEvent.click(salvarButton);
+    await userEvent.type(nomeInput, 'Eletrônicos Atualizados');
+    await userEvent.click(ativoSwitch); // Desativa
+    await userEvent.click(salvarButton);
 
     await waitFor(() => {
       expect(updateCategoriaMock).toHaveBeenCalledWith(1, { nome: 'Eletrônicos Atualizados', ativo: false });
@@ -96,12 +88,12 @@ describe('Categorias Component', () => {
 
     const deleteCategoriaMock = vi.spyOn(api, 'deleteCategoria').mockResolvedValue({});
 
-    renderWithRouter(<Categorias />);
+    render(<Categorias />);
 
     expect(await screen.findByText('Eletrônicos')).toBeInTheDocument();
 
     const deleteButtons = screen.getAllByLabelText('Excluir');
-    fireEvent.click(deleteButtons[0]);
+    await userEvent.click(deleteButtons[0]);
 
     expect(window.confirm).toHaveBeenCalledWith('Tem certeza que deseja excluir esta categoria?');
 

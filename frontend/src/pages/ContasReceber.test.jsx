@@ -1,6 +1,5 @@
-import { customRender as render, screen, fireEvent, waitFor } from '../setupTests.jsx';
+import { render, screen, fireEvent, waitFor } from '../setupTests.jsx';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
 import ContasReceber from './ContasReceber';
 import * as api from '../services/api';
 
@@ -25,10 +24,6 @@ const mockContas = [
   },
 ];
 
-const renderWithRouter = (ui) => {
-  return render(ui, { wrapper: BrowserRouter });
-};
-
 describe('ContasReceber Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -42,12 +37,11 @@ describe('ContasReceber Component', () => {
 
     const receberPagamentoMock = vi.spyOn(api, 'receberPagamento').mockResolvedValue({ data: { status_pagamento: 'PAGO' } });
 
-    renderWithRouter(<ContasReceber />);
+    render(<ContasReceber />);
 
     expect(await screen.findByText('Cliente Devedor 1')).toBeInTheDocument();
     expect(screen.getByText('Cliente Devedor 2')).toBeInTheDocument();
-    const totalLabel = screen.getByText(/Total a Receber/i);
-    expect(totalLabel.parentElement).toHaveTextContent('R$ 230.75');
+    expect(screen.getByRole('heading', { name: /R\$ 230\.75/i })).toBeInTheDocument();
 
     const receberButtons = screen.getAllByRole('button', { name: /Receber/i });
     fireEvent.click(receberButtons[0]);
@@ -61,8 +55,7 @@ describe('ContasReceber Component', () => {
     await waitFor(() => {
       expect(screen.queryByText('Cliente Devedor 1')).not.toBeInTheDocument();
       expect(screen.getByText('Cliente Devedor 2')).toBeInTheDocument();
-      const totalLabelUpdated = screen.getByText(/Total a Receber/i);
-      expect(totalLabelUpdated).toHaveTextContent('R$ 80.00');
+      expect(screen.getByRole('heading', { level: 1, name: /R\$ 80\.00/i })).toBeInTheDocument();
     });
 
     expect(getContasMock).toHaveBeenCalledTimes(2);

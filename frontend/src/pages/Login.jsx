@@ -30,8 +30,11 @@ function Login() {
 
   return (
     <Container size={420} my={40} style={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
-      <Paper withBorder shadow="md" p={30} mt={30} radius="md">
-        <Title align="center" order={2} style={{fontFamily: `Greycliff CF, sans-serif`}}>
+      <Paper withBorder shadow="md" p={30} mt={30} radius="md" style={{ width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+          <img src="/logo.jpeg" alt="HM Conveniência" style={{ height: '100px', borderRadius: '8px' }} />
+        </div>
+        <Title align="center" order={2} style={{ fontFamily: 'Greycliff CF, sans-serif', color: '#FF6B35' }}>
           HM Conveniência
         </Title>
         <Text color="dimmed" size="sm" align="center" mt={5}>

@@ -1,6 +1,6 @@
-import { customRender as render, screen, fireEvent, waitFor, within } from '../setupTests.jsx';
+import { render, screen, waitFor, within } from '../setupTests.jsx';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
 import Produtos from './Produtos';
 import * as api from '../services/api';
 
@@ -13,10 +13,6 @@ const mockCategorias = [
   { id: 1, nome: 'Eletrônicos', ativo: true },
   { id: 2, nome: 'Alimentos', ativo: true },
 ];
-
-const renderWithRouter = (ui) => {
-  return render(ui, { wrapper: ({ children }) => <BrowserRouter>{children}</BrowserRouter> });
-};
 
 describe('Produtos Component', () => {
   beforeEach(() => {
@@ -40,12 +36,13 @@ describe('Produtos Component', () => {
 
     const createProdutoMock = vi.spyOn(api, 'createProduto').mockResolvedValue({ data: { id: 3, ...mockProdutos[0] } });
 
-    renderWithRouter(<Produtos />);
+    render(<Produtos />);
 
     expect(await screen.findByText('Produto A')).toBeInTheDocument();
 
     const newProductButton = screen.getByRole('button', { name: /Novo Produto/i });
-    fireEvent.click(newProductButton);
+    await userEvent.click(newProductButton);
+    await screen.findByRole('dialog'); // Wait for the modal to appear
 
     const nomeInput = screen.getByLabelText('Nome');
     const precoInput = screen.getByLabelText('Preço');
@@ -53,12 +50,12 @@ describe('Produtos Component', () => {
     const categoriaSelect = screen.getByLabelText('Categoria');
     const salvarButton = screen.getByRole('button', { name: /Criar/i });
 
-    fireEvent.change(nomeInput, { target: { value: 'Produto C' } });
-    fireEvent.change(precoInput, { target: { value: '15.00' } });
-    fireEvent.change(estoqueInput, { target: { value: '20' } });
-    fireEvent.change(categoriaSelect, { target: { value: mockCategorias[0].id.toString() } });
+    await userEvent.type(nomeInput, 'Produto C');
+    await userEvent.type(precoInput, '15.00');
+    await userEvent.type(estoqueInput, '20');
+    await userEvent.selectOptions(categoriaSelect, mockCategorias[0].id.toString());
 
-    fireEvent.click(salvarButton);
+    await userEvent.click(salvarButton);
 
     await waitFor(() => {
       expect(createProdutoMock).toHaveBeenCalledWith({
@@ -84,25 +81,22 @@ describe('Produtos Component', () => {
 
     const getCategoriasMock = vi.spyOn(api, 'getCategorias')
       .mockResolvedValueOnce({ data: { results: mockCategorias } })
-      .mockResolvedValueOnce({ data: { results: mockCategorias } });
-
-    const updateProdutoMock = vi.spyOn(api, 'updateProduto').mockResolvedValue({ data: { id: 1, ...mockProdutos[0] } });
-
-    renderWithRouter(<Produtos />);
+    render(<Produtos />);
 
     expect(await screen.findByText('Produto A')).toBeInTheDocument();
 
     const editButtons = screen.getAllByLabelText('Editar');
-    fireEvent.click(editButtons[0]);
+    await userEvent.click(editButtons[0]);
+    await screen.findByRole('dialog'); // Wait for the modal to appear
 
     const nomeInput = screen.getByLabelText('Nome');
     const categoriaSelect = screen.getByLabelText('Categoria');
     const salvarButton = screen.getByRole('button', { name: /Salvar/i });
 
-    fireEvent.change(nomeInput, { target: { value: 'Produto A Editado' } });
-    fireEvent.change(categoriaSelect, { target: { value: mockCategorias[1].id.toString() } });
+    await userEvent.type(nomeInput, 'Produto A Editado');
+    await userEvent.selectOptions(categoriaSelect, mockCategorias[1].id.toString());
 
-    fireEvent.click(salvarButton);
+    await userEvent.click(salvarButton);
 
     await waitFor(() => {
       expect(updateProdutoMock).toHaveBeenCalledWith(1, {
@@ -134,12 +128,12 @@ describe('Produtos Component', () => {
 
     const deleteProdutoMock = vi.spyOn(api, 'deleteProduto').mockResolvedValue({});
 
-    renderWithRouter(<Produtos />);
+    render(<Produtos />);
 
     expect(await screen.findByText('Produto A')).toBeInTheDocument();
 
     const deleteButtons = screen.getAllByLabelText('Excluir');
-    fireEvent.click(deleteButtons[0]);
+    await userEvent.click(deleteButtons[0]);
 
     expect(window.confirm).toHaveBeenCalledWith('Tem certeza que deseja excluir este produto?');
 

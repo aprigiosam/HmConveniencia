@@ -1,14 +1,35 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { MantineProvider } from '@mantine/core';
+import { MantineProvider, createTheme } from '@mantine/core';
 import App from './App';
 
 // Importar estilos do Mantine
 import '@mantine/core/styles.css';
 
+// Tema customizado com as cores do HM Conveniência
+const theme = createTheme({
+  primaryColor: 'orange',
+  colors: {
+    orange: [
+      '#FFF5F0',
+      '#FFE8DB',
+      '#FFD6C1',
+      '#FFC4A7',
+      '#FFB28D',
+      '#FF6B35', // Cor principal do logo
+      '#E65F2E',
+      '#CC5327',
+      '#B34720',
+      '#993B19',
+    ],
+  },
+  defaultRadius: 'md',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+});
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <MantineProvider withGlobalStyles withNormalizeCSS theme={{ colorScheme: 'light' }}>
+    <MantineProvider theme={theme}>
       <App />
     </MantineProvider>
   </React.StrictMode>,
@@ -19,11 +40,8 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')
-      .then((registration) => {
-        console.log('Service Worker registrado com sucesso:', registration.scope);
-      })
-      .catch((error) => {
-        console.error('Falha ao registrar Service Worker:', error);
+      .catch(() => {
+        // Service Worker registration failed, app will still work without offline support
       });
   });
 }

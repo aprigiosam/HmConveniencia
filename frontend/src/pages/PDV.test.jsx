@@ -1,6 +1,5 @@
-import { customRender as render, screen, fireEvent, waitFor } from '../setupTests.jsx';
+import { render, screen, fireEvent, waitFor } from '../setupTests.jsx';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
 import PDV from './PDV';
 import * as api from '../services/api';
 import { localDB } from '../utils/db';
@@ -26,10 +25,6 @@ const mockClientes = [
 ];
 
 // Wrapper para componentes que usam react-router
-const renderWithRouter = (ui) => {
-  return render(ui, { wrapper: BrowserRouter });
-};
-
 describe('PDV Component', () => {
   beforeEach(() => {
     // Limpa os mocks antes de cada teste
@@ -42,7 +37,7 @@ describe('PDV Component', () => {
   });
 
   it('deve adicionar um produto ao carrinho e finalizar uma venda em dinheiro', async () => {
-    renderWithRouter(<PDV />);
+    render(<PDV />);
 
     // 1. Espera o componente carregar
     const buscaInput = await screen.findByPlaceholderText('Buscar produto por nome ou código...');
@@ -58,7 +53,7 @@ describe('PDV Component', () => {
     // 4. Verifica se o item está no carrinho
     expect(await screen.findByText('Carrinho')).toBeInTheDocument();
     expect(screen.getByText('Coca-Cola 2L')).toBeInTheDocument();
-    expect(screen.getByText('R$ 8.50')).toBeInTheDocument();
+    expect(screen.getAllByText('R$ 8.50')[0]).toBeInTheDocument();
 
     // 5. Finaliza a venda
     const finalizarButton = screen.getByRole('button', { name: /Finalizar Venda/i });

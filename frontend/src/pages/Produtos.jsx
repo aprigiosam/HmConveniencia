@@ -88,8 +88,8 @@ function Produtos() {
       <td>{produto.categoria_nome || 'Sem categoria'}</td>
       <td>
         <Group spacing="xs" noWrap>
-          <ActionIcon color="blue" onClick={() => handleOpenModal(produto)}><FaEdit /></ActionIcon>
-          <ActionIcon color="red" onClick={() => handleDelete(produto.id)}><FaTrash /></ActionIcon>
+          <ActionIcon color="blue" aria-label="Editar" onClick={() => handleOpenModal(produto)}><FaEdit /></ActionIcon>
+          <ActionIcon color="red" aria-label="Excluir" onClick={() => handleDelete(produto.id)}><FaTrash /></ActionIcon>
         </Group>
       </td>
     </tr>

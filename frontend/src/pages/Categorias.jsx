@@ -82,8 +82,8 @@ function Categorias() {
       </td>
       <td>
         <Group spacing="xs" noWrap>
-          <ActionIcon color="blue" onClick={() => handleOpenModal(categoria)}><FaEdit /></ActionIcon>
-          <ActionIcon color="red" onClick={() => handleDelete(categoria.id)}><FaTrash /></ActionIcon>
+          <ActionIcon color="blue" aria-label="Editar" onClick={() => handleOpenModal(categoria)}><FaEdit /></ActionIcon>
+          <ActionIcon color="red" aria-label="Excluir" onClick={() => handleDelete(categoria.id)}><FaTrash /></ActionIcon>
         </Group>
       </td>
     </tr>

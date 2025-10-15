@@ -1,6 +1,10 @@
 import { localDB } from './db'
 import { createVenda } from '../services/api'
 
+// Helper para logging condicional (apenas em desenvolvimento)
+const isDev = import.meta.env.DEV
+const log = (...args) => isDev && console.log(...args)
+
 class SyncManager {
   constructor() {
     this.isSyncing = false
@@ -10,11 +14,11 @@ class SyncManager {
 
   // Inicializar sincronização automática
   init() {
-    console.log('[SyncManager] Inicializando...')
+    log('[SyncManager] Inicializando...')
 
     // Sincroniza quando ficar online
     window.addEventListener('online', () => {
-      console.log('[SyncManager] Conexão restaurada, sincronizando...')
+      log('[SyncManager] Conexão restaurada, sincronizando...')
       this.syncAll()
     })
 
@@ -53,12 +57,12 @@ class SyncManager {
   // Sincronizar todas as vendas pendentes
   async syncAll() {
     if (this.isSyncing) {
-      console.log('[SyncManager] Já está sincronizando...')
+      log('[SyncManager] Já está sincronizando...')
       return
     }
 
     if (!navigator.onLine) {
-      console.log('[SyncManager] Offline, aguardando conexão...')
+      log('[SyncManager] Offline, aguardando conexão...')
       return
     }
 
@@ -68,12 +72,12 @@ class SyncManager {
       const vendasPendentes = await localDB.getVendasPendentes()
 
       if (vendasPendentes.length === 0) {
-        console.log('[SyncManager] Nenhuma venda pendente')
+        log('[SyncManager] Nenhuma venda pendente')
         this.isSyncing = false
         return
       }
 
-      console.log(`[SyncManager] Sincronizando ${vendasPendentes.length} venda(s)...`)
+      log(`[SyncManager] Sincronizando ${vendasPendentes.length} venda(s)...`)
 
       let syncedCount = 0
       let failedCount = 0
@@ -90,7 +94,7 @@ class SyncManager {
           await localDB.deleteVendaSynced(id)
 
           syncedCount++
-          console.log(`[SyncManager] Venda ${id} sincronizada com sucesso`)
+          log(`[SyncManager] Venda ${id} sincronizada com sucesso`)
 
           // Notifica listeners
           this.notifyListeners({
@@ -111,7 +115,7 @@ class SyncManager {
         }
       }
 
-      console.log(`[SyncManager] Sincronização concluída: ${syncedCount} sucesso, ${failedCount} falhas`)
+      log(`[SyncManager] Sincronização concluída: ${syncedCount} sucesso, ${failedCount} falhas`)
 
       // Notifica conclusão
       this.notifyListeners({
