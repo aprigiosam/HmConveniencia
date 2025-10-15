@@ -1,246 +1,152 @@
-# 🚀 Guia de Deploy para Produção - Comércio Pro
+# Deploy no Render (Gratuito)
 
-## ✅ Checklist Pré-Deploy
+Este guia mostra como fazer deploy do HMConveniencia no Render gratuitamente.
 
-### 1. Preparação do Ambiente
-- [ ] Servidor Linux configurado (Ubuntu 20.04+ recomendado)
-- [ ] Docker e Docker Compose instalados
-- [ ] Domínio configurado apontando para o servidor
-- [ ] Certificado SSL configurado (Let's Encrypt recomendado)
-- [ ] Firewall configurado (portas 80, 443, 22)
+## Pré-requisitos
 
-### 2. Configuração de Variáveis
-- [ ] Arquivo `.env.prod` criado e configurado
-- [ ] Chaves secretas geradas
-- [ ] Senhas seguras definidas
-- [ ] URLs de produção configuradas
+1. Conta no [Render](https://render.com) (gratuito)
+2. Conta no [GitHub](https://github.com)
+3. Código no GitHub
 
-## 🔧 Passos para Deploy
+## Passo 1: Preparar o Repositório
 
-### 1. Clonar o Repositório
+1. Faça commit de todo o código:
 ```bash
-git clone [URL_DO_REPOSITORIO]
-cd comercio-pro
+git add .
+git commit -m "Preparar para deploy no Render"
+git push origin main
 ```
 
-### 2. Configurar Variáveis de Ambiente
-```bash
-# Copiar template
-cp .env.example .env
+## Passo 2: Criar Banco PostgreSQL no Render
 
-# Editar configurações (IMPORTANTE!)
-nano .env
+1. Acesse [Render Dashboard](https://dashboard.render.com/)
+2. Clique em **"New +"** → **"PostgreSQL"**
+3. Configure:
+   - **Name**: `hmconveniencia-db`
+   - **Database**: `hmconveniencia`
+   - **User**: `hmconv_user`
+   - **Region**: escolha a mais próxima
+   - **Plan**: **Free**
+4. Clique em **"Create Database"**
+5. **Copie o "Internal Database URL"** (vamos usar depois)
+
+## Passo 3: Criar Web Service (Backend)
+
+1. Clique em **"New +"** → **"Web Service"**
+2. Conecte seu repositório GitHub
+3. Configure:
+   - **Name**: `hmconveniencia-api`
+   - **Region**: mesma do banco
+   - **Branch**: `main`
+   - **Root Directory**: `backend`
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
+   - **Start Command**: `gunicorn hmconveniencia.wsgi:application --bind 0.0.0.0:$PORT`
+   - **Plan**: **Free**
+
+4. **Environment Variables** (clique em "Advanced"):
+   ```
+   SECRET_KEY=<gere uma chave aleatória>
+   DEBUG=False
+   ALLOWED_HOSTS=hmconveniencia-api.onrender.com
+   DATABASE_URL=<cole o Internal Database URL do passo 2>
+   CORS_ALLOWED_ORIGINS=https://hmconveniencia.onrender.com
+   ```
+
+   Para gerar SECRET_KEY:
+   ```bash
+   python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+   ```
+
+5. Clique em **"Create Web Service"**
+
+## Passo 4: Criar Static Site (Frontend)
+
+1. Clique em **"New +"** → **"Static Site"**
+2. Conecte seu repositório GitHub
+3. Configure:
+   - **Name**: `hmconveniencia`
+   - **Branch**: `main`
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `dist`
+
+4. **Environment Variables**:
+   ```
+   VITE_API_URL=https://hmconveniencia-api.onrender.com/api
+   ```
+
+5. Clique em **"Create Static Site"**
+
+## Passo 5: Criar Superusuário
+
+Após o backend estar no ar:
+
+1. Acesse o Shell do backend no Render
+2. Execute:
+```python
+from django.contrib.auth import get_user_model
+User = get_user_model()
+User.objects.create_superuser('admin', 'admin@hmconv.com', 'SenhaSegura123!')
 ```
 
-**Variáveis obrigatórias em `.env`:**
-```env
-POSTGRES_PASSWORD=SuaSenhaSeguraAqui123!
-SECRET_KEY=sua-chave-django-de-50-caracteres-super-secreta-aqui
-ALLOWED_HOSTS=seu-dominio.com,www.seu-dominio.com
-CSRF_TRUSTED_ORIGINS=https://seu-dominio.com,https://www.seu-dominio.com
-VITE_API_URL=https://seu-dominio.com/api/v1
+## Passo 6: Popular com Dados Iniciais (Opcional)
+
+No shell do backend:
+```python
+from core.models import Produto
+from decimal import Decimal
+
+produtos = [
+    {'nome': 'Coca-Cola 2L', 'preco': Decimal('8.50'), 'estoque': Decimal('50')},
+    {'nome': 'Pão Francês (kg)', 'preco': Decimal('12.00'), 'estoque': Decimal('20')},
+    {'nome': 'Leite 1L', 'preco': Decimal('5.50'), 'estoque': Decimal('30')},
+]
+
+for p in produtos:
+    Produto.objects.create(**p)
 ```
 
-### 3. Configurar SSL (Opcional mas Recomendado)
-```bash
-# Criar diretório SSL
-mkdir -p nginx/ssl
+## Acessar o Sistema
 
-# Colocar certificados (cert.pem e key.pem) em nginx/ssl/
-# Descomentar configuração HTTPS no nginx/nginx.conf
-```
+- **Frontend**: https://hmconveniencia.onrender.com
+- **Admin**: https://hmconveniencia-api.onrender.com/admin
+- **API**: https://hmconveniencia-api.onrender.com/api/
 
-### 4. Deploy
-```bash
-# Deploy completo de produção
-docker compose up --profile prod -d --build
+## Limitações do Plano Gratuito
 
-# Aplicar migrações
-docker compose exec backend python manage.py migrate
+- ⚠️ **Backend dorme após 15min de inatividade** (primeira requisição pode demorar ~30s)
+- ⚠️ **750 horas/mês** (suficiente para 1 serviço 24/7)
+- ⚠️ **Banco PostgreSQL: 1GB**
+- ✅ **SSL/HTTPS automático**
+- ✅ **Deploys automáticos via Git**
 
-# Coletar arquivos estáticos
-docker compose exec backend python manage.py collectstatic --noinput
+## Dicas
 
-# Criar superusuário
-docker compose exec backend python manage.py createsuperuser
-```
+- Para produção real, considere planos pagos (a partir de $7/mês)
+- Faça backups regulares do banco
+- Configure domínio personalizado (gratuito)
+- Monitore uso no dashboard do Render
 
-### 5. Verificar Deploy
-```bash
-# Verificar status dos serviços
-docker compose ps
+## Troubleshooting
 
-# Ver logs
-docker compose logs -f
+### Backend não inicia
+- Verifique logs no Render Dashboard
+- Confira se todas as variáveis de ambiente estão corretas
+- Verifique se DATABASE_URL está correto
 
-# Verificar saúde da aplicação
-curl http://seu-dominio.com/health
-```
+### Frontend não conecta no backend
+- Confira VITE_API_URL no frontend
+- Confira CORS_ALLOWED_ORIGINS no backend
+- Verifique se o backend está no ar
 
-## 🔍 Comandos Úteis de Produção
+### Banco de dados vazio
+- Execute as migrations manualmente no Shell
+- Crie o superusuário via Shell
+- Popule produtos iniciais
 
-```bash
-# Parar ambiente
-docker compose down
+## Suporte
 
-# Ver logs específicos
-docker compose logs backend
-docker compose logs frontend
-docker compose logs nginx
-
-# Ver logs em tempo real
-docker compose logs -f backend
-
-# Executar comando no backend
-docker compose exec backend python manage.py shell
-
-# Backup do banco
-docker compose exec db pg_dump -U comercio_user comercio_db | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
-
-# Restaurar backup
-gunzip < backup_file.sql.gz | docker compose exec -T db psql -U comercio_user comercio_db
-
-# Reiniciar serviço específico
-docker compose restart backend
-docker compose restart nginx
-```
-
-## 🛡️ Segurança Implementada
-
-### Configurações de Segurança
-- ✅ DEBUG=False em produção
-- ✅ Chaves secretas seguras
-- ✅ HTTPS com certificados SSL
-- ✅ Headers de segurança (HSTS, CSP, X-Frame-Options)
-- ✅ Rate limiting nas APIs
-- ✅ Nginx como proxy reverso
-- ✅ Separação de redes Docker
-- ✅ Volumes persistentes para dados
-
-### Headers de Segurança Configurados
-- `Strict-Transport-Security`
-- `Content-Security-Policy`
-- `X-Frame-Options: DENY`
-- `X-Content-Type-Options: nosniff`
-- `X-XSS-Protection`
-- `Referrer-Policy`
-
-## 📊 Monitoramento
-
-### Logs
-```bash
-# Logs gerais
-docker compose logs
-
-# Logs com filtro
-docker compose logs --tail=100 -f backend
-
-# Logs de erro do Nginx
-docker compose exec nginx tail -f /var/log/nginx/error.log
-```
-
-### Health Checks
-- **Frontend**: `http://seu-dominio.com/health`
-- **Backend API**: `http://seu-dominio.com/api/v1/health/`
-- **Admin Django**: `http://seu-dominio.com/admin/`
-- **Documentação API**: `http://seu-dominio.com/docs/`
-
-## 🔄 Atualizações
-
-### Atualizar Aplicação
-```bash
-# Fazer backup
-docker compose exec db pg_dump -U comercio_user comercio_db | gzip > backup_antes_update.sql.gz
-
-# Atualizar código
-git pull origin main
-
-# Rebuild e redeploy
-docker compose up --profile prod -d --build
-
-# Aplicar migrações
-docker compose exec backend python manage.py migrate
-
-# Coletar estáticos
-docker compose exec backend python manage.py collectstatic --noinput
-
-# Verificar funcionamento
-docker compose ps
-```
-
-### Rollback em Caso de Problema
-```bash
-# Voltar para versão anterior
-git checkout [COMMIT_ANTERIOR]
-docker compose up --profile prod -d --build
-
-# Ou restaurar backup do banco
-gunzip < backup_antes_update.sql.gz | docker compose exec -T db psql -U comercio_user comercio_db
-```
-
-## 🚨 Troubleshooting
-
-### Problema: Serviços não sobem
-```bash
-# Verificar logs
-docker compose logs
-
-# Verificar configuração
-cat .env
-
-# Verificar portas em uso
-netstat -tulpn | grep :80
-netstat -tulpn | grep :443
-```
-
-### Problema: Erro de conexão com banco
-```bash
-# Verificar se PostgreSQL está rodando
-docker compose ps
-
-# Verificar conectividade
-docker compose exec backend python manage.py dbshell
-```
-
-### Problema: Frontend não carrega
-```bash
-# Verificar se build foi feito (produção)
-docker compose exec frontend-prod ls /usr/share/nginx/html
-
-# Verificar configuração do Nginx
-docker compose exec nginx nginx -t
-
-# Recarregar Nginx
-docker compose exec nginx nginx -s reload
-```
-
-## 📞 Suporte
-
-### Informações do Sistema
-- **Linguagem Backend**: Python/Django 5.2.6
-- **Frontend**: React 18 + TypeScript + Vite
-- **Banco de Dados**: PostgreSQL 15
-- **Cache**: Redis 7
-- **Proxy**: Nginx
-- **Containerização**: Docker + Docker Compose
-
-### Contatos
-- Documentação completa: Ver README.md
-- Issues: [LINK_DO_REPOSITORIO]/issues
-
----
-
-## ⚠️ IMPORTANTE
-
-**Antes de fazer deploy em produção:**
-1. ✅ Teste todo o fluxo em ambiente de staging
-2. ✅ Configure backup automático do banco de dados
-3. ✅ Configure monitoramento (uptime, logs, métricas)
-4. ✅ Documente as configurações específicas do seu ambiente
-5. ✅ Treine a equipe nos procedimentos de manutenção
-
-**Nunca faça deploy em produção sem:**
-- Configurar senhas seguras
-- Configurar domínio e SSL
-- Testar backup e restore
-- Definir procedimentos de emergência
+Em caso de problemas, consulte:
+- [Render Docs](https://render.com/docs)
+- [Django Deployment Checklist](https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/)

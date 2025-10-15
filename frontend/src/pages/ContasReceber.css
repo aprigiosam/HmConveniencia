@@ -1,0 +1,62 @@
+.contas-receber-page h2 {
+  margin: 0;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.total-box {
+  background: #007bff;
+  color: white;
+  padding: 15px 25px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.total-box span {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.total-box strong {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.row-vencida {
+  background: #fff3cd !important;
+}
+
+.badge-vencida {
+  background: #dc3545;
+  color: white;
+}
+
+.badge-pendente {
+  background: #ffc107;
+  color: #333;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+
+  .total-box {
+    width: 100%;
+  }
+}

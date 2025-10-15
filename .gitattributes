@@ -1,6 +1,0 @@
-* text=auto eol=lf
-
-# exceções que precisam de CRLF no Windows
-*.bat text eol=crlf
-*.cmd text eol=crlf
-*.ps1 text eol=crlf

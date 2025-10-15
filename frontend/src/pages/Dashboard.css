@@ -1,0 +1,73 @@
+.dashboard h2 {
+  margin-bottom: 25px;
+  color: #333;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.stat-icon {
+  font-size: 48px;
+}
+
+.stat-content h3 {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #007bff;
+  margin: 0;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #999;
+}
+
+.loading {
+  text-align: center;
+  padding: 50px;
+  font-size: 18px;
+  color: #666;
+}
+
+.badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-finalizada {
+  background: #d4edda;
+  color: #155724;
+}
+
+.badge-aberta {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.badge-cancelada {
+  background: #f8d7da;
+  color: #721c24;
+}
