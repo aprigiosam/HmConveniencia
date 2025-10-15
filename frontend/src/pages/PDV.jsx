@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getProdutos, createVenda, getClientes } from '../services/api'
+import { localDB } from '../utils/db'
+import { syncManager } from '../utils/syncManager'
 import './PDV.css'
 
 function PDV() {
@@ -20,20 +22,54 @@ function PDV() {
 
   const loadProdutos = async () => {
     try {
+      // Tenta buscar do servidor
       const response = await getProdutos({ ativo: true })
-      setProdutos(response.data.results || response.data)
+      const produtosData = response.data.results || response.data
+      setProdutos(produtosData)
+
+      // Cacheia para uso offline
+      await localDB.cacheProdutos(produtosData)
     } catch (error) {
       console.error('Erro ao carregar produtos:', error)
-      alert('Erro ao carregar produtos')
+
+      // Se offline, usa cache local
+      try {
+        const cachedProdutos = await localDB.getCachedProdutos()
+        if (cachedProdutos.length > 0) {
+          setProdutos(cachedProdutos)
+          console.log('Produtos carregados do cache local')
+        } else {
+          alert('Erro ao carregar produtos e sem dados em cache')
+        }
+      } catch (cacheError) {
+        console.error('Erro ao carregar cache:', cacheError)
+        alert('Erro ao carregar produtos')
+      }
     }
   }
 
   const loadClientes = async () => {
     try {
+      // Tenta buscar do servidor
       const response = await getClientes({ ativo: true })
-      setClientes(response.data.results || response.data)
+      const clientesData = response.data.results || response.data
+      setClientes(clientesData)
+
+      // Cacheia para uso offline
+      await localDB.cacheClientes(clientesData)
     } catch (error) {
       console.error('Erro ao carregar clientes:', error)
+
+      // Se offline, usa cache local
+      try {
+        const cachedClientes = await localDB.getCachedClientes()
+        if (cachedClientes.length > 0) {
+          setClientes(cachedClientes)
+          console.log('Clientes carregados do cache local')
+        }
+      } catch (cacheError) {
+        console.error('Erro ao carregar cache de clientes:', cacheError)
+      }
     }
   }
 
@@ -124,21 +160,36 @@ function PDV() {
         vendaData.data_vencimento = dataVencimento
       }
 
-      await createVenda(vendaData)
+      // ESTRATÉGIA OFFLINE-FIRST:
+      // Tenta enviar direto para o servidor
+      try {
+        await createVenda(vendaData)
+        // Sucesso! Venda enviada imediatamente
+        alert('✓ Venda registrada com sucesso!')
+      } catch (networkError) {
+        // Se falhou, salva localmente para sincronização posterior
+        console.log('Servidor indisponível, salvando localmente...', networkError)
 
-      alert('Venda finalizada com sucesso!')
+        await localDB.saveVendaPendente(vendaData)
+
+        // Tenta sincronizar em background
+        setTimeout(() => syncManager.syncAll(), 1000)
+
+        alert('✓ Venda salva! Será sincronizada automaticamente quando online.')
+      }
+
+      // Limpa o formulário independentemente
       setCarrinho([])
       setBusca('')
       setClienteId('')
       setDataVencimento('')
-      loadProdutos() // Atualiza o estoque
+
+      // Tenta recarregar produtos (não crítico se falhar)
+      loadProdutos().catch(() => {})
+
     } catch (error) {
       console.error('Erro ao finalizar venda:', error)
-      const errorMsg = error.response?.data?.detail ||
-        error.response?.data?.itens?.[0] ||
-        error.response?.data?.cliente_id?.[0] ||
-        'Erro ao finalizar venda'
-      alert(errorMsg)
+      alert('Erro ao processar venda. Tente novamente.')
     } finally {
       setLoading(false)
     }

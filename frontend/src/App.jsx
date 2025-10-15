@@ -1,12 +1,30 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import PDV from './pages/PDV'
 import Produtos from './pages/Produtos'
 import Clientes from './pages/Clientes'
 import ContasReceber from './pages/ContasReceber'
+import SyncStatus from './components/SyncStatus'
+import { localDB } from './utils/db'
+import { syncManager } from './utils/syncManager'
 import './App.css'
 
 function App() {
+  useEffect(() => {
+    // Inicializa o banco local
+    localDB.init().then(() => {
+      console.log('IndexedDB inicializado')
+    })
+
+    // Inicializa o gerenciador de sincronização
+    syncManager.init()
+
+    return () => {
+      syncManager.stop()
+    }
+  }, [])
+
   return (
     <BrowserRouter>
       <div className="app">
@@ -22,6 +40,8 @@ function App() {
             </div>
           </div>
         </nav>
+
+        <SyncStatus />
 
         <main className="container">
           <Routes>
