@@ -1,6 +1,7 @@
 """
 Views da API - HMConveniencia
 """
+from django.core.management import call_command
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,15 +9,45 @@ from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
-from .models import Cliente, Produto, Venda, Caixa, MovimentacaoCaixa
+from .models import Cliente, Produto, Venda, Caixa, MovimentacaoCaixa, Categoria
 from .serializers import (
     ClienteSerializer,
     ProdutoSerializer,
     VendaSerializer,
     VendaCreateSerializer,
     CaixaSerializer,
-    MovimentacaoCaixaSerializer
+    MovimentacaoCaixaSerializer,
+    CategoriaSerializer
 )
+
+
+class CategoriaViewSet(viewsets.ModelViewSet):
+    """ViewSet para Categorias de Produtos"""
+    queryset = Categoria.objects.all()
+    serializer_class = CategoriaSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filtro por ativos
+        ativo = self.request.query_params.get('ativo', None)
+        if ativo is not None:
+            queryset = queryset.filter(ativo=ativo.lower() == 'true')
+        return queryset
+
+
+class BackupViewSet(viewsets.ViewSet):
+    """ViewSet para acionar backups do banco de dados"""
+
+    @action(detail=False, methods=['post'])
+    def trigger_backup(self, request):
+        """Aciona o comando de backup do banco de dados."""
+        try:
+            call_command('backup_db')
+            return Response({'message': 'Backup iniciado com sucesso!'},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Erro ao iniciar backup: {e}'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ClienteViewSet(viewsets.ModelViewSet):
@@ -47,7 +78,7 @@ class ClienteViewSet(viewsets.ModelViewSet):
         ).values_list('cliente_id', flat=True).distinct()
 
         clientes = self.queryset.filter(id__in=clientes_ids)
-        serializer = self.get_serializer(clientes, many=True)
+        serializer = ClienteSerializer(clientes, many=True)
         return Response(serializer.data)
 
 
@@ -75,8 +106,39 @@ class ProdutoViewSet(viewsets.ModelViewSet):
     def baixo_estoque(self, request):
         """Retorna produtos com estoque baixo (< 10)"""
         produtos = self.queryset.filter(estoque__lt=10, ativo=True)
-        serializer = self.get_serializer(produtos, many=True)
+        serializer = ProdutoSerializer(produtos, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def mais_lucrativos(self, request):
+        """Retorna os produtos mais lucrativos com base nas vendas."""
+        from django.db.models import F
+        from core.models import ItemVenda
+
+        # Agrega os dados de vendas por produto
+        produtos_lucro = ItemVenda.objects.filter(
+            venda__status='FINALIZADA',
+            produto__preco_custo__gt=0  # Considera apenas produtos com custo definido
+        ).values('produto__nome', 'produto__preco', 'produto__preco_custo').annotate(
+            total_vendido=Sum('quantidade'),
+            receita_total=Sum(F('quantidade') * F('preco_unitario')),
+            custo_total=Sum(F('quantidade') * F('produto__preco_custo')),
+            lucro_total=Sum(F('quantidade') * (F('preco_unitario') - F('produto__preco_custo')))
+        ).order_by('-lucro_total')
+
+        # Formata a saída
+        results = []
+        for item in produtos_lucro:
+            results.append({
+                'nome_produto': item['produto__nome'],
+                'preco_venda': float(item['produto__preco']),
+                'preco_custo': float(item['produto__preco_custo']),
+                'total_vendido': float(item['total_vendido']),
+                'receita_total': float(item['receita_total']),
+                'custo_total': float(item['custo_total']),
+                'lucro_total': float(item['lucro_total']),
+            })
+        return Response(results)
 
 
 class VendaViewSet(viewsets.ModelViewSet):
@@ -141,15 +203,8 @@ class VendaViewSet(viewsets.ModelViewSet):
             quantidade=Count('id')
         )
 
-        return Response({
-            'vendas_hoje': {
-                'total': float(total_hoje),
-                'quantidade': quantidade_vendas,
-            },
-            'estoque_baixo': estoque_baixo,
-            'vendas_por_pagamento': list(vendas_por_pagamento),
-            'data': hoje.isoformat(),
-        })
+        serializer = VendaSerializer(vendas_hoje, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def cancelar(self, request, pk=None):
@@ -171,7 +226,7 @@ class VendaViewSet(viewsets.ModelViewSet):
         venda.status = 'CANCELADA'
         venda.save()
 
-        serializer = self.get_serializer(venda)
+        serializer = VendaSerializer(venda)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
@@ -187,7 +242,7 @@ class VendaViewSet(viewsets.ModelViewSet):
         if cliente_id:
             vendas = vendas.filter(cliente_id=cliente_id)
 
-        serializer = self.get_serializer(vendas, many=True)
+        serializer = VendaSerializer(vendas, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
@@ -197,7 +252,7 @@ class VendaViewSet(viewsets.ModelViewSet):
 
         try:
             venda.receber_pagamento()
-            serializer = self.get_serializer(venda)
+            serializer = VendaSerializer(venda)
             return Response(serializer.data)
         except ValueError as e:
             return Response(

@@ -3,7 +3,7 @@ Serializers para API - HMConveniencia
 """
 from decimal import Decimal
 from rest_framework import serializers
-from .models import Cliente, Produto, Venda, ItemVenda, Caixa, MovimentacaoCaixa
+from .models import Cliente, Produto, Venda, ItemVenda, Caixa, MovimentacaoCaixa, Categoria
 
 
 class ClienteSerializer(serializers.ModelSerializer):
@@ -18,12 +18,30 @@ class ClienteSerializer(serializers.ModelSerializer):
     def get_saldo_devedor(self, obj):
         return float(obj.saldo_devedor())
 
+    def validate_cpf(self, value):
+        if value == '':
+            return None
+        return value
+
+
+class CategoriaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Categoria
+        fields = ['id', 'nome', 'ativo', 'created_at']
+        read_only_fields = ['created_at']
+
 
 class ProdutoSerializer(serializers.ModelSerializer):
+    margem_lucro = serializers.SerializerMethodField()
+    categoria_nome = serializers.CharField(source='categoria.nome', read_only=True)
+
     class Meta:
         model = Produto
-        fields = ['id', 'nome', 'preco', 'estoque', 'codigo_barras', 'ativo', 'created_at']
-        read_only_fields = ['created_at']
+        fields = ['id', 'nome', 'preco', 'preco_custo', 'estoque', 'codigo_barras', 'ativo', 'created_at', 'margem_lucro', 'categoria', 'categoria_nome']
+        read_only_fields = ['created_at', 'margem_lucro']
+
+    def get_margem_lucro(self, obj):
+        return float(obj.margem_lucro)
 
 
 class ItemVendaSerializer(serializers.ModelSerializer):

@@ -21,6 +21,14 @@ export const getProduto = (id) => api.get(`/produtos/${id}/`);
 export const createProduto = (data) => api.post('/produtos/', data);
 export const updateProduto = (id, data) => api.put(`/produtos/${id}/`, data);
 export const deleteProduto = (id) => api.delete(`/produtos/${id}/`);
+export const getProdutosMaisLucrativos = () => api.get('/produtos/mais_lucrativos/');
+
+// Categorias
+export const getCategorias = (params = {}) => api.get('/categorias/', { params });
+export const getCategoria = (id) => api.get(`/categorias/${id}/`);
+export const createCategoria = (data) => api.post('/categorias/', data);
+export const updateCategoria = (id, data) => api.put(`/categorias/${id}/`, data);
+export const deleteCategoria = (id) => api.delete(`/categorias/${id}/`);
 
 // Vendas
 export const getVendas = (params = {}) => api.get('/vendas/', { params });
@@ -41,5 +49,8 @@ export const abrirCaixa = (data) => api.post('/caixa/abrir/', data);
 export const fecharCaixa = (id, data) => api.post(`/caixa/${id}/fechar/`, data);
 export const adicionarMovimentacao = (id, data) => api.post(`/caixa/${id}/movimentar/`, data);
 export const getHistoricoCaixa = () => api.get('/caixa/historico/');
+
+// Backup
+export const triggerBackup = () => api.post('/backup/trigger_backup/');
 
 export default api;

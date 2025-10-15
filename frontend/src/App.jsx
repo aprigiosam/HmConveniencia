@@ -7,6 +7,8 @@ import Clientes from './pages/Clientes'
 import ContasReceber from './pages/ContasReceber'
 import Caixa from './pages/Caixa'
 import HistoricoCaixa from './pages/HistoricoCaixa'
+import RelatorioLucro from './pages/RelatorioLucro'
+import Categorias from './pages/Categorias'
 import SyncStatus from './components/SyncStatus'
 import { localDB } from './utils/db'
 import { syncManager } from './utils/syncManager'
@@ -41,6 +43,8 @@ function App() {
               <Link to="/clientes">Clientes</Link>
               <Link to="/contas-receber">Contas a Receber</Link>
               <Link to="/caixa/historico">Histórico de Caixas</Link>
+              <Link to="/relatorios/lucro">Relatório de Lucro</Link>
+              <Link to="/categorias">Categorias</Link>
             </div>
           </div>
         </nav>
@@ -56,6 +60,8 @@ function App() {
             <Route path="/contas-receber" element={<ContasReceber />} />
             <Route path="/caixa" element={<Caixa />} />
             <Route path="/caixa/historico" element={<HistoricoCaixa />} />
+            <Route path="/relatorios/lucro" element={<RelatorioLucro />} />
+            <Route path="/categorias" element={<Categorias />} />
           </Routes>
         </main>
       </div>

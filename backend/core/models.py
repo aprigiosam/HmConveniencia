@@ -38,12 +38,30 @@ class Cliente(models.Model):
         return (saldo + valor) <= self.limite_credito
 
 
+class Categoria(models.Model):
+    """Categorias de produtos"""
+    nome = models.CharField('Nome', max_length=100, unique=True)
+    ativo = models.BooleanField('Ativo', default=True)
+    created_at = models.DateTimeField('Criado em', auto_now_add=True)
+    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+
+    class Meta:
+        ordering = ['nome']
+        verbose_name = 'Categoria'
+        verbose_name_plural = 'Categorias'
+
+    def __str__(self):
+        return self.nome
+
+
 class Produto(models.Model):
     """Produto - campos essenciais"""
     nome = models.CharField('Nome', max_length=200)
     preco = models.DecimalField('Preço', max_digits=10, decimal_places=2)
+    preco_custo = models.DecimalField('Preço de Custo', max_digits=10, decimal_places=2, default=0)
     estoque = models.DecimalField('Estoque', max_digits=10, decimal_places=2, default=0)
     codigo_barras = models.CharField('Código de Barras', max_length=50, blank=True)
+    categoria = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='produtos', verbose_name='Categoria')
     ativo = models.BooleanField('Ativo', default=True)
     created_at = models.DateTimeField('Criado em', auto_now_add=True)
     updated_at = models.DateTimeField('Atualizado em', auto_now=True)
@@ -59,6 +77,13 @@ class Produto(models.Model):
     def tem_estoque(self, quantidade):
         """Verifica se tem estoque disponível"""
         return self.estoque >= quantidade
+
+    @property
+    def margem_lucro(self):
+        """Calcula a margem de lucro do produto"""
+        if self.preco_custo > 0:
+            return ((self.preco - self.preco_custo) / self.preco_custo) * 100
+        return Decimal('0.00')
 
 
 class Venda(models.Model):

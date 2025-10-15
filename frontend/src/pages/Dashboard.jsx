@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { getDashboard, getVendas } from '../services/api'
+import { getDashboard, getVendas, triggerBackup } from '../services/api'
 import './Dashboard.css'
 
 function Dashboard() {
   const [stats, setStats] = useState(null)
   const [vendas, setVendas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [backupLoading, setBackupLoading] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -26,6 +27,21 @@ function Dashboard() {
       setLoading(false)
     }
   }
+
+  const handleBackup = async () => {
+    if (!confirm('Deseja realmente iniciar um backup do banco de dados?')) return;
+
+    setBackupLoading(true);
+    try {
+      await triggerBackup();
+      alert('Backup iniciado com sucesso! Verifique os logs do servidor para detalhes.');
+    } catch (error) {
+      console.error('Erro ao iniciar backup:', error);
+      alert('Erro ao iniciar backup. Verifique a conexão e os logs.');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
 
   if (loading) {
     return <div className="loading">Carregando...</div>
@@ -53,6 +69,17 @@ function Dashboard() {
             <span className="stat-label">produtos</span>
           </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '20px' }}>
+        <h3>Manutenção</h3>
+        <button
+          className="btn btn-secondary"
+          onClick={handleBackup}
+          disabled={backupLoading}
+        >
+          {backupLoading ? 'Iniciando Backup...' : '☁️ Fazer Backup Agora'}
+        </button>
       </div>
 
       <div className="card">
