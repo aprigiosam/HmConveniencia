@@ -4,15 +4,18 @@ Views da API - HMConveniencia
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from datetime import timedelta
-from .models import Cliente, Produto, Venda
+from decimal import Decimal
+from .models import Cliente, Produto, Venda, Caixa, MovimentacaoCaixa
 from .serializers import (
     ClienteSerializer,
     ProdutoSerializer,
     VendaSerializer,
-    VendaCreateSerializer
+    VendaCreateSerializer,
+    CaixaSerializer,
+    MovimentacaoCaixaSerializer
 )
 
 
@@ -84,6 +87,14 @@ class VendaViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return VendaCreateSerializer
         return VendaSerializer
+
+    def create(self, request, *args, **kwargs):
+        create_serializer = self.get_serializer(data=request.data)
+        create_serializer.is_valid(raise_exception=True)
+        venda = create_serializer.save()
+        read_serializer = VendaSerializer(venda)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -193,3 +204,99 @@ class VendaViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class CaixaViewSet(viewsets.ViewSet):
+    """ViewSet para controle de Caixa"""
+
+    @action(detail=False, methods=['get'])
+    def status(self, request):
+        """Retorna o caixa aberto atual ou informa que não há caixa aberto"""
+        caixa_aberto = Caixa.objects.filter(status='ABERTO').first()
+        if not caixa_aberto:
+            return Response({'status': 'FECHADO', 'message': 'Nenhum caixa aberto'})
+
+        serializer = CaixaSerializer(caixa_aberto)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def abrir(self, request):
+        """Abre um novo caixa"""
+        if Caixa.objects.filter(status='ABERTO').exists():
+            return Response(
+                {'error': 'Já existe um caixa aberto'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        valor_inicial = request.data.get('valor_inicial', 0)
+        caixa = Caixa.objects.create(valor_inicial=valor_inicial)
+        serializer = CaixaSerializer(caixa)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def fechar(self, request, pk=None):
+        """Fecha o caixa, calculando totais e diferenças"""
+        try:
+            caixa = Caixa.objects.get(pk=pk, status='ABERTO')
+        except Caixa.DoesNotExist:
+            return Response(
+                {'error': 'Caixa não encontrado ou já está fechado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        valor_final_informado = Decimal(request.data.get('valor_final_informado', 0))
+
+        # Calcula vendas em dinheiro desde a abertura
+        vendas_dinheiro = Venda.objects.filter(
+            created_at__gte=caixa.data_abertura,
+            forma_pagamento='DINHEIRO',
+            status='FINALIZADA'
+        ).aggregate(total=Sum('total'))['total'] or Decimal(0)
+
+        # Calcula movimentações
+        movimentacoes = caixa.movimentacoes.aggregate(
+            sangrias=Sum('valor', filter=Q(tipo='SANGRIA')),
+            suprimentos=Sum('valor', filter=Q(tipo='SUPRIMENTO'))
+        )
+        total_sangrias = movimentacoes['sangrias'] or Decimal(0)
+        total_suprimentos = movimentacoes['suprimentos'] or Decimal(0)
+
+        # Calcula valor final do sistema
+        valor_final_sistema = (caixa.valor_inicial + vendas_dinheiro 
+                               + total_suprimentos - total_sangrias)
+
+        # Atualiza o caixa
+        caixa.data_fechamento = timezone.now()
+        caixa.valor_final_sistema = valor_final_sistema
+        caixa.valor_final_informado = valor_final_informado
+        caixa.diferenca = valor_final_informado - valor_final_sistema
+        caixa.status = 'FECHADO'
+        caixa.observacoes = request.data.get('observacoes', '')
+        caixa.save()
+
+        serializer = CaixaSerializer(caixa)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def movimentar(self, request, pk=None):
+        """Adiciona uma movimentação (sangria/suprimento) ao caixa"""
+        try:
+            caixa = Caixa.objects.get(pk=pk, status='ABERTO')
+        except Caixa.DoesNotExist:
+            return Response(
+                {'error': 'Caixa não encontrado ou está fechado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = MovimentacaoCaixaSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(caixa=caixa)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'])
+    def historico(self, request):
+        """Retorna o histórico de caixas fechados"""
+        caixas = Caixa.objects.filter(status='FECHADO')
+        serializer = CaixaSerializer(caixas, many=True)
+        return Response(serializer.data)

@@ -1,0 +1,13 @@
+.historico-caixa-page {
+  padding: 20px;
+}
+
+.diferenca-negativa {
+  color: #e53935; /* Vermelho */
+  font-weight: bold;
+}
+
+.diferenca-positiva {
+  color: #43a047; /* Verde */
+  font-weight: bold;
+}

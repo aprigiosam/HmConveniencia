@@ -168,3 +168,50 @@ class ItemVenda(models.Model):
         # Calcula subtotal automaticamente
         self.subtotal = self.quantidade * self.preco_unitario
         super().save(*args, **kwargs)
+
+
+class Caixa(models.Model):
+    """Registra a abertura e fechamento do caixa"""
+    STATUS_CHOICES = [
+        ('ABERTO', 'Aberto'),
+        ('FECHADO', 'Fechado'),
+    ]
+
+    data_abertura = models.DateTimeField('Data de Abertura', auto_now_add=True)
+    data_fechamento = models.DateTimeField('Data de Fechamento', null=True, blank=True)
+    valor_inicial = models.DecimalField('Valor Inicial', max_digits=10, decimal_places=2)
+    valor_final_sistema = models.DecimalField('Valor Final (Sistema)', max_digits=10, decimal_places=2, null=True, blank=True)
+    valor_final_informado = models.DecimalField('Valor Final (Informado)', max_digits=10, decimal_places=2, null=True, blank=True)
+    diferenca = models.DecimalField('Diferença', max_digits=10, decimal_places=2, null=True, blank=True)
+    status = models.CharField('Status', max_length=10, choices=STATUS_CHOICES, default='ABERTO')
+    observacoes = models.TextField('Observações', blank=True)
+
+    class Meta:
+        ordering = ['-data_abertura']
+        verbose_name = 'Caixa'
+        verbose_name_plural = 'Caixas'
+
+    def __str__(self):
+        return f'Caixa de {self.data_abertura.strftime("%d/%m/%Y %H:%M")}'
+
+
+class MovimentacaoCaixa(models.Model):
+    """Registra sangrias e suprimentos do caixa"""
+    TIPO_CHOICES = [
+        ('SANGRIA', 'Sangria'),
+        ('SUPRIMENTO', 'Suprimento'),
+    ]
+
+    caixa = models.ForeignKey(Caixa, on_delete=models.CASCADE, related_name='movimentacoes')
+    tipo = models.CharField('Tipo', max_length=10, choices=TIPO_CHOICES)
+    valor = models.DecimalField('Valor', max_digits=10, decimal_places=2)
+    descricao = models.CharField('Descrição', max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Movimentação de Caixa'
+        verbose_name_plural = 'Movimentações de Caixa'
+
+    def __str__(self):
+        return f'{self.get_tipo_display()} - R$ {self.valor}'

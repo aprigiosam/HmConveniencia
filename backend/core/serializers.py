@@ -1,8 +1,9 @@
 """
 Serializers para API - HMConveniencia
 """
+from decimal import Decimal
 from rest_framework import serializers
-from .models import Cliente, Produto, Venda, ItemVenda
+from .models import Cliente, Produto, Venda, ItemVenda, Caixa, MovimentacaoCaixa
 
 
 class ClienteSerializer(serializers.ModelSerializer):
@@ -44,6 +45,25 @@ class VendaSerializer(serializers.ModelSerializer):
                   'status_pagamento', 'total', 'desconto', 'observacoes', 'data_vencimento',
                   'created_at', 'itens']
         read_only_fields = ['numero', 'total', 'created_at']
+
+
+class MovimentacaoCaixaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MovimentacaoCaixa
+        fields = ['id', 'caixa', 'tipo', 'valor', 'descricao', 'created_at']
+        read_only_fields = ['created_at', 'caixa']
+
+
+class CaixaSerializer(serializers.ModelSerializer):
+    movimentacoes = MovimentacaoCaixaSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Caixa
+        fields = ['id', 'data_abertura', 'data_fechamento', 'valor_inicial',
+                  'valor_final_sistema', 'valor_final_informado', 'diferenca',
+                  'status', 'observacoes', 'movimentacoes']
+        read_only_fields = ['data_abertura', 'data_fechamento', 'valor_final_sistema',
+                            'diferenca', 'status', 'movimentacoes']
 
 
 class VendaCreateSerializer(serializers.Serializer):
@@ -89,7 +109,7 @@ class VendaCreateSerializer(serializers.Serializer):
 
             try:
                 produto_id = int(item['produto_id'])
-                quantidade = float(item['quantidade'])
+                quantidade = Decimal(item['quantidade'])
 
                 if quantidade <= 0:
                     raise serializers.ValidationError("Quantidade deve ser maior que zero")
@@ -124,7 +144,7 @@ class VendaCreateSerializer(serializers.Serializer):
         # Cria os itens
         for item_data in itens_data:
             produto = Produto.objects.get(id=int(item_data['produto_id']))
-            quantidade = float(item_data['quantidade'])
+            quantidade = Decimal(item_data['quantidade'])
 
             ItemVenda.objects.create(
                 venda=venda,
