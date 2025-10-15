@@ -1,13 +1,18 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import './styles/global.css'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { MantineProvider } from '@mantine/core';
+import App from './App';
+
+// Importar estilos do Mantine
+import '@mantine/core/styles.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <MantineProvider withGlobalStyles withNormalizeCSS theme={{ colorScheme: 'light' }}>
+      <App />
+    </MantineProvider>
   </React.StrictMode>,
-)
+);
 
 // Registrar Service Worker para PWA
 if ('serviceWorker' in navigator) {
@@ -15,10 +20,10 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker
       .register('/sw.js')
       .then((registration) => {
-        console.log('Service Worker registrado com sucesso:', registration.scope)
+        console.log('Service Worker registrado com sucesso:', registration.scope);
       })
       .catch((error) => {
-        console.error('Falha ao registrar Service Worker:', error)
-      })
-  })
+        console.error('Falha ao registrar Service Worker:', error);
+      });
+  });
 }

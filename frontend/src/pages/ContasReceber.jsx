@@ -1,126 +1,101 @@
-import { useState, useEffect } from 'react'
-import { getContasReceber, receberPagamento } from '../services/api'
-import './ContasReceber.css'
+import { useState, useEffect } from 'react';
+import { getContasReceber, receberPagamento } from '../services/api';
+import { Table, Button, Group, Title, Text, Card, Badge } from '@mantine/core';
+import { FaCheck } from 'react-icons/fa';
 
 function ContasReceber() {
-  const [contas, setContas] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [totalDevedor, setTotalDevedor] = useState(0)
+  const [contas, setContas] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadContas()
-  }, [])
+    loadContas();
+  }, []);
 
   const loadContas = async () => {
+    setLoading(true);
     try {
-      const response = await getContasReceber()
-      const data = response.data.results || response.data
-      setContas(data)
-
-      // Calcula total devedor
-      const total = data.reduce((sum, venda) => sum + parseFloat(venda.total), 0)
-      setTotalDevedor(total)
+      const response = await getContasReceber();
+      setContas(response.data.results || response.data);
     } catch (error) {
-      console.error('Erro ao carregar contas:', error)
-      alert('Erro ao carregar contas a receber')
+      console.error('Erro ao carregar contas a receber:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleReceber = async (vendaId) => {
-    if (!confirm('Confirmar recebimento desta conta?')) return
-
+    if (!confirm('Confirmar recebimento desta conta?')) return;
     try {
-      await receberPagamento(vendaId)
-      loadContas() // Recarrega a lista
-      alert('Pagamento recebido com sucesso!')
+      await receberPagamento(vendaId);
+      loadContas();
+      alert('Pagamento recebido com sucesso!');
     } catch (error) {
-      console.error('Erro ao receber pagamento:', error)
-      alert('Erro ao receber pagamento')
+      console.error('Erro ao receber pagamento:', error);
+      alert('Erro ao processar recebimento.');
     }
-  }
+  };
 
   const isVencida = (dataVencimento) => {
-    if (!dataVencimento) return false
-    const hoje = new Date()
-    const vencimento = new Date(dataVencimento)
-    return vencimento < hoje
-  }
+    if (!dataVencimento) return false;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    return new Date(dataVencimento) < hoje;
+  };
 
-  if (loading) {
-    return <div className="loading">Carregando...</div>
-  }
+  const totalDevedor = contas.reduce((sum, venda) => sum + parseFloat(venda.total), 0);
+
+  const rows = contas.map((venda) => {
+    const vencida = isVencida(venda.data_vencimento);
+    return (
+      <tr key={venda.id} style={{ backgroundColor: vencida ? 'var(--mantine-color-red-0)' : 'transparent' }}>
+        <td>{venda.cliente_nome}</td>
+        <td>{new Date(venda.data_vencimento).toLocaleDateString('pt-BR')}</td>
+        <td>R$ {parseFloat(venda.total).toFixed(2)}</td>
+        <td>
+          <Badge color={vencida ? 'red' : 'yellow'} variant="light">
+            {vencida ? 'Vencida' : 'Pendente'}
+          </Badge>
+        </td>
+        <td>
+          <Button size="xs" leftIcon={<FaCheck />} onClick={() => handleReceber(venda.id)}>
+            Receber
+          </Button>
+        </td>
+      </tr>
+    );
+  });
 
   return (
-    <div className="contas-receber-page">
-      <div className="page-header">
-        <h2>💰 Contas a Receber</h2>
-        <div className="total-box">
-          <span>Total a Receber:</span>
-          <strong>R$ {totalDevedor.toFixed(2)}</strong>
-        </div>
-      </div>
+    <>
+      <Group position="apart" mb="lg">
+        <Title order={2}>Contas a Receber</Title>
+      </Group>
 
-      <div className="card">
-        {contas.length === 0 ? (
-          <p style={{textAlign: 'center', padding: '40px', color: '#666'}}>
-            Nenhuma conta pendente
-          </p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Venda</th>
-                <th>Cliente</th>
-                <th>Data Venda</th>
-                <th>Vencimento</th>
-                <th>Valor</th>
-                <th>Status</th>
-                <th>Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contas.map(venda => {
-                const vencida = isVencida(venda.data_vencimento)
-                return (
-                  <tr key={venda.id} className={vencida ? 'row-vencida' : ''}>
-                    <td>{venda.numero}</td>
-                    <td>{venda.cliente_nome}</td>
-                    <td>{new Date(venda.created_at).toLocaleDateString('pt-BR')}</td>
-                    <td>
-                      {venda.data_vencimento
-                        ? new Date(venda.data_vencimento).toLocaleDateString('pt-BR')
-                        : '-'
-                      }
-                    </td>
-                    <td style={{fontWeight: 'bold'}}>
-                      R$ {parseFloat(venda.total).toFixed(2)}
-                    </td>
-                    <td>
-                      {vencida ? (
-                        <span className="badge badge-vencida">VENCIDA</span>
-                      ) : (
-                        <span className="badge badge-pendente">PENDENTE</span>
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        className="btn btn-success btn-sm"
-                        onClick={() => handleReceber(venda.id)}
-                      >
-                        ✓ Receber
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  )
+      <Card withBorder p="lg" radius="md" mb="lg">
+        <Text align="center" size="lg" weight={500} color="dimmed">Total a Receber</Text>
+        <Title order={1} align="center" color="blue">R$ {totalDevedor.toFixed(2)}</Title>
+      </Card>
+
+      <Table striped highlightOnHover withBorder withColumnBorders>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Vencimento</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length > 0 ? rows : (
+            <tr>
+              <td colSpan={5}><Text color="dimmed" align="center">Nenhuma conta pendente.</Text></td>
+            </tr>
+          )}
+        </tbody>
+      </Table>
+    </>
+  );
 }
 
-export default ContasReceber
+export default ContasReceber;

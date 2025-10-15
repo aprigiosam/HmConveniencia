@@ -1,225 +1,161 @@
-import { useState, useEffect } from 'react'
-import { getClientes, createCliente, updateCliente, deleteCliente } from '../services/api'
-import './Clientes.css'
+import { useState, useEffect } from 'react';
+import { getClientes, createCliente, updateCliente, deleteCliente } from '../services/api';
+import { Table, Button, Modal, TextInput, NumberInput, Group, Title, ActionIcon, Stack, Text } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { FaEdit, FaTrash, FaUserPlus } from 'react-icons/fa';
 
 function Clientes() {
-  const [clientes, setClientes] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [editingCliente, setEditingCliente] = useState(null)
-  const [formData, setFormData] = useState({
-    nome: '',
-    telefone: '',
-    cpf: '',
-    endereco: '',
-    limite_credito: '0'
-  })
+  const [clientes, setClientes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [opened, { open, close }] = useDisclosure(false);
+  const [editingCliente, setEditingCliente] = useState(null);
+  const [formData, setFormData] = useState({ nome: '', telefone: '', limite_credito: 0 });
 
   useEffect(() => {
-    loadClientes()
-  }, [])
+    loadClientes();
+  }, []);
 
   const loadClientes = async () => {
+    setLoading(true);
     try {
-      const response = await getClientes()
-      setClientes(response.data.results || response.data)
+      const response = await getClientes();
+      setClientes(response.data.results || response.data);
     } catch (error) {
-      console.error('Erro ao carregar clientes:', error)
-      alert('Erro ao carregar clientes')
+      console.error('Erro ao carregar clientes:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-
-    try {
-      if (editingCliente) {
-        await updateCliente(editingCliente.id, formData)
-      } else {
-        await createCliente(formData)
-      }
-
-      setShowModal(false)
-      resetForm()
-      loadClientes()
-    } catch (error) {
-      console.error('Erro ao salvar cliente:', error)
-      alert('Erro ao salvar cliente')
-    }
-  }
-
-  const handleEdit = (cliente) => {
-    setEditingCliente(cliente)
-    setFormData({
-      nome: cliente.nome,
-      telefone: cliente.telefone || '',
-      cpf: cliente.cpf || '',
-      endereco: cliente.endereco || '',
-      limite_credito: cliente.limite_credito
-    })
-    setShowModal(true)
-  }
-
-  const handleDelete = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir este cliente?')) return
-
-    try {
-      await deleteCliente(id)
-      loadClientes()
-    } catch (error) {
-      console.error('Erro ao excluir cliente:', error)
-      alert('Erro ao excluir cliente')
-    }
-  }
+  };
 
   const resetForm = () => {
-    setFormData({ nome: '', telefone: '', cpf: '', endereco: '', limite_credito: '0' })
-    setEditingCliente(null)
-  }
+    setFormData({ nome: '', telefone: '', limite_credito: 0 });
+    setEditingCliente(null);
+  };
 
-  if (loading) {
-    return <div className="loading">Carregando...</div>
-  }
+  const handleOpenModal = (cliente = null) => {
+    if (cliente) {
+      setEditingCliente(cliente);
+      setFormData({
+        nome: cliente.nome,
+        telefone: cliente.telefone || '',
+        limite_credito: parseFloat(cliente.limite_credito) || 0,
+      });
+    } else {
+      resetForm();
+    }
+    open();
+  };
+
+  const handleCloseModal = () => {
+    close();
+    resetForm();
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingCliente) {
+        await updateCliente(editingCliente.id, formData);
+      } else {
+        await createCliente(formData);
+      }
+      handleCloseModal();
+      loadClientes();
+    } catch (error) {
+      console.error('Erro ao salvar cliente:', error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
+    try {
+      await deleteCliente(id);
+      loadClientes();
+    } catch (error) {
+      console.error('Erro ao excluir cliente:', error);
+    }
+  };
+
+  const rows = clientes.map((cliente) => (
+    <tr key={cliente.id}>
+      <td>{cliente.nome}</td>
+      <td>{cliente.telefone || '-'}</td>
+      <td>R$ {parseFloat(cliente.saldo_devedor || 0).toFixed(2)}</td>
+      <td>R$ {parseFloat(cliente.limite_credito).toFixed(2)}</td>
+      <td>
+        <Group spacing="xs" noWrap>
+          <ActionIcon color="blue" onClick={() => handleOpenModal(cliente)}><FaEdit /></ActionIcon>
+          <ActionIcon color="red" onClick={() => handleDelete(cliente.id)}><FaTrash /></ActionIcon>
+        </Group>
+      </td>
+    </tr>
+  ));
 
   return (
-    <div className="clientes-page">
-      <div className="page-header">
-        <h2>👥 Clientes</h2>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowModal(true)}
-        >
-          + Novo Cliente
-        </button>
-      </div>
+    <>
+      <Group position="apart" mb="lg">
+        <Title order={2}>Clientes</Title>
+        <Button leftIcon={<FaUserPlus />} onClick={() => handleOpenModal()}>Novo Cliente</Button>
+      </Group>
 
-      <div className="card">
-        <table>
-          <thead>
+      <Modal opened={opened} onClose={handleCloseModal} title={editingCliente ? 'Editar Cliente' : 'Novo Cliente'}>
+        <form onSubmit={handleSubmit}>
+          <Stack>
+            <TextInput
+              label="Nome"
+              placeholder="Nome do cliente"
+              required
+              value={formData.nome}
+              onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+            />
+            <TextInput
+              label="Telefone"
+              placeholder="(99) 99999-9999"
+              value={formData.telefone}
+              onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+            />
+            <NumberInput
+              label="Limite de Crédito"
+              defaultValue={0}
+              precision={2}
+              step={50}
+              value={formData.limite_credito}
+              onChange={(value) => setFormData({ ...formData, limite_credito: value })}
+              parser={(value) => value.replace(/\s?R\$\s?|/g, '')}
+              formatter={(value) =>
+                !Number.isNaN(parseFloat(value))
+                  ? `R$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                  : 'R$ '
+              }
+            />
+            <Group position="right" mt="md">
+              <Button variant="default" onClick={handleCloseModal}>Cancelar</Button>
+              <Button type="submit">{editingCliente ? 'Salvar' : 'Criar'}</Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
+
+      <Table striped highlightOnHover withBorder withColumnBorders>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Telefone</th>
+            <th>Saldo Devedor</th>
+            <th>Limite</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length > 0 ? rows : (
             <tr>
-              <th>Nome</th>
-              <th>Telefone</th>
-              <th>CPF</th>
-              <th>Deve</th>
-              <th>Limite</th>
-              <th>Ações</th>
+              <td colSpan={5}><Text color="dimmed" align="center">Nenhum cliente cadastrado.</Text></td>
             </tr>
-          </thead>
-          <tbody>
-            {clientes.map(cliente => (
-              <tr key={cliente.id}>
-                <td>{cliente.nome}</td>
-                <td>{cliente.telefone || '-'}</td>
-                <td>{cliente.cpf || '-'}</td>
-                <td style={{color: cliente.saldo_devedor > 0 ? 'var(--danger-color)' : 'var(--success-color)'}}>
-                  R$ {parseFloat(cliente.saldo_devedor || 0).toFixed(2)}
-                </td>
-                <td>R$ {parseFloat(cliente.limite_credito).toFixed(2)}</td>
-                <td>
-                  <div className="action-buttons">
-                    <button
-                      className="btn-icon btn-edit"
-                      onClick={() => handleEdit(cliente)}
-                      title="Editar"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      className="btn-icon btn-delete"
-                      onClick={() => handleDelete(cliente.id)}
-                      title="Excluir"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {clientes.length === 0 && (
-          <p style={{textAlign: 'center', padding: '40px', color: '#666'}}>
-            Nenhum cliente cadastrado
-          </p>
-        )}
-      </div>
-
-      {showModal && (
-        <div className="modal-overlay" onClick={() => { setShowModal(false); resetForm(); }}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{editingCliente ? 'Editar Cliente' : 'Novo Cliente'}</h3>
-
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label>Nome *</label>
-                <input
-                  type="text"
-                  value={formData.nome}
-                  onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Telefone</label>
-                  <input
-                    type="text"
-                    value={formData.telefone}
-                    onChange={(e) => setFormData({...formData, telefone: e.target.value})}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>CPF</label>
-                  <input
-                    type="text"
-                    value={formData.cpf}
-                    onChange={(e) => setFormData({...formData, cpf: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Endereço</label>
-                <textarea
-                  value={formData.endereco}
-                  onChange={(e) => setFormData({...formData, endereco: e.target.value})}
-                  rows="3"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Limite de Crédito (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.limite_credito}
-                  onChange={(e) => setFormData({...formData, limite_credito: e.target.value})}
-                />
-                <small style={{color: 'var(--light-text)', display: 'block', marginTop: '5px'}}>
-                  0 = sem limite
-                </small>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn" onClick={() => { setShowModal(false); resetForm(); }}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-success">
-                  {editingCliente ? 'Salvar' : 'Criar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+          )}
+        </tbody>
+      </Table>
+    </>
+  );
 }
 
-export default Clientes
+export default Clientes;

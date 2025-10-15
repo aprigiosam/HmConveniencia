@@ -1,268 +1,144 @@
-import { useState, useEffect } from 'react'
-import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias } from '../services/api'
-import './Produtos.css'
+import { useState, useEffect } from 'react';
+import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias } from '../services/api';
+import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, ActionIcon, Stack, Text } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 
 function Produtos() {
-  const [produtos, setProdutos] = useState([])
-  const [categorias, setCategorias] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [editingProduct, setEditingProduct] = useState(null)
-  const [formData, setFormData] = useState({
-    nome: '',
-    preco: '',
-    preco_custo: '',
-    estoque: '',
-    codigo_barras: '',
-    categoria: ''
-  })
+  const [produtos, setProdutos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [opened, { open, close }] = useDisclosure(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [formData, setFormData] = useState({ nome: '', preco: '', estoque: '', categoria: '' });
 
   useEffect(() => {
-    loadProdutos()
-    loadCategorias()
-  }, [])
+    loadInitialData();
+  }, []);
 
-  const loadProdutos = async () => {
+  const loadInitialData = async () => {
+    setLoading(true);
     try {
-      const response = await getProdutos()
-      setProdutos(response.data.results || response.data)
+      const [produtosRes, categoriasRes] = await Promise.all([getProdutos(), getCategorias()]);
+      setProdutos(produtosRes.data.results || produtosRes.data);
+      setCategorias(categoriasRes.data.results || categoriasRes.data);
     } catch (error) {
-      console.error('Erro ao carregar produtos:', error)
-      alert('Erro ao carregar produtos')
+      console.error('Erro ao carregar dados:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
-
-  const loadCategorias = async () => {
-    try {
-      const response = await getCategorias()
-      setCategorias(response.data.results || response.data)
-    } catch (error) {
-      console.error('Erro ao carregar categorias:', error)
-      alert('Erro ao carregar categorias')
-    }
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-
-    const dataToSend = { ...formData };
-    if (dataToSend.categoria === '') {
-      dataToSend.categoria = null; // Envia null se a categoria não for selecionada
-    } else {
-      dataToSend.categoria = parseInt(dataToSend.categoria, 10); // Converte para inteiro
-    }
-
-    try {
-      if (editingProduct) {
-        await updateProduto(editingProduct.id, dataToSend)
-      } else {
-        await createProduto(dataToSend)
-      }
-
-      setShowModal(false)
-      resetForm()
-      loadProdutos()
-    } catch (error) {
-      console.error('Erro ao salvar produto:', error)
-      alert('Erro ao salvar produto')
-    }
-  }
-
-  const handleEdit = (produto) => {
-    setEditingProduct(produto)
-    setFormData({
-      nome: produto.nome,
-      preco: produto.preco,
-      preco_custo: produto.preco_custo,
-      estoque: produto.estoque,
-      codigo_barras: produto.codigo_barras || '',
-      categoria: produto.categoria || ''
-    })
-    setShowModal(true)
-  }
-
-  const handleDelete = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir este produto?')) return
-
-    try {
-      await deleteProduto(id)
-      loadProdutos()
-    } catch (error) {
-      console.error('Erro ao excluir produto:', error)
-      alert('Erro ao excluir produto')
-    }
-  }
+  };
 
   const resetForm = () => {
-    setFormData({ nome: '', preco: '', preco_custo: '', estoque: '', codigo_barras: '', categoria: '' })
-    setEditingProduct(null)
-  }
+    setFormData({ nome: '', preco: '', estoque: '', categoria: '' });
+    setEditingProduct(null);
+  };
 
-  if (loading) {
-    return <div className="loading">Carregando...</div>
-  }
+  const handleOpenModal = (produto = null) => {
+    if (produto) {
+      setEditingProduct(produto);
+      setFormData({
+        nome: produto.nome,
+        preco: produto.preco,
+        estoque: produto.estoque,
+        categoria: produto.categoria?.toString() || '',
+      });
+    } else {
+      resetForm();
+    }
+    open();
+  };
+
+  const handleCloseModal = () => {
+    close();
+    resetForm();
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const dataToSend = { ...formData, categoria: formData.categoria ? parseInt(formData.categoria) : null };
+    try {
+      if (editingProduct) {
+        await updateProduto(editingProduct.id, dataToSend);
+      } else {
+        await createProduto(dataToSend);
+      }
+      handleCloseModal();
+      loadInitialData();
+    } catch (error) {
+      console.error('Erro ao salvar produto:', error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+    try {
+      await deleteProduto(id);
+      loadInitialData();
+    } catch (error) {
+      console.error('Erro ao excluir produto:', error);
+    }
+  };
+
+  const rows = produtos.map((produto) => (
+    <tr key={produto.id}>
+      <td>{produto.nome}</td>
+      <td>R$ {parseFloat(produto.preco).toFixed(2)}</td>
+      <td>{parseInt(produto.estoque)}</td>
+      <td>{produto.categoria_nome || 'Sem categoria'}</td>
+      <td>
+        <Group spacing="xs" noWrap>
+          <ActionIcon color="blue" onClick={() => handleOpenModal(produto)}><FaEdit /></ActionIcon>
+          <ActionIcon color="red" onClick={() => handleDelete(produto.id)}><FaTrash /></ActionIcon>
+        </Group>
+      </td>
+    </tr>
+  ));
+
+  const categoriaOptions = categorias.map(cat => ({ value: cat.id.toString(), label: cat.nome }));
 
   return (
-    <div className="produtos-page">
-      <div className="page-header">
-        <h2>📦 Produtos</h2>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowModal(true)}
-        >
-          + Novo Produto
-        </button>
-      </div>
+    <>
+      <Group position="apart" mb="lg">
+        <Title order={2}>Produtos</Title>
+        <Button leftIcon={<FaPlus />} onClick={() => handleOpenModal()}>Novo Produto</Button>
+      </Group>
 
-      <div className="card">
-        <table>
-          <thead>
+      <Modal opened={opened} onClose={handleCloseModal} title={editingProduct ? 'Editar Produto' : 'Novo Produto'}>
+        <form onSubmit={handleSubmit}>
+          <Stack>
+            <TextInput label="Nome" placeholder="Nome do produto" required value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} />
+            <NumberInput label="Preço" placeholder="9.99" required precision={2} value={Number(formData.preco)} onChange={(value) => setFormData({ ...formData, preco: value })} />
+            <NumberInput label="Estoque" placeholder="0" required value={Number(formData.estoque)} onChange={(value) => setFormData({ ...formData, estoque: value })} />
+            <Select label="Categoria" placeholder="Selecione uma categoria" data={categoriaOptions} value={formData.categoria} onChange={(value) => setFormData({ ...formData, categoria: value })} clearable />
+            <Group position="right" mt="md">
+              <Button variant="default" onClick={handleCloseModal}>Cancelar</Button>
+              <Button type="submit">{editingProduct ? 'Salvar' : 'Criar'}</Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
+
+      <Table striped highlightOnHover withBorder withColumnBorders>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Preço</th>
+            <th>Estoque</th>
+            <th>Categoria</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length > 0 ? rows : (
             <tr>
-              <th>Nome</th>
-              <th>Preço Venda</th>
-              <th>Preço Custo</th>
-              <th>Margem Lucro</th>
-              <th>Estoque</th>
-              <th>Código</th>
-              <th>Categoria</th>
-              <th>Ações</th>
+              <td colSpan={5}><Text color="dimmed" align="center">Nenhum produto cadastrado.</Text></td>
             </tr>
-          </thead>
-          <tbody>
-            {produtos.map(produto => (
-              <tr key={produto.id}>
-                <td>{produto.nome}</td>
-                <td>R$ {parseFloat(produto.preco).toFixed(2)}</td>
-                <td>R$ {parseFloat(produto.preco_custo).toFixed(2)}</td>
-                <td>{parseFloat(produto.margem_lucro).toFixed(2)}%</td>
-                <td>{parseFloat(produto.estoque).toFixed(0)}</td>
-                <td>{produto.codigo_barras || '-'}</td>
-                <td>{produto.categoria_nome || 'Sem Categoria'}</td>
-                <td>
-                  <div className="action-buttons">
-                    <button
-                      className="btn-icon btn-edit"
-                      onClick={() => handleEdit(produto)}
-                      title="Editar"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      className="btn-icon btn-delete"
-                      onClick={() => handleDelete(produto.id)}
-                      title="Excluir"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {produtos.length === 0 && (
-          <p style={{textAlign: 'center', padding: '40px', color: '#666'}}>
-            Nenhum produto cadastrado
-          </p>
-        )}
-      </div>
-
-      {showModal && (
-        <div className="modal-overlay" onClick={() => { setShowModal(false); resetForm(); }}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h3>
-
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label htmlFor="nome">Nome *</label>
-                <input
-                  type="text"
-                  id="nome"
-                  value={formData.nome}
-                  onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="preco">Preço (R$) *</label>
-                  <input
-                    type="number"
-                    id="preco"
-                    step="0.01"
-                    value={formData.preco}
-                    onChange={(e) => setFormData({...formData, preco: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="preco_custo">Preço de Custo (R$)</label>
-                  <input
-                    type="number"
-                    id="preco_custo"
-                    step="0.01"
-                    value={formData.preco_custo}
-                    onChange={(e) => setFormData({...formData, preco_custo: e.target.value})}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="estoque">Estoque *</label>
-                  <input
-                    type="number"
-                    id="estoque"
-                    step="0.01"
-                    value={formData.estoque}
-                    onChange={(e) => setFormData({...formData, estoque: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="categoria">Categoria</label>
-                <select
-                  id="categoria"
-                  value={formData.categoria}
-                  onChange={(e) => setFormData({...formData, categoria: e.target.value})}
-                >
-                  <option value="">-- Selecione a Categoria --</option>
-                  {categorias.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.nome}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="codigo_barras">Código de Barras</label>
-                <input
-                  type="text"
-                  id="codigo_barras"
-                  value={formData.codigo_barras}
-                  onChange={(e) => setFormData({...formData, codigo_barras: e.target.value})}
-                />
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn" onClick={() => { setShowModal(false); resetForm(); }}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-success">
-                  {editingProduct ? 'Salvar' : 'Criar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+          )}
+        </tbody>
+      </Table>
+    </>
+  );
 }
 
-export default Produtos
+export default Produtos;

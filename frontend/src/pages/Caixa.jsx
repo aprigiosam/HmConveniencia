@@ -1,17 +1,19 @@
-
 import { useState, useEffect } from 'react';
 import { getCaixaStatus, abrirCaixa, fecharCaixa, adicionarMovimentacao } from '../services/api';
-import './Caixa.css';
+import { Card, Button, Modal, NumberInput, Group, Title, Text, Stack, Textarea, Select } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { FaFolder, FaFolderOpen, FaExchangeAlt, FaLock } from 'react-icons/fa';
 
 function Caixa() {
   const [caixa, setCaixa] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [valorInicial, setValorInicial] = useState('');
-  const [valorFinal, setValorFinal] = useState('');
+  const [valorInicial, setValorInicial] = useState(0);
+  const [valorFinal, setValorFinal] = useState(0);
   const [observacoes, setObservacoes] = useState('');
-  const [showFecharModal, setShowFecharModal] = useState(false);
-  const [showMovimentacaoModal, setShowMovimentacaoModal] = useState(false);
-  const [movimentacao, setMovimentacao] = useState({ tipo: 'SANGRIA', valor: '', descricao: '' });
+  const [movimentacao, setMovimentacao] = useState({ tipo: 'SANGRIA', valor: 0, descricao: '' });
+
+  const [fecharModalOpened, { open: openFecharModal, close: closeFecharModal }] = useDisclosure(false);
+  const [movModalOpened, { open: openMovModal, close: closeMovModal }] = useDisclosure(false);
 
   useEffect(() => {
     loadCaixaStatus();
@@ -23,8 +25,6 @@ function Caixa() {
       const response = await getCaixaStatus();
       setCaixa(response.data);
     } catch (error) {
-      console.error('Erro ao carregar status do caixa:', error);
-      // Se der 404 (ou outro erro) significa que não tem caixa, o que é esperado
       setCaixa({ status: 'FECHADO' });
     } finally {
       setLoading(false);
@@ -33,168 +33,114 @@ function Caixa() {
 
   const handleAbrirCaixa = async (e) => {
     e.preventDefault();
-    if (parseFloat(valorInicial) < 0) {
-      alert('Valor inicial não pode ser negativo.');
-      return;
-    }
     try {
       await abrirCaixa({ valor_inicial: valorInicial });
-      setValorInicial('');
+      setValorInicial(0);
       loadCaixaStatus();
     } catch (error) {
-      console.error('Erro ao abrir caixa:', error);
-      alert('Não foi possível abrir o caixa. Verifique se já não há um aberto.');
+      alert('Não foi possível abrir o caixa.');
     }
   };
 
   const handleFecharCaixa = async (e) => {
     e.preventDefault();
-    if (parseFloat(valorFinal) < 0) {
-      alert('Valor final não pode ser negativo.');
-      return;
-    }
     try {
       await fecharCaixa(caixa.id, { valor_final_informado: valorFinal, observacoes });
-      setShowFecharModal(false);
-      setValorFinal('');
+      closeFecharModal();
+      setValorFinal(0);
       setObservacoes('');
       loadCaixaStatus();
     } catch (error) {
-      console.error('Erro ao fechar caixa:', error);
       alert('Erro ao fechar o caixa.');
     }
   };
 
   const handleMovimentacao = async (e) => {
     e.preventDefault();
-    if (parseFloat(movimentacao.valor) <= 0) {
-      alert('Valor da movimentação deve ser positivo.');
-      return;
-    }
     try {
       await adicionarMovimentacao(caixa.id, movimentacao);
-      setShowMovimentacaoModal(false);
-      setMovimentacao({ tipo: 'SANGRIA', valor: '', descricao: '' });
-      loadCaixaStatus(); // Recarrega para atualizar valores
+      closeMovModal();
+      setMovimentacao({ tipo: 'SANGRIA', valor: 0, descricao: '' });
+      loadCaixaStatus();
     } catch (error) {
-      console.error('Erro ao adicionar movimentação:', error);
       alert('Erro ao registrar movimentação.');
     }
   };
 
-  if (loading) {
-    return <div className="loading">Carregando...</div>;
-  }
+  if (loading) return <Text>Carregando...</Text>;
 
+  // Caixa Fechado
   if (caixa?.status !== 'ABERTO') {
     return (
-      <div className="caixa-page">
-        <div className="card">
-          <h2>Abrir Caixa</h2>
-          <p>Não há nenhum caixa aberto no momento.</p>
-          <form onSubmit={handleAbrirCaixa} className="form-abrir-caixa">
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Valor inicial (troco)"
-              value={valorInicial}
-              onChange={(e) => setValorInicial(e.target.value)}
-              required
-              autoFocus
-            />
-            <button type="submit" className="btn btn-success">Abrir Caixa</button>
-          </form>
-        </div>
-      </div>
+      <>
+        <Title order={2} mb="lg">Gestão de Caixa</Title>
+        <Card withBorder radius="md" p="lg">
+          <Group position="center" direction="column">
+            <FaFolder size={40} color="gray" />
+            <Text size="lg" weight={500}>Caixa Fechado</Text>
+            <Text color="dimmed">Não há nenhum caixa aberto no momento.</Text>
+            <form onSubmit={handleAbrirCaixa} style={{width: '100%', maxWidth: 400, marginTop: 20}}>
+              <Stack>
+                <NumberInput label="Valor inicial (troco)" value={valorInicial} onChange={setValorInicial} precision={2} min={0} required autoFocus />
+                <Button type="submit" fullWidth>Abrir Caixa</Button>
+              </Stack>
+            </form>
+          </Group>
+        </Card>
+      </>
     );
   }
 
+  // Caixa Aberto
   return (
-    <div className="caixa-page">
-      <div className="page-header">
-        <h2>Gestão de Caixa</h2>
-        <div className="header-buttons">
-          <button className="btn btn-warning" onClick={() => setShowMovimentacaoModal(true)}>+ Movimentação</button>
-          <button className="btn btn-danger" onClick={() => setShowFecharModal(true)}>Fechar Caixa</button>
-        </div>
-      </div>
+    <>
+      <Group position="apart" mb="lg">
+        <Title order={2}>Gestão de Caixa</Title>
+        <Group>
+          <Button variant="outline" leftIcon={<FaExchangeAlt />} onClick={openMovModal}>Nova Movimentação</Button>
+          <Button color="red" leftIcon={<FaLock />} onClick={openFecharModal}>Fechar Caixa</Button>
+        </Group>
+      </Group>
 
-      <div className="card">
-        <h3>Caixa Aberto</h3>
-        <div className="caixa-info">
-          <p><strong>Aberto em:</strong> {new Date(caixa.data_abertura).toLocaleString('pt-BR')}</p>
-          <p><strong>Valor Inicial (Troco):</strong> R$ {parseFloat(caixa.valor_inicial).toFixed(2)}</p>
-        </div>
-      </div>
+      <Card withBorder radius="md" p="lg">
+        <Group position="apart" align="center">
+          <Title order={3}>Caixa Aberto</Title>
+          <FaFolderOpen size={24} color="green" />
+        </Group>
+        <Text mt="md">Aberto em: <strong>{new Date(caixa.data_abertura).toLocaleString('pt-BR')}</strong></Text>
+        <Text>Valor Inicial (Troco): <strong>R$ {parseFloat(caixa.valor_inicial).toFixed(2)}</strong></Text>
+      </Card>
 
-      {/* Modal de Fechamento */}
-      {showFecharModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Fechar Caixa</h3>
-            <form onSubmit={handleFecharCaixa}>
-              <p>Conte todo o dinheiro físico no caixa e insira o valor total abaixo.</p>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Valor total contado"
-                value={valorFinal}
-                onChange={(e) => setValorFinal(e.target.value)}
-                required
-                autoFocus
-              />
-              <textarea
-                placeholder="Observações (opcional)"
-                value={observacoes}
-                onChange={(e) => setObservacoes(e.target.value)}
-              ></textarea>
-              <div className="modal-actions">
-                <button type="button" className="btn" onClick={() => setShowFecharModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-danger">Confirmar Fechamento</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Modal Fechar Caixa */}
+      <Modal opened={fecharModalOpened} onClose={closeFecharModal} title="Fechar Caixa">
+        <form onSubmit={handleFecharCaixa}>
+          <Stack>
+            <Text>Conte todo o dinheiro em caixa e insira o valor total abaixo.</Text>
+            <NumberInput label="Valor Total Contado" required value={valorFinal} onChange={setValorFinal} precision={2} min={0} autoFocus />
+            <Textarea label="Observações" placeholder="Alguma observação sobre o fechamento" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
+            <Group position="right" mt="md">
+              <Button variant="default" onClick={closeFecharModal}>Cancelar</Button>
+              <Button type="submit" color="red">Confirmar Fechamento</Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
 
-      {/* Modal de Movimentação */}
-      {showMovimentacaoModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Nova Movimentação</h3>
-            <form onSubmit={handleMovimentacao}>
-              <select
-                value={movimentacao.tipo}
-                onChange={(e) => setMovimentacao({ ...movimentacao, tipo: e.target.value })}
-              >
-                <option value="SANGRIA">Sangria (Retirada)</option>
-                <option value="SUPRIMENTO">Suprimento (Adição)</option>
-              </select>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Valor"
-                value={movimentacao.valor}
-                onChange={(e) => setMovimentacao({ ...movimentacao, valor: e.target.value })}
-                required
-                autoFocus
-              />
-              <input
-                type="text"
-                placeholder="Descrição"
-                value={movimentacao.descricao}
-                onChange={(e) => setMovimentacao({ ...movimentacao, descricao: e.target.value })}
-                required
-              />
-              <div className="modal-actions">
-                <button type="button" className="btn" onClick={() => setShowMovimentacaoModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-success">Salvar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+      {/* Modal Nova Movimentação */}
+      <Modal opened={movModalOpened} onClose={closeMovModal} title="Nova Movimentação">
+        <form onSubmit={handleMovimentacao}>
+          <Stack>
+            <Select label="Tipo" required value={movimentacao.tipo} onChange={(value) => setMovimentacao({ ...movimentacao, tipo: value })} data={[{ value: 'SANGRIA', label: 'Sangria (Retirada)' }, { value: 'SUPRIMENTO', label: 'Suprimento (Adição)' }]} />
+            <NumberInput label="Valor" required value={movimentacao.valor} onChange={(value) => setMovimentacao({ ...movimentacao, valor: value })} precision={2} min={0.01} autoFocus />
+            <TextInput label="Descrição" required value={movimentacao.descricao} onChange={(e) => setMovimentacao({ ...movimentacao, descricao: e.target.value })} />
+            <Group position="right" mt="md">
+              <Button variant="default" onClick={closeMovModal}>Cancelar</Button>
+              <Button type="submit">Salvar</Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
+    </>
   );
 }
 

@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { getProdutosMaisLucrativos } from '../services/api';
-import './RelatorioLucro.css';
+import { Table, Title, Text, Card } from '@mantine/core';
 
 function RelatorioLucro() {
   const [produtos, setProdutos] = useState([]);
@@ -16,8 +15,7 @@ function RelatorioLucro() {
       const response = await getProdutosMaisLucrativos();
       setProdutos(response.data);
     } catch (error) {
-      console.error('Erro ao carregar produtos mais lucrativos:', error);
-      alert('Erro ao carregar relatório de lucro.');
+      console.error('Erro ao carregar relatório de lucro:', error);
     } finally {
       setLoading(false);
     }
@@ -28,56 +26,48 @@ function RelatorioLucro() {
     return isNaN(number) ? 'R$ 0.00' : `R$ ${number.toFixed(2)}`;
   };
 
-  const formatPercentage = (value) => {
-    const number = parseFloat(value);
-    return isNaN(number) ? '0.00%' : `${number.toFixed(2)}%`;
-  };
+  const totalLucro = produtos.reduce((sum, p) => sum + parseFloat(p.lucro_total), 0);
 
-  if (loading) {
-    return <div className="loading">Carregando...</div>;
-  }
+  const rows = produtos.map((produto, index) => (
+    <tr key={index}>
+      <td>{produto.nome_produto}</td>
+      <td>{formatCurrency(produto.preco_venda)}</td>
+      <td>{parseInt(produto.total_vendido)}</td>
+      <td>{formatCurrency(produto.receita_total)}</td>
+      <td>{formatCurrency(produto.custo_total)}</td>
+      <td>{formatCurrency(produto.lucro_total)}</td>
+    </tr>
+  ));
 
   return (
-    <div className="relatorio-lucro-page">
-      <h2>📈 Relatório: Produtos Mais Lucrativos</h2>
+    <>
+      <Title order={2} mb="lg">Relatório de Lucratividade</Title>
 
-      <div className="card">
-        {produtos.length === 0 ? (
-          <p style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-            Nenhum produto com lucro registrado ainda.
-          </p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Produto</th>
-                <th>Preço Venda</th>
-                <th>Preço Custo</th>
-                <th>Margem Lucro</th>
-                <th>Qtd. Vendida</th>
-                <th>Receita Total</th>
-                <th>Custo Total</th>
-                <th>Lucro Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {produtos.map((produto, index) => (
-                <tr key={index}>
-                  <td>{produto.nome_produto}</td>
-                  <td>{formatCurrency(produto.preco_venda)}</td>
-                  <td>{formatCurrency(produto.preco_custo)}</td>
-                  <td>{formatPercentage((produto.lucro_total / produto.custo_total) * 100)}</td>
-                  <td>{parseFloat(produto.total_vendido).toFixed(0)}</td>
-                  <td>{formatCurrency(produto.receita_total)}</td>
-                  <td>{formatCurrency(produto.custo_total)}</td>
-                  <td>{formatCurrency(produto.lucro_total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
+      <Card withBorder p="lg" radius="md" mb="lg">
+        <Text align="center" size="lg" weight={500} color="dimmed">Lucro Total</Text>
+        <Title order={1} align="center" color="green">{formatCurrency(totalLucro)}</Title>
+      </Card>
+
+      <Table striped highlightOnHover withBorder withColumnBorders>
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th>Preço Venda</th>
+            <th>Qtd. Vendida</th>
+            <th>Receita Total</th>
+            <th>Custo Total</th>
+            <th>Lucro Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length > 0 ? rows : (
+            <tr>
+              <td colSpan={6}><Text color="dimmed" align="center">Nenhum dado de lucro para exibir.</Text></td>
+            </tr>
+          )}
+        </tbody>
+      </Table>
+    </>
   );
 }
 
