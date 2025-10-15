@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { getDashboard, triggerBackup } from '../services/api';
-import { Card, Text, Grid, Title, Group, Button, Center, Loader } from '@mantine/core';
+import { getDashboard } from '../services/api';
+import { Card, Text, Grid, Title, Group, Center, Loader } from '@mantine/core';
 import { FaDollarSign, FaExclamationTriangle, FaCashRegister, FaReceipt, FaChartLine } from 'react-icons/fa';
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [backupLoading, setBackupLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -22,20 +21,6 @@ function Dashboard() {
       console.error('Erro ao carregar dados do dashboard:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleBackup = async () => {
-    if (!confirm('Deseja iniciar um backup do banco de dados?')) return;
-    setBackupLoading(true);
-    try {
-      await triggerBackup();
-      alert('Backup iniciado com sucesso!');
-    } catch (error) {
-      console.error('Erro ao iniciar backup:', error);
-      alert('Erro ao iniciar backup.');
-    } finally {
-      setBackupLoading(false);
     }
   };
 
@@ -102,14 +87,6 @@ function Dashboard() {
           </Card>
         </Grid.Col>
       </Grid>
-
-      <Card withBorder p="md" radius="md" mt="lg">
-        <Title order={4}>Manutenção</Title>
-        <Text size="sm" color="dimmed" mt="xs" mb="md">Realize o backup do banco de dados para segurança.</Text>
-        <Button onClick={handleBackup} loading={backupLoading} variant="light">
-          Fazer Backup Agora
-        </Button>
-      </Card>
     </div>
   );
 }

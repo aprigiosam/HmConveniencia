@@ -78,9 +78,6 @@ export const fecharCaixa = (id, data) => api.post(`/caixa/${id}/fechar/`, data);
 export const adicionarMovimentacao = (id, data) => api.post(`/caixa/${id}/movimentar/`, data);
 export const getHistoricoCaixa = () => api.get('/caixa/historico/');
 
-// Backup
-export const triggerBackup = () => api.post('/backup/trigger_backup/');
-
 // Autenticação
 export const login = (username, password) => api.post('/auth/login/', { username, password });
 export const logout = () => api.post('/auth/logout/');
