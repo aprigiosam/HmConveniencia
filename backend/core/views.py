@@ -87,7 +87,7 @@ class ClienteViewSet(viewsets.ModelViewSet):
 
 class ProdutoViewSet(viewsets.ModelViewSet):
     """ViewSet para Produtos"""
-    queryset = Produto.objects.all()
+    queryset = Produto.objects.select_related('categoria').all()
     serializer_class = ProdutoSerializer
 
     def get_queryset(self):
@@ -146,7 +146,7 @@ class ProdutoViewSet(viewsets.ModelViewSet):
 
 class VendaViewSet(viewsets.ModelViewSet):
     """ViewSet para Vendas"""
-    queryset = Venda.objects.all()
+    queryset = Venda.objects.select_related('cliente').prefetch_related('itens__produto').all()
 
     def get_serializer_class(self):
         if self.action == 'create':

@@ -1,22 +1,31 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import { AppShell, Text, Burger, Group, NavLink, Button, Menu } from '@mantine/core';
+import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Center, Loader } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle } from 'react-icons/fa';
 
-import Dashboard from './pages/Dashboard';
-import PDV from './pages/PDV';
-import Produtos from './pages/Produtos';
-import Clientes from './pages/Clientes';
-import ContasReceber from './pages/ContasReceber';
-import Caixa from './pages/Caixa';
-import HistoricoCaixa from './pages/HistoricoCaixa';
-import RelatorioLucro from './pages/RelatorioLucro';
-import Categorias from './pages/Categorias';
-import Login from './pages/Login';
-import SyncStatus from './components/SyncStatus';
+// Lazy loading das páginas para reduzir bundle inicial
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const PDV = lazy(() => import('./pages/PDV'));
+const Produtos = lazy(() => import('./pages/Produtos'));
+const Clientes = lazy(() => import('./pages/Clientes'));
+const ContasReceber = lazy(() => import('./pages/ContasReceber'));
+const Caixa = lazy(() => import('./pages/Caixa'));
+const HistoricoCaixa = lazy(() => import('./pages/HistoricoCaixa'));
+const RelatorioLucro = lazy(() => import('./pages/RelatorioLucro'));
+const Categorias = lazy(() => import('./pages/Categorias'));
+const Login = lazy(() => import('./pages/Login'));
+const SyncStatus = lazy(() => import('./components/SyncStatus'));
+
 import { localDB } from './utils/db';
 import { syncManager } from './utils/syncManager';
+
+// Loading component para Suspense
+const PageLoader = () => (
+  <Center style={{ height: '100vh' }}>
+    <Loader size="lg" />
+  </Center>
+);
 
 // Componente para proteger rotas
 function PrivateRoute({ children }) {
@@ -49,10 +58,12 @@ function AppContent() {
 
   if (!token) {
     return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
@@ -105,18 +116,20 @@ function AppContent() {
       </AppShell.Navbar>
 
       <AppShell.Main>
-        <SyncStatus />
-        <Routes>
-          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/pdv" element={<PrivateRoute><PDV /></PrivateRoute>} />
-          <Route path="/produtos" element={<PrivateRoute><Produtos /></PrivateRoute>} />
-          <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
-          <Route path="/contas-receber" element={<PrivateRoute><ContasReceber /></PrivateRoute>} />
-          <Route path="/caixa" element={<PrivateRoute><Caixa /></PrivateRoute>} />
-          <Route path="/caixa/historico" element={<PrivateRoute><HistoricoCaixa /></PrivateRoute>} />
-          <Route path="/relatorios/lucro" element={<PrivateRoute><RelatorioLucro /></PrivateRoute>} />
-          <Route path="/categorias" element={<PrivateRoute><Categorias /></PrivateRoute>} />
-        </Routes>
+        <Suspense fallback={<Center style={{ padding: '2rem' }}><Loader /></Center>}>
+          <SyncStatus />
+          <Routes>
+            <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/pdv" element={<PrivateRoute><PDV /></PrivateRoute>} />
+            <Route path="/produtos" element={<PrivateRoute><Produtos /></PrivateRoute>} />
+            <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
+            <Route path="/contas-receber" element={<PrivateRoute><ContasReceber /></PrivateRoute>} />
+            <Route path="/caixa" element={<PrivateRoute><Caixa /></PrivateRoute>} />
+            <Route path="/caixa/historico" element={<PrivateRoute><HistoricoCaixa /></PrivateRoute>} />
+            <Route path="/relatorios/lucro" element={<PrivateRoute><RelatorioLucro /></PrivateRoute>} />
+            <Route path="/categorias" element={<PrivateRoute><Categorias /></PrivateRoute>} />
+          </Routes>
+        </Suspense>
       </AppShell.Main>
     </AppShell>
   );

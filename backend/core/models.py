@@ -27,6 +27,10 @@ class Cliente(models.Model):
         ordering = ['nome']
         verbose_name = 'Cliente'
         verbose_name_plural = 'Clientes'
+        indexes = [
+            models.Index(fields=['ativo']),
+            models.Index(fields=['nome']),
+        ]
 
     def __str__(self):
         return self.nome
@@ -94,6 +98,12 @@ class Produto(models.Model):
         ordering = ['nome']
         verbose_name = 'Produto'
         verbose_name_plural = 'Produtos'
+        indexes = [
+            models.Index(fields=['ativo']),
+            models.Index(fields=['codigo_barras']),
+            models.Index(fields=['estoque']),
+            models.Index(fields=['nome']),
+        ]
 
     def __str__(self):
         return self.nome
@@ -147,6 +157,14 @@ class Venda(models.Model):
         ordering = ['-created_at']
         verbose_name = 'Venda'
         verbose_name_plural = 'Vendas'
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['status_pagamento']),
+            models.Index(fields=['forma_pagamento']),
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['data_vencimento']),
+            models.Index(fields=['status', 'status_pagamento']),
+        ]
 
     def __str__(self):
         return f'Venda {self.numero} - R$ {self.total}'
@@ -239,6 +257,9 @@ class Caixa(models.Model):
         ordering = ['-data_abertura']
         verbose_name = 'Caixa'
         verbose_name_plural = 'Caixas'
+        indexes = [
+            models.Index(fields=['status']),
+        ]
 
     def __str__(self):
         return f'Caixa de {self.data_abertura.strftime("%d/%m/%Y %H:%M")}'

@@ -12,8 +12,8 @@ function SyncStatus() {
   useEffect(() => {
     updateStatus()
 
-    // Atualiza status a cada 5 segundos
-    const interval = setInterval(updateStatus, 5000)
+    // Atualiza status a cada 30 segundos (otimizado)
+    const interval = setInterval(updateStatus, 30000)
 
     // Listeners de rede
     const handleOnline = () => {

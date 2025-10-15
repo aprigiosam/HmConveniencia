@@ -9,7 +9,8 @@ function Dashboard() {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000);
+    // Atualiza a cada 2 minutos ao invés de 30 segundos
+    const interval = setInterval(loadData, 120000);
     return () => clearInterval(interval);
   }, []);
 
