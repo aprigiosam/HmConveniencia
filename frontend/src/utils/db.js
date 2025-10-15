@@ -1,6 +1,6 @@
 // IndexedDB para armazenamento local offline
 const DB_NAME = 'HMConvenienciaDB'
-const DB_VERSION = 1
+const DB_VERSION = 2 // Incrementado para adicionar categorias_cache
 
 class LocalDB {
   constructor() {
@@ -44,6 +44,14 @@ class LocalDB {
             keyPath: 'id'
           })
           clientesStore.createIndex('timestamp', 'timestamp', { unique: false })
+        }
+
+        // Store para cache de categorias
+        if (!db.objectStoreNames.contains('categorias_cache')) {
+          const categoriasStore = db.createObjectStore('categorias_cache', {
+            keyPath: 'id'
+          })
+          categoriasStore.createIndex('timestamp', 'timestamp', { unique: false })
         }
       }
     })
@@ -216,6 +224,45 @@ class LocalDB {
       const index = store.index('synced')
 
       const request = index.count(false)
+
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  // Cachear categorias
+  async cacheCategorias(categorias) {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['categorias_cache'], 'readwrite')
+      const store = transaction.objectStore('categorias_cache')
+
+      // Limpa cache antigo
+      store.clear()
+
+      // Adiciona novas categorias
+      categorias.forEach((categoria) => {
+        store.add({
+          ...categoria,
+          timestamp: new Date().toISOString()
+        })
+      })
+
+      transaction.oncomplete = () => resolve(true)
+      transaction.onerror = () => reject(transaction.error)
+    })
+  }
+
+  // Buscar categorias do cache
+  async getCachedCategorias() {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['categorias_cache'], 'readonly')
+      const store = transaction.objectStore('categorias_cache')
+
+      const request = store.getAll()
 
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)

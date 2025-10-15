@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getCategorias, createCategoria, updateCategoria, deleteCategoria } from '../services/api';
-import { Table, Button, Modal, TextInput, Group, Title, ActionIcon, Stack, Text, Switch, Badge } from '@mantine/core';
+import { localDB } from '../utils/db';
+import { Table, Button, Modal, TextInput, Group, Title, ActionIcon, Stack, Text, Switch, Badge, ScrollArea } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 
@@ -16,12 +17,21 @@ function Categorias() {
   }, []);
 
   const loadCategorias = async () => {
-    setLoading(true);
+    // CACHE-FIRST: Carrega do cache imediatamente
+    const cachedCategorias = await localDB.getCachedCategorias();
+    if (cachedCategorias.length > 0) {
+      setCategorias(cachedCategorias);
+      setLoading(false);
+    }
+
+    // Tenta sincronizar com servidor em background
     try {
       const response = await getCategorias();
-      setCategorias(response.data.results || response.data);
+      const categoriasData = response.data.results || response.data;
+      setCategorias(categoriasData);
+      await localDB.cacheCategorias(categoriasData);
     } catch (error) {
-      console.error('Erro ao carregar categorias:', error);
+      console.error('Servidor offline, usando cache local');
     } finally {
       setLoading(false);
     }
@@ -73,35 +83,52 @@ function Categorias() {
   };
 
   const rows = categorias.map((categoria) => (
-    <tr key={categoria.id}>
-      <td>{categoria.nome}</td>
-      <td>
+    <Table.Tr key={categoria.id}>
+      <Table.Td>{categoria.nome}</Table.Td>
+      <Table.Td>
         <Badge color={categoria.ativo ? 'green' : 'red'} variant="light">
           {categoria.ativo ? 'Ativa' : 'Inativa'}
         </Badge>
-      </td>
-      <td>
-        <Group spacing="xs" noWrap>
-          <ActionIcon color="blue" aria-label="Editar" onClick={() => handleOpenModal(categoria)}><FaEdit /></ActionIcon>
-          <ActionIcon color="red" aria-label="Excluir" onClick={() => handleDelete(categoria.id)}><FaTrash /></ActionIcon>
+      </Table.Td>
+      <Table.Td>
+        <Group gap="xs" wrap="nowrap">
+          <ActionIcon color="blue" aria-label="Editar" onClick={() => handleOpenModal(categoria)} size="lg">
+            <FaEdit size={16} />
+          </ActionIcon>
+          <ActionIcon color="red" aria-label="Excluir" onClick={() => handleDelete(categoria.id)} size="lg">
+            <FaTrash size={16} />
+          </ActionIcon>
         </Group>
-      </td>
-    </tr>
+      </Table.Td>
+    </Table.Tr>
   ));
 
   return (
     <>
-      <Group position="apart" mb="lg">
+      <Group justify="space-between" mb="md" wrap="wrap" gap="xs">
         <Title order={2}>Categorias</Title>
-        <Button leftIcon={<FaPlus />} onClick={() => handleOpenModal()}>Nova Categoria</Button>
+        <Button leftSection={<FaPlus />} onClick={() => handleOpenModal()} size="md">
+          Nova Categoria
+        </Button>
       </Group>
 
-      <Modal opened={opened} onClose={handleCloseModal} title={editingCategory ? 'Editar Categoria' : 'Nova Categoria'}>
+      <Modal opened={opened} onClose={handleCloseModal} title={editingCategory ? 'Editar Categoria' : 'Nova Categoria'} size="md">
         <form onSubmit={handleSubmit}>
-          <Stack>
-            <TextInput label="Nome" placeholder="Nome da categoria" required value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} />
-            <Switch label="Ativo" checked={formData.ativo} onChange={(e) => setFormData({ ...formData, ativo: e.currentTarget.checked })} />
-            <Group position="right" mt="md">
+          <Stack gap="sm">
+            <TextInput
+              label="Nome"
+              placeholder="Nome da categoria"
+              required
+              value={formData.nome}
+              onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+              size="md"
+            />
+            <Switch
+              label="Ativo"
+              checked={formData.ativo}
+              onChange={(e) => setFormData({ ...formData, ativo: e.currentTarget.checked })}
+            />
+            <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={handleCloseModal}>Cancelar</Button>
               <Button type="submit">{editingCategory ? 'Salvar' : 'Criar'}</Button>
             </Group>
@@ -109,22 +136,26 @@ function Categorias() {
         </form>
       </Modal>
 
-      <Table striped highlightOnHover withBorder withColumnBorders>
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length > 0 ? rows : (
-            <tr>
-              <td colSpan={3}><Text color="dimmed" align="center">Nenhuma categoria cadastrada.</Text></td>
-            </tr>
-          )}
-        </tbody>
-      </Table>
+      <ScrollArea>
+        <Table striped highlightOnHover withTableBorder withColumnBorders>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Nome</Table.Th>
+              <Table.Th>Status</Table.Th>
+              <Table.Th style={{ width: '120px' }}>Ações</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.length > 0 ? rows : (
+              <Table.Tr>
+                <Table.Td colSpan={3}>
+                  <Text c="dimmed" ta="center">Nenhuma categoria cadastrada.</Text>
+                </Table.Td>
+              </Table.Tr>
+            )}
+          </Table.Tbody>
+        </Table>
+      </ScrollArea>
     </>
   );
 }
