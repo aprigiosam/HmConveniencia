@@ -1,24 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getDashboard, triggerBackup } from '../services/api';
-import { Card, Text, Grid, Title, Group, Button, RingProgress, Center, Loader } from '@mantine/core';
-import { FaDollarSign, FaExclamationTriangle, FaArchive, FaCashRegister, FaReceipt, FaChartLine } from 'react-icons/fa';
-
-const StatCard = ({ icon, title, value, color, children }) => (
-  <Paper withBorder p="md" radius="md">
-    <Group position="apart">
-      <Text size="xs" color="dimmed" transform="uppercase" weight={700}>
-        {title}
-      </Text>
-      <ThemeIcon color={color} variant="light" size={38} radius="md">
-        {icon}
-      </ThemeIcon>
-    </Group>
-    <Group align="flex-end" spacing="xs" mt={25}>
-      <Text size="xl" weight={700}>{value}</Text>
-      {children}
-    </Group>
-  </Paper>
-);
+import { Card, Text, Grid, Title, Group, Button, Center, Loader } from '@mantine/core';
+import { FaDollarSign, FaExclamationTriangle, FaCashRegister, FaReceipt, FaChartLine } from 'react-icons/fa';
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -74,6 +57,19 @@ function Dashboard() {
             <Text size="sm" color="dimmed">{stats?.vendas_hoje?.quantidade || 0} vendas</Text>
           </Card>
         </Grid.Col>
+        
+        {/* Card de Lucro Hoje */}
+        <Grid.Col md={6} lg={3}>
+          <Card withBorder p="md" radius="md">
+            <Group position="apart">
+              <Text size="xs" color="dimmed" transform="uppercase" weight={700}>Lucro Hoje</Text>
+              <FaChartLine size={22} color='green' />
+            </Group>
+            <Text size="xl" weight={700} mt="md">R$ {stats?.lucro_hoje?.toFixed(2) || '0.00'}</Text>
+            <Text size="sm" color="dimmed">Margem Bruta</Text>
+          </Card>
+        </Grid.Col>
+
         <Grid.Col md={6} lg={3}>
           <Card withBorder p="md" radius="md" bg={stats?.contas_receber?.vencidas?.quantidade > 0 ? 'red.1' : 'transparent'}>
             <Group position="apart">

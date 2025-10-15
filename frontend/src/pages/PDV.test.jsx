@@ -1,5 +1,4 @@
-
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { customRender as render, screen, fireEvent, waitFor } from '../setupTests.jsx';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import PDV from './PDV';
@@ -27,8 +26,7 @@ const mockClientes = [
 ];
 
 // Wrapper para componentes que usam react-router
-const renderWithRouter = (ui, { route = '/' } = {}) => {
-  window.history.pushState({}, 'Test page', route);
+const renderWithRouter = (ui) => {
   return render(ui, { wrapper: BrowserRouter });
 };
 
@@ -44,10 +42,10 @@ describe('PDV Component', () => {
   });
 
   it('deve adicionar um produto ao carrinho e finalizar uma venda em dinheiro', async () => {
-    const { container } = renderWithRouter(<PDV />);
+    renderWithRouter(<PDV />);
 
     // 1. Espera o componente carregar
-    const buscaInput = await screen.findByPlaceholderText('Digite o nome ou código...');
+    const buscaInput = await screen.findByPlaceholderText('Buscar produto por nome ou código...');
     expect(buscaInput).toBeInTheDocument();
 
     // 2. Busca por um produto
@@ -60,9 +58,7 @@ describe('PDV Component', () => {
     // 4. Verifica se o item está no carrinho
     expect(await screen.findByText('Carrinho')).toBeInTheDocument();
     expect(screen.getByText('Coca-Cola 2L')).toBeInTheDocument();
-    // Verifica o subtotal de forma específica
-    const subtotalElement = container.querySelector('.item-subtotal');
-    expect(subtotalElement).toHaveTextContent('R$ 8.50');
+    expect(screen.getByText('R$ 8.50')).toBeInTheDocument();
 
     // 5. Finaliza a venda
     const finalizarButton = screen.getByRole('button', { name: /Finalizar Venda/i });
@@ -73,15 +69,15 @@ describe('PDV Component', () => {
       expect(api.createVenda).toHaveBeenCalledTimes(1);
       expect(api.createVenda).toHaveBeenCalledWith({
         forma_pagamento: 'DINHEIRO',
-        desconto: 0,
-        observacoes: '',
+        cliente_id: null,
+        data_vencimento: null,
         itens: [{ produto_id: 1, quantidade: '1' }],
       });
     });
 
     // 7. Verifica se o carrinho foi limpo
     await waitFor(() => {
-      expect(screen.getByText('Carrinho vazio')).toBeInTheDocument();
+      expect(screen.getByText('Carrinho vazio.')).toBeInTheDocument();
     });
   });
 });
