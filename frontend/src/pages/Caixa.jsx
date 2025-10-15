@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getCaixaStatus, abrirCaixa, fecharCaixa, adicionarMovimentacao } from '../services/api';
-import { Card, Button, Modal, NumberInput, Group, Title, Text, Stack, Textarea, Select } from '@mantine/core';
+import { Card, Button, Modal, NumberInput, Group, Title, Text, Stack, Textarea, Select, TextInput } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FaFolder, FaFolderOpen, FaExchangeAlt, FaLock } from 'react-icons/fa';
 
