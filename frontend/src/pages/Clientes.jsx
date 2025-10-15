@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getClientes, createCliente, updateCliente, deleteCliente } from '../services/api';
 import { localDB } from '../utils/db';
-import { Table, Button, Modal, TextInput, NumberInput, Group, Title, ActionIcon, Stack, Text } from '@mantine/core';
+import { Table, Button, Modal, TextInput, NumberInput, Group, Title, ActionIcon, Stack, Text, ScrollArea } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FaEdit, FaTrash, FaUserPlus } from 'react-icons/fa';
 
@@ -88,42 +88,50 @@ function Clientes() {
   };
 
   const rows = clientes.map((cliente) => (
-    <tr key={cliente.id}>
-      <td>{cliente.nome}</td>
-      <td>{cliente.telefone || '-'}</td>
-      <td>R$ {parseFloat(cliente.saldo_devedor || 0).toFixed(2)}</td>
-      <td>R$ {parseFloat(cliente.limite_credito).toFixed(2)}</td>
-      <td>
-        <Group spacing="xs" noWrap>
-          <ActionIcon color="blue" onClick={() => handleOpenModal(cliente)}><FaEdit /></ActionIcon>
-          <ActionIcon color="red" onClick={() => handleDelete(cliente.id)}><FaTrash /></ActionIcon>
+    <Table.Tr key={cliente.id}>
+      <Table.Td>{cliente.nome}</Table.Td>
+      <Table.Td>{cliente.telefone || '-'}</Table.Td>
+      <Table.Td>R$ {parseFloat(cliente.saldo_devedor || 0).toFixed(2)}</Table.Td>
+      <Table.Td>R$ {parseFloat(cliente.limite_credito).toFixed(2)}</Table.Td>
+      <Table.Td>
+        <Group gap="xs" wrap="nowrap">
+          <ActionIcon color="blue" onClick={() => handleOpenModal(cliente)} size="lg">
+            <FaEdit size={16} />
+          </ActionIcon>
+          <ActionIcon color="red" onClick={() => handleDelete(cliente.id)} size="lg">
+            <FaTrash size={16} />
+          </ActionIcon>
         </Group>
-      </td>
-    </tr>
+      </Table.Td>
+    </Table.Tr>
   ));
 
   return (
     <>
-      <Group position="apart" mb="lg">
+      <Group justify="space-between" mb="md" wrap="wrap" gap="xs">
         <Title order={2}>Clientes</Title>
-        <Button leftIcon={<FaUserPlus />} onClick={() => handleOpenModal()}>Novo Cliente</Button>
+        <Button leftSection={<FaUserPlus />} onClick={() => handleOpenModal()} size="md">
+          Novo Cliente
+        </Button>
       </Group>
 
-      <Modal opened={opened} onClose={handleCloseModal} title={editingCliente ? 'Editar Cliente' : 'Novo Cliente'}>
+      <Modal opened={opened} onClose={handleCloseModal} title={editingCliente ? 'Editar Cliente' : 'Novo Cliente'} size="md">
         <form onSubmit={handleSubmit}>
-          <Stack>
+          <Stack gap="sm">
             <TextInput
               label="Nome"
               placeholder="Nome do cliente"
               required
               value={formData.nome}
               onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+              size="md"
             />
             <TextInput
               label="Telefone"
               placeholder="(99) 99999-9999"
               value={formData.telefone}
               onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+              size="md"
             />
             <NumberInput
               label="Limite de Crédito"
@@ -138,8 +146,9 @@ function Clientes() {
                   ? `R$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
                   : 'R$ '
               }
+              size="md"
             />
-            <Group position="right" mt="md">
+            <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={handleCloseModal}>Cancelar</Button>
               <Button type="submit">{editingCliente ? 'Salvar' : 'Criar'}</Button>
             </Group>
@@ -147,24 +156,28 @@ function Clientes() {
         </form>
       </Modal>
 
-      <Table striped highlightOnHover withBorder withColumnBorders>
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Telefone</th>
-            <th>Saldo Devedor</th>
-            <th>Limite</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length > 0 ? rows : (
-            <tr>
-              <td colSpan={5}><Text color="dimmed" align="center">Nenhum cliente cadastrado.</Text></td>
-            </tr>
-          )}
-        </tbody>
-      </Table>
+      <ScrollArea>
+        <Table striped highlightOnHover withTableBorder withColumnBorders>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Nome</Table.Th>
+              <Table.Th>Telefone</Table.Th>
+              <Table.Th>Saldo Devedor</Table.Th>
+              <Table.Th>Limite</Table.Th>
+              <Table.Th style={{ width: '120px' }}>Ações</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.length > 0 ? rows : (
+              <Table.Tr>
+                <Table.Td colSpan={5}>
+                  <Text c="dimmed" ta="center">Nenhum cliente cadastrado.</Text>
+                </Table.Td>
+              </Table.Tr>
+            )}
+          </Table.Tbody>
+        </Table>
+      </ScrollArea>
     </>
   );
 }

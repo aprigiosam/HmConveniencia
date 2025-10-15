@@ -109,57 +109,79 @@ function PDV() {
   };
 
   return (
-    <Grid>
-      <Grid.Col lg={5}>
-        <Stack>
+    <Grid gutter="md">
+      <Grid.Col span={12} md={5}>
+        <Stack gap="sm">
           <TextInput
             ref={buscaRef}
-            placeholder="Buscar produto por nome ou código..."
-            icon={<FaSearch />}
+            placeholder="Buscar produto..."
+            leftSection={<FaSearch />}
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
+            size="md"
             autoFocus
           />
           {busca && (
-            <Stack spacing="xs">
+            <Stack gap="xs">
               {produtosFiltrados.length > 0 ? (
                 produtosFiltrados.slice(0, 5).map(produto => (
-                  <Paper shadow="xs" p="xs" withBorder key={produto.id} onClick={() => adicionarAoCarrinho(produto)} style={{ cursor: 'pointer' }}>
-                    <Group position="apart">
-                      <Text>{produto.nome}</Text>
-                      <Text weight={500}>R$ {parseFloat(produto.preco).toFixed(2)}</Text>
+                  <Paper
+                    shadow="xs"
+                    p="sm"
+                    withBorder
+                    key={produto.id}
+                    onClick={() => adicionarAoCarrinho(produto)}
+                    style={{ cursor: 'pointer', minHeight: '60px' }}
+                  >
+                    <Group justify="space-between">
+                      <Text size="sm" fw={500}>{produto.nome}</Text>
+                      <Text size="sm" fw={600} c="orange">R$ {parseFloat(produto.preco).toFixed(2)}</Text>
                     </Group>
                   </Paper>
                 ))
               ) : (
-                <Text align="center" color="dimmed">Nenhum produto encontrado.</Text>
+                <Text ta="center" c="dimmed">Nenhum produto encontrado.</Text>
               )}
             </Stack>
           )}
         </Stack>
       </Grid.Col>
 
-      <Grid.Col lg={7}>
-        <Card withBorder radius="md">
-          <Group position="apart" mb="md">
+      <Grid.Col span={12} md={7}>
+        <Card withBorder radius="md" p="sm">
+          <Group justify="space-between" mb="md">
             <Title order={3}>Carrinho</Title>
-            <FaShoppingCart />
+            <FaShoppingCart size={20} />
           </Group>
 
           {carrinho.length === 0 ? (
-            <Center><Text color="dimmed">Carrinho vazio.</Text></Center>
+            <Center style={{ minHeight: '200px' }}>
+              <Text c="dimmed">Carrinho vazio.</Text>
+            </Center>
           ) : (
-            <Stack>
+            <Stack gap="sm">
               {carrinho.map(item => (
-                <Paper withBorder p="xs" radius="xs" key={item.produto.id}>
-                  <Group position="apart">
-                    <Stack spacing={0}>
-                      <Text>{item.produto.nome}</Text>
-                      <Text size="sm" color="dimmed">R$ {parseFloat(item.produto.preco).toFixed(2)}</Text>
+                <Paper withBorder p="sm" radius="xs" key={item.produto.id}>
+                  <Group justify="space-between" align="flex-start" wrap="nowrap">
+                    <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
+                      <Text size="sm" fw={500} truncate>{item.produto.nome}</Text>
+                      <Text size="xs" c="dimmed">R$ {parseFloat(item.produto.preco).toFixed(2)}</Text>
                     </Stack>
-                    <Group spacing="xs">
-                      <NumberInput value={item.quantidade} onChange={(val) => alterarQuantidade(item.produto.id, val)} style={{ width: 80 }} min={0} />
-                      <ActionIcon color="red" onClick={() => removerDoCarrinho(item.produto.id)}><FaTrash /></ActionIcon>
+                    <Group gap="xs" wrap="nowrap">
+                      <NumberInput
+                        value={item.quantidade}
+                        onChange={(val) => alterarQuantidade(item.produto.id, val)}
+                        w={70}
+                        min={0}
+                        size="sm"
+                      />
+                      <ActionIcon
+                        color="red"
+                        size="lg"
+                        onClick={() => removerDoCarrinho(item.produto.id)}
+                      >
+                        <FaTrash size={14} />
+                      </ActionIcon>
                     </Group>
                   </Group>
                 </Paper>
@@ -169,6 +191,7 @@ function PDV() {
                 label="Forma de Pagamento"
                 value={formaPagamento}
                 onChange={setFormaPagamento}
+                size="md"
                 data={[
                   { value: 'DINHEIRO', label: 'Dinheiro' },
                   { value: 'DEBITO', label: 'Débito' },
@@ -185,6 +208,7 @@ function PDV() {
                     placeholder="Selecione o cliente"
                     value={clienteId}
                     onChange={setClienteId}
+                    size="md"
                     data={clientes.map(c => ({ value: c.id.toString(), label: c.nome }))}
                     searchable
                     required
@@ -194,18 +218,19 @@ function PDV() {
                     placeholder="Selecione a data"
                     value={dataVencimento}
                     onChange={setDataVencimento}
+                    size="md"
                     required
                   />
                 </>
               )}
 
-              <Group position="right" mt="md">
-                <Text size="lg" weight={500}>Total:</Text>
-                <Title order={2}>R$ {calcularTotal().toFixed(2)}</Title>
+              <Group justify="space-between" mt="md" p="sm" style={{ background: '#f8f9fa', borderRadius: '8px' }}>
+                <Text size="lg" fw={500}>Total:</Text>
+                <Title order={2} c="orange">R$ {calcularTotal().toFixed(2)}</Title>
               </Group>
 
-              <Button onClick={finalizarVenda} loading={loading} size="lg" uppercase>
-                Finalizar Venda
+              <Button onClick={finalizarVenda} loading={loading} size="lg" fullWidth>
+                FINALIZAR VENDA
               </Button>
             </Stack>
           )}

@@ -73,19 +73,19 @@ function Caixa() {
   if (caixa?.status !== 'ABERTO') {
     return (
       <>
-        <Title order={2} mb="lg">Gestão de Caixa</Title>
-        <Card withBorder radius="md" p="lg">
-          <Group position="center" direction="column">
+        <Title order={2} mb="md">Gestão de Caixa</Title>
+        <Card withBorder radius="md" p="md">
+          <Stack align="center" gap="md">
             <FaFolder size={40} color="gray" />
-            <Text size="lg" weight={500}>Caixa Fechado</Text>
-            <Text color="dimmed">Não há nenhum caixa aberto no momento.</Text>
-            <form onSubmit={handleAbrirCaixa} style={{width: '100%', maxWidth: 400, marginTop: 20}}>
-              <Stack>
-                <NumberInput label="Valor inicial (troco)" value={valorInicial} onChange={setValorInicial} precision={2} min={0} required autoFocus />
-                <Button type="submit" fullWidth>Abrir Caixa</Button>
+            <Text size="lg" fw={500}>Caixa Fechado</Text>
+            <Text c="dimmed" ta="center">Não há nenhum caixa aberto no momento.</Text>
+            <form onSubmit={handleAbrirCaixa} style={{width: '100%', maxWidth: 400}}>
+              <Stack gap="sm">
+                <NumberInput label="Valor inicial (troco)" value={valorInicial} onChange={setValorInicial} precision={2} min={0} size="md" required autoFocus />
+                <Button type="submit" fullWidth size="lg">Abrir Caixa</Button>
               </Stack>
             </form>
-          </Group>
+          </Stack>
         </Card>
       </>
     );
@@ -94,31 +94,37 @@ function Caixa() {
   // Caixa Aberto
   return (
     <>
-      <Group position="apart" mb="lg">
+      <Group justify="space-between" mb="md" wrap="wrap" gap="xs">
         <Title order={2}>Gestão de Caixa</Title>
-        <Group>
-          <Button variant="outline" leftIcon={<FaExchangeAlt />} onClick={openMovModal}>Nova Movimentação</Button>
-          <Button color="red" leftIcon={<FaLock />} onClick={openFecharModal}>Fechar Caixa</Button>
+        <Group gap="xs" wrap="wrap">
+          <Button variant="outline" leftSection={<FaExchangeAlt />} onClick={openMovModal} size="sm">
+            Nova Movimentação
+          </Button>
+          <Button color="red" leftSection={<FaLock />} onClick={openFecharModal} size="sm">
+            Fechar Caixa
+          </Button>
         </Group>
       </Group>
 
-      <Card withBorder radius="md" p="lg">
-        <Group position="apart" align="center">
+      <Card withBorder radius="md" p="md">
+        <Group justify="space-between" align="center" mb="md">
           <Title order={3}>Caixa Aberto</Title>
           <FaFolderOpen size={24} color="green" />
         </Group>
-        <Text mt="md">Aberto em: <strong>{new Date(caixa.data_abertura).toLocaleString('pt-BR')}</strong></Text>
-        <Text>Valor Inicial (Troco): <strong>R$ {parseFloat(caixa.valor_inicial).toFixed(2)}</strong></Text>
+        <Stack gap="xs">
+          <Text size="sm">Aberto em: <strong>{new Date(caixa.data_abertura).toLocaleString('pt-BR')}</strong></Text>
+          <Text size="sm">Valor Inicial (Troco): <strong>R$ {parseFloat(caixa.valor_inicial).toFixed(2)}</strong></Text>
+        </Stack>
       </Card>
 
       {/* Modal Fechar Caixa */}
-      <Modal opened={fecharModalOpened} onClose={closeFecharModal} title="Fechar Caixa">
+      <Modal opened={fecharModalOpened} onClose={closeFecharModal} title="Fechar Caixa" size="md">
         <form onSubmit={handleFecharCaixa}>
-          <Stack>
-            <Text>Conte todo o dinheiro em caixa e insira o valor total abaixo.</Text>
-            <NumberInput label="Valor Total Contado" required value={valorFinal} onChange={setValorFinal} precision={2} min={0} autoFocus />
-            <Textarea label="Observações" placeholder="Alguma observação sobre o fechamento" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
-            <Group position="right" mt="md">
+          <Stack gap="sm">
+            <Text size="sm">Conte todo o dinheiro em caixa e insira o valor total abaixo.</Text>
+            <NumberInput label="Valor Total Contado" required value={valorFinal} onChange={setValorFinal} precision={2} min={0} size="md" autoFocus />
+            <Textarea label="Observações" placeholder="Alguma observação sobre o fechamento" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} size="md" />
+            <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={closeFecharModal}>Cancelar</Button>
               <Button type="submit" color="red">Confirmar Fechamento</Button>
             </Group>
@@ -127,13 +133,13 @@ function Caixa() {
       </Modal>
 
       {/* Modal Nova Movimentação */}
-      <Modal opened={movModalOpened} onClose={closeMovModal} title="Nova Movimentação">
+      <Modal opened={movModalOpened} onClose={closeMovModal} title="Nova Movimentação" size="md">
         <form onSubmit={handleMovimentacao}>
-          <Stack>
-            <Select label="Tipo" required value={movimentacao.tipo} onChange={(value) => setMovimentacao({ ...movimentacao, tipo: value })} data={[{ value: 'SANGRIA', label: 'Sangria (Retirada)' }, { value: 'SUPRIMENTO', label: 'Suprimento (Adição)' }]} />
-            <NumberInput label="Valor" required value={movimentacao.valor} onChange={(value) => setMovimentacao({ ...movimentacao, valor: value })} precision={2} min={0.01} autoFocus />
-            <TextInput label="Descrição" required value={movimentacao.descricao} onChange={(e) => setMovimentacao({ ...movimentacao, descricao: e.target.value })} />
-            <Group position="right" mt="md">
+          <Stack gap="sm">
+            <Select label="Tipo" required value={movimentacao.tipo} onChange={(value) => setMovimentacao({ ...movimentacao, tipo: value })} data={[{ value: 'SANGRIA', label: 'Sangria (Retirada)' }, { value: 'SUPRIMENTO', label: 'Suprimento (Adição)' }]} size="md" />
+            <NumberInput label="Valor" required value={movimentacao.valor} onChange={(value) => setMovimentacao({ ...movimentacao, valor: value })} precision={2} min={0.01} size="md" />
+            <TextInput label="Descrição" required value={movimentacao.descricao} onChange={(e) => setMovimentacao({ ...movimentacao, descricao: e.target.value })} size="md" />
+            <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={closeMovModal}>Cancelar</Button>
               <Button type="submit">Salvar</Button>
             </Group>

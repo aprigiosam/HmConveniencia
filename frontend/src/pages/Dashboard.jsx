@@ -31,60 +31,60 @@ function Dashboard() {
 
   return (
     <div>
-      <Title order={2} mb="lg">Dashboard</Title>
-      <Grid>
-        <Grid.Col md={6} lg={3}>
-          <Card withBorder p="md" radius="md">
-            <Group position="apart">
-              <Text size="xs" color="dimmed" transform="uppercase" weight={700}>Vendas Hoje</Text>
-              <FaDollarSign size={22} color='#1971c2' />
+      <Title order={2} mb="md">Dashboard</Title>
+      <Grid gutter="sm">
+        <Grid.Col span={12} sm={6} lg={3}>
+          <Card withBorder p="sm" radius="md">
+            <Group justify="space-between" mb="xs">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Vendas Hoje</Text>
+              <FaDollarSign size={18} color='#1971c2' />
             </Group>
-            <Text size="xl" weight={700} mt="md">R$ {stats?.vendas_hoje?.total?.toFixed(2) || '0.00'}</Text>
-            <Text size="sm" color="dimmed">{stats?.vendas_hoje?.quantidade || 0} vendas</Text>
-          </Card>
-        </Grid.Col>
-        
-        {/* Card de Lucro Hoje */}
-        <Grid.Col md={6} lg={3}>
-          <Card withBorder p="md" radius="md">
-            <Group position="apart">
-              <Text size="xs" color="dimmed" transform="uppercase" weight={700}>Lucro Hoje</Text>
-              <FaChartLine size={22} color='green' />
-            </Group>
-            <Text size="xl" weight={700} mt="md">R$ {stats?.lucro_hoje?.toFixed(2) || '0.00'}</Text>
-            <Text size="sm" color="dimmed">Margem Bruta</Text>
+            <Text size="lg" fw={700}>R$ {stats?.vendas_hoje?.total?.toFixed(2) || '0.00'}</Text>
+            <Text size="xs" c="dimmed">{stats?.vendas_hoje?.quantidade || 0} vendas</Text>
           </Card>
         </Grid.Col>
 
-        <Grid.Col md={6} lg={3}>
-          <Card withBorder p="md" radius="md" bg={stats?.contas_receber?.vencidas?.quantidade > 0 ? 'red.1' : 'transparent'}>
-            <Group position="apart">
-              <Text size="xs" color="dimmed" transform="uppercase" weight={700}>Contas a Receber</Text>
-              <FaReceipt size={22} color={stats?.contas_receber?.vencidas?.quantidade > 0 ? 'red' : '#40c057'} />
+        {/* Card de Lucro Hoje */}
+        <Grid.Col span={12} sm={6} lg={3}>
+          <Card withBorder p="sm" radius="md">
+            <Group justify="space-between" mb="xs">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Lucro Hoje</Text>
+              <FaChartLine size={18} color='green' />
             </Group>
-            <Text size="xl" weight={700} mt="md">R$ {stats?.contas_receber?.total?.toFixed(2) || '0.00'}</Text>
-            {stats?.contas_receber?.vencidas?.quantidade > 0 && 
-              <Text size="sm" color="red" weight={700}>{stats.contas_receber.vencidas.quantidade} vencidas!</Text>}
+            <Text size="lg" fw={700}>R$ {stats?.lucro_hoje?.toFixed(2) || '0.00'}</Text>
+            <Text size="xs" c="dimmed">Margem Bruta</Text>
           </Card>
         </Grid.Col>
-        <Grid.Col md={6} lg={3}>
-          <Card withBorder p="md" radius="md">
-            <Group position="apart">
-              <Text size="xs" color="dimmed" transform="uppercase" weight={700}>Caixa Atual</Text>
-              <FaCashRegister size={22} />
+
+        <Grid.Col span={12} sm={6} lg={3}>
+          <Card withBorder p="sm" radius="md" bg={stats?.contas_receber?.vencidas?.quantidade > 0 ? 'red.1' : 'transparent'}>
+            <Group justify="space-between" mb="xs">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Contas a Receber</Text>
+              <FaReceipt size={18} color={stats?.contas_receber?.vencidas?.quantidade > 0 ? 'red' : '#40c057'} />
             </Group>
-            <Text size="xl" weight={700} mt="md">R$ {stats?.caixa?.valor_atual?.toFixed(2) || 'Fechado'}</Text>
-            {stats?.caixa && <Text size="sm" color="dimmed">Inicial: R$ {stats.caixa.valor_inicial?.toFixed(2)}</Text>}
+            <Text size="lg" fw={700}>R$ {stats?.contas_receber?.total?.toFixed(2) || '0.00'}</Text>
+            {stats?.contas_receber?.vencidas?.quantidade > 0 &&
+              <Text size="xs" c="red" fw={700}>{stats.contas_receber.vencidas.quantidade} vencidas!</Text>}
           </Card>
         </Grid.Col>
-        <Grid.Col md={6} lg={3}>
-          <Card withBorder p="md" radius="md">
-            <Group position="apart">
-              <Text size="xs" color="dimmed" transform="uppercase" weight={700}>Estoque Baixo</Text>
-              <FaExclamationTriangle size={22} color='orange' />
+        <Grid.Col span={12} sm={6} lg={3}>
+          <Card withBorder p="sm" radius="md">
+            <Group justify="space-between" mb="xs">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Caixa Atual</Text>
+              <FaCashRegister size={18} />
             </Group>
-            <Text size="xl" weight={700} mt="md">{stats?.estoque_baixo || 0}</Text>
-            <Text size="sm" color="dimmed">produtos</Text>
+            <Text size="lg" fw={700}>R$ {stats?.caixa?.valor_atual?.toFixed(2) || 'Fechado'}</Text>
+            {stats?.caixa && <Text size="xs" c="dimmed">Inicial: R$ {stats.caixa.valor_inicial?.toFixed(2)}</Text>}
+          </Card>
+        </Grid.Col>
+        <Grid.Col span={12} sm={6} lg={3}>
+          <Card withBorder p="sm" radius="md">
+            <Group justify="space-between" mb="xs">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Estoque Baixo</Text>
+              <FaExclamationTriangle size={18} color='orange' />
+            </Group>
+            <Text size="lg" fw={700}>{stats?.estoque_baixo || 0}</Text>
+            <Text size="xs" c="dimmed">produtos</Text>
           </Card>
         </Grid.Col>
       </Grid>

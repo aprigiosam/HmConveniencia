@@ -77,22 +77,22 @@ function AppContent() {
     <AppShell
       header={{ height: 60 }}
       navbar={{
-        width: 300,
+        width: 280,
         breakpoint: 'sm',
         collapsed: { mobile: !opened },
       }}
-      padding="md"
+      padding={{ base: 'xs', sm: 'md' }}
     >
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Group>
+        <Group h="100%" px={{ base: 'xs', sm: 'md' }} justify="space-between">
+          <Group gap="xs">
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <img src="/logo.jpeg" alt="HM Conveniência" style={{ height: '40px', borderRadius: '4px' }} />
-            <Text fw={500} size="lg" style={{ color: '#FF6B35' }}>HM Conveniência</Text>
+            <img src="/logo.jpeg" alt="HM Conveniência" style={{ height: '36px', borderRadius: '4px' }} />
+            <Text fw={500} size="lg" style={{ color: '#FF6B35' }} visibleFrom="xs">HM Conveniência</Text>
           </Group>
           <Menu shadow="md" width={200}>
             <Menu.Target>
-              <Button variant="subtle" color="gray"><FaUserCircle size={24} /></Button>
+              <Button variant="subtle" color="gray" size="sm"><FaUserCircle size={20} /></Button>
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item leftSection={<FaSignOutAlt />} onClick={handleLogout}>Sair</Menu.Item>
@@ -101,7 +101,7 @@ function AppContent() {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">
+      <AppShell.Navbar p={{ base: 'xs', sm: 'md' }}>
         {navLinks.map((link) => (
           <NavLink
             key={link.label}
@@ -110,7 +110,8 @@ function AppContent() {
             component={Link}
             to={link.path}
             active={location.pathname === link.path}
-            onClick={toggle}
+            onClick={() => opened && toggle()}
+            style={{ borderRadius: '6px', marginBottom: '4px' }}
           />
         ))}
       </AppShell.Navbar>
