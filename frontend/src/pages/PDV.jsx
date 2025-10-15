@@ -1,354 +1,230 @@
-import { useState, useEffect, useRef } from 'react'
-import { getProdutos, createVenda, getClientes } from '../services/api'
-import { localDB } from '../utils/db'
-import { syncManager } from '../utils/syncManager'
-import './PDV.css'
+import { useState, useEffect, useRef } from 'react';
+import { getProdutos, createVenda, getClientes } from '../services/api';
+import { localDB } from '../utils/db';
+import { syncManager } from '../utils/syncManager';
+import { FaSearch, FaTrash, FaShoppingCart } from 'react-icons/fa';
 
 function PDV() {
-  const [produtos, setProdutos] = useState([])
-  const [clientes, setClientes] = useState([])
-  const [carrinho, setCarrinho] = useState([])
-  const [busca, setBusca] = useState('')
-  const [formaPagamento, setFormaPagamento] = useState('DINHEIRO')
-  const [clienteId, setClienteId] = useState('')
-  const [dataVencimento, setDataVencimento] = useState('')
-  const [loading, setLoading] = useState(false)
-  const buscaRef = useRef(null)
+  const [produtos, setProdutos] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [carrinho, setCarrinho] = useState([]);
+  const [busca, setBusca] = useState('');
+  const [formaPagamento, setFormaPagamento] = useState('DINHEIRO');
+  const [clienteId, setClienteId] = useState('');
+  const [dataVencimento, setDataVencimento] = useState('');
+  const [loading, setLoading] = useState(false);
+  const buscaRef = useRef(null);
 
   useEffect(() => {
-    loadProdutos()
-    loadClientes()
-  }, [])
+    loadInitialData();
+  }, []);
 
-  const loadProdutos = async () => {
+  const loadInitialData = async () => {
     try {
-      // Tenta buscar do servidor
-      const response = await getProdutos({ ativo: true })
-      const produtosData = response.data.results || response.data
-      setProdutos(produtosData)
-
-      // Cacheia para uso offline
-      await localDB.cacheProdutos(produtosData)
+      const [produtosData, clientesData] = await Promise.all([
+        getProdutos({ ativo: true }).then(res => res.data.results || res.data),
+        getClientes({ ativo: true }).then(res => res.data.results || res.data)
+      ]);
+      setProdutos(produtosData);
+      setClientes(clientesData);
+      await localDB.cacheProdutos(produtosData);
+      await localDB.cacheClientes(clientesData);
     } catch (error) {
-      console.error('Erro ao carregar produtos:', error)
-
-      // Se offline, usa cache local
+      console.warn('App parece estar offline, carregando dados do cache...');
       try {
-        const cachedProdutos = await localDB.getCachedProdutos()
-        if (cachedProdutos.length > 0) {
-          setProdutos(cachedProdutos)
-          console.log('Produtos carregados do cache local')
-        } else {
-          alert('Erro ao carregar produtos e sem dados em cache')
-        }
+        const [cachedProdutos, cachedClientes] = await Promise.all([localDB.getCachedProdutos(), localDB.getCachedClientes()]);
+        setProdutos(cachedProdutos);
+        setClientes(cachedClientes);
       } catch (cacheError) {
-        console.error('Erro ao carregar cache:', cacheError)
-        alert('Erro ao carregar produtos')
+        console.error('Falha ao carregar dados do cache:', cacheError);
+        alert('Erro ao carregar dados. Verifique sua conexão.');
       }
     }
-  }
-
-  const loadClientes = async () => {
-    try {
-      // Tenta buscar do servidor
-      const response = await getClientes({ ativo: true })
-      const clientesData = response.data.results || response.data
-      setClientes(clientesData)
-
-      // Cacheia para uso offline
-      await localDB.cacheClientes(clientesData)
-    } catch (error) {
-      console.error('Erro ao carregar clientes:', error)
-
-      // Se offline, usa cache local
-      try {
-        const cachedClientes = await localDB.getCachedClientes()
-        if (cachedClientes.length > 0) {
-          setClientes(cachedClientes)
-          console.log('Clientes carregados do cache local')
-        }
-      } catch (cacheError) {
-        console.error('Erro ao carregar cache de clientes:', cacheError)
-      }
-    }
-  }
+  };
 
   const produtosFiltrados = produtos.filter(p =>
     p.nome.toLowerCase().includes(busca.toLowerCase()) ||
     p.codigo_barras?.includes(busca)
-  )
+  );
 
   const adicionarAoCarrinho = (produto) => {
-    const itemExistente = carrinho.find(item => item.produto.id === produto.id)
-
+    const itemExistente = carrinho.find(item => item.produto.id === produto.id);
     if (itemExistente) {
       setCarrinho(carrinho.map(item =>
-        item.produto.id === produto.id
-          ? { ...item, quantidade: item.quantidade + 1 }
-          : item
-      ))
+        item.produto.id === produto.id ? { ...item, quantidade: item.quantidade + 1 } : item
+      ));
     } else {
-      setCarrinho([...carrinho, { produto, quantidade: 1 }])
+      setCarrinho([...carrinho, { produto, quantidade: 1 }]);
     }
-
-    setBusca('')
-    buscaRef.current?.focus()
-  }
+    setBusca('');
+    buscaRef.current?.focus();
+  };
 
   const alterarQuantidade = (produtoId, novaQuantidade) => {
     if (novaQuantidade <= 0) {
-      removerDoCarrinho(produtoId)
-      return
+      removerDoCarrinho(produtoId);
+      return;
     }
-
     setCarrinho(carrinho.map(item =>
-      item.produto.id === produtoId
-        ? { ...item, quantidade: parseFloat(novaQuantidade) }
-        : item
-    ))
-  }
+      item.produto.id === produtoId ? { ...item, quantidade: parseFloat(novaQuantidade) } : item
+    ));
+  };
 
   const removerDoCarrinho = (produtoId) => {
-    setCarrinho(carrinho.filter(item => item.produto.id !== produtoId))
-  }
+    setCarrinho(carrinho.filter(item => item.produto.id !== produtoId));
+  };
 
   const calcularTotal = () => {
-    return carrinho.reduce((total, item) =>
-      total + (parseFloat(item.produto.preco) * item.quantidade), 0
-    )
-  }
+    return carrinho.reduce((total, item) => total + (parseFloat(item.produto.preco) * item.quantidade), 0);
+  };
 
   const finalizarVenda = async () => {
-    if (carrinho.length === 0) {
-      alert('Carrinho vazio!')
-      return
-    }
-
-    if (!formaPagamento) {
-      alert('Selecione a forma de pagamento!')
-      return
-    }
-
+    if (carrinho.length === 0) return alert('Carrinho vazio!');
     if (formaPagamento === 'FIADO') {
-      if (!clienteId) {
-        alert('Selecione o cliente para venda fiado!')
-        return
-      }
-      if (!dataVencimento) {
-        alert('Informe a data de vencimento!')
-        return
-      }
+      if (!clienteId) return alert('Selecione o cliente para venda fiado!');
+      if (!dataVencimento) return alert('Informe a data de vencimento!');
     }
 
-    setLoading(true)
+    setLoading(true);
+    const vendaData = {
+      forma_pagamento: formaPagamento,
+      cliente_id: formaPagamento === 'FIADO' ? clienteId : null,
+      data_vencimento: formaPagamento === 'FIADO' ? dataVencimento : null,
+      itens: carrinho.map(item => ({ produto_id: item.produto.id, quantidade: item.quantidade.toString() }))
+    };
 
     try {
-      const itens = carrinho.map(item => ({
-        produto_id: item.produto.id,
-        quantidade: item.quantidade.toString()
-      }))
-
-      const vendaData = {
-        forma_pagamento: formaPagamento,
-        desconto: 0,
-        observacoes: '',
-        itens
-      }
-
-      if (formaPagamento === 'FIADO') {
-        vendaData.cliente_id = clienteId
-        vendaData.data_vencimento = dataVencimento
-      }
-
-      // ESTRATÉGIA OFFLINE-FIRST:
-      // Tenta enviar direto para o servidor
-      try {
-        await createVenda(vendaData)
-        // Sucesso! Venda enviada imediatamente
-        alert('✓ Venda registrada com sucesso!')
-      } catch (networkError) {
-        // Se falhou, salva localmente para sincronização posterior
-        console.log('Servidor indisponível, salvando localmente...', networkError)
-
-        await localDB.saveVendaPendente(vendaData)
-
-        // Tenta sincronizar em background
-        setTimeout(() => syncManager.syncAll(), 1000)
-
-        alert('✓ Venda salva! Será sincronizada automaticamente quando online.')
-      }
-
-      // Limpa o formulário independentemente
-      setCarrinho([])
-      setBusca('')
-      setClienteId('')
-      setDataVencimento('')
-
-      // Tenta recarregar produtos (não crítico se falhar)
-      loadProdutos().catch(() => {})
-
-    } catch (error) {
-      console.error('Erro ao finalizar venda:', error)
-      alert('Erro ao processar venda. Tente novamente.')
-    } finally {
-      setLoading(false)
+      await createVenda(vendaData);
+      alert('Venda registrada com sucesso!');
+    } catch (networkError) {
+      console.log('Falha na rede, salvando venda localmente.');
+      await localDB.saveVendaPendente(vendaData);
+      setTimeout(() => syncManager.syncAll(), 1000);
+      alert('Venda salva localmente! Será sincronizada quando houver conexão.');
     }
-  }
+
+    setCarrinho([]);
+    setBusca('');
+    setClienteId('');
+    setDataVencimento('');
+    setLoading(false);
+    loadInitialData(); // Recarrega produtos para atualizar estoque
+  };
 
   return (
     <div className="pdv-page">
-      <h2>🛒 PDV - Ponto de Venda</h2>
-
-      <div className="pdv-container">
-        {/* Lado esquerdo - Busca e Produtos */}
-        <div className="pdv-left">
-          <div className="card">
-            <h3>Buscar Produto</h3>
-            <input
-              ref={buscaRef}
-              type="text"
-              placeholder="Digite o nome ou código..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              autoFocus
-              style={{ width: '100%', marginBottom: '15px' }}
-            />
-
-            <div className="produtos-list">
-              {busca && produtosFiltrados.length === 0 && (
-                <p style={{textAlign: 'center', padding: '20px', color: '#666'}}>
-                  Nenhum produto encontrado
-                </p>
-              )}
-
-              {busca && produtosFiltrados.slice(0, 10).map(produto => (
-                <div
-                  key={produto.id}
-                  className="produto-item"
-                  onClick={() => adicionarAoCarrinho(produto)}
-                >
-                  <div>
-                    <strong>{produto.nome}</strong>
-                    <small>Estoque: {parseFloat(produto.estoque).toFixed(0)}</small>
-                  </div>
-                  <span className="preco">R$ {parseFloat(produto.preco).toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Card de Busca */}
+      <div className="card">
+        <div className="search-bar">
+          <FaSearch className="search-icon" />
+          <input
+            ref={buscaRef}
+            type="text"
+            className="form-control"
+            placeholder="Buscar produto por nome ou código..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            autoFocus
+          />
         </div>
-
-        {/* Lado direito - Carrinho */}
-        <div className="pdv-right">
-          <div className="card">
-            <h3>Carrinho</h3>
-
-            {carrinho.length === 0 ? (
-              <p style={{textAlign: 'center', padding: '40px', color: '#666'}}>
-                Carrinho vazio
-              </p>
+        {busca && (
+          <div className="item-list" style={{ marginTop: '1rem' }}>
+            {produtosFiltrados.length > 0 ? (
+              produtosFiltrados.slice(0, 5).map(produto => (
+                <div className="item-card" key={produto.id} onClick={() => adicionarAoCarrinho(produto)} style={{ cursor: 'pointer' }}>
+                  <div className="item-info">
+                    <p className="item-name">{produto.nome}</p>
+                    <p className="item-details">Estoque: {parseInt(produto.estoque)}</p>
+                  </div>
+                  <p className="item-price">R$ {parseFloat(produto.preco).toFixed(2)}</p>
+                </div>
+              ))
             ) : (
-              <>
-                <div className="carrinho-items">
-                  {carrinho.map(item => (
-                    <div key={item.produto.id} className="carrinho-item">
-                      <div className="item-info">
-                        <strong>{item.produto.nome}</strong>
-                        <span>R$ {parseFloat(item.produto.preco).toFixed(2)}</span>
-                      </div>
-
-                      <div className="item-controls">
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={item.quantidade}
-                          onChange={(e) => alterarQuantidade(item.produto.id, e.target.value)}
-                          style={{width: '70px'}}
-                        />
-                        <button
-                          className="btn-icon btn-delete"
-                          onClick={() => removerDoCarrinho(item.produto.id)}
-                        >
-                          🗑️
-                        </button>
-                      </div>
-
-                      <div className="item-subtotal">
-                        R$ {(parseFloat(item.produto.preco) * item.quantidade).toFixed(2)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="total-section">
-                  <div className="total">
-                    <span>TOTAL:</span>
-                    <strong>R$ {calcularTotal().toFixed(2)}</strong>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Forma de Pagamento:</label>
-                    <select
-                      value={formaPagamento}
-                      onChange={(e) => setFormaPagamento(e.target.value)}
-                      style={{width: '100%'}}
-                    >
-                      <option value="DINHEIRO">Dinheiro</option>
-                      <option value="DEBITO">Cartão Débito</option>
-                      <option value="CREDITO">Cartão Crédito</option>
-                      <option value="PIX">PIX</option>
-                      <option value="FIADO">Fiado (Anotar)</option>
-                    </select>
-                  </div>
-
-                  {formaPagamento === 'FIADO' && (
-                    <>
-                      <div className="form-group">
-                        <label>Cliente:</label>
-                        <select
-                          value={clienteId}
-                          onChange={(e) => setClienteId(e.target.value)}
-                          style={{width: '100%'}}
-                          required
-                        >
-                          <option value="">Selecione o cliente...</option>
-                          {clientes.map(cliente => (
-                            <option key={cliente.id} value={cliente.id}>
-                              {cliente.nome} - Deve: R$ {parseFloat(cliente.saldo_devedor || 0).toFixed(2)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="form-group">
-                        <label>Data de Vencimento:</label>
-                        <input
-                          type="date"
-                          value={dataVencimento}
-                          onChange={(e) => setDataVencimento(e.target.value)}
-                          style={{width: '100%'}}
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <button
-                    className="btn btn-success btn-finalizar"
-                    onClick={finalizarVenda}
-                    disabled={loading}
-                  >
-                    {loading ? 'Processando...' : '✓ Finalizar Venda'}
-                  </button>
-                </div>
-              </>
+              <p style={{ textAlign: 'center', padding: '1rem' }}>Nenhum produto encontrado.</p>
             )}
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Card do Carrinho */}
+      <div className="card">
+        <div className="card-header">
+          <h3 className="card-title">Carrinho</h3>
+          <FaShoppingCart />
+        </div>
+        {carrinho.length === 0 ? (
+          <div className="empty-state" style={{ padding: '1rem 0' }}>
+            <p className="empty-text">Seu carrinho está vazio.</p>
+          </div>
+        ) : (
+          <div className="item-list">
+            {carrinho.map(item => (
+              <div className="item-card" key={item.produto.id}>
+                <div className="item-info">
+                  <p className="item-name">{item.produto.nome}</p>
+                  <p className="item-details">R$ {parseFloat(item.produto.preco).toFixed(2)}</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={item.quantidade}
+                    onChange={(e) => alterarQuantidade(item.produto.id, e.target.value)}
+                    style={{ width: '70px', textAlign: 'center' }}
+                  />
+                  <button onClick={() => removerDoCarrinho(item.produto.id)} className="btn-secondary" style={{padding: '0.5rem'}}><FaTrash /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Card de Pagamento */}
+      {carrinho.length > 0 && (
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">Pagamento</h3>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Forma de Pagamento</label>
+            <select className="form-control" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)}>
+              <option value="DINHEIRO">Dinheiro</option>
+              <option value="DEBITO">Débito</option>
+              <option value="CREDITO">Crédito</option>
+              <option value="PIX">PIX</option>
+              <option value="FIADO">Fiado</option>
+            </select>
+          </div>
+
+          {formaPagamento === 'FIADO' && (
+            <>
+              <div className="form-group">
+                <label className="form-label">Cliente</label>
+                <select className="form-control" value={clienteId} onChange={(e) => setClienteId(e.target.value)} required>
+                  <option value="">Selecione...</option>
+                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Data de Vencimento</label>
+                <input type="date" className="form-control" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} required />
+              </div>
+            </>
+          )}
+
+          <div style={{ textAlign: 'right', margin: '1.5rem 0' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Total:</span>
+            <h2 style={{ fontSize: '2rem', color: 'var(--primary)', margin: 0 }}>R$ {calcularTotal().toFixed(2)}</h2>
+          </div>
+
+          <button className="btn-primary" onClick={finalizarVenda} disabled={loading}>
+            {loading ? 'Processando...' : 'Finalizar Venda'}
+          </button>
+        </div>
+      )}
     </div>
-  )
+  );
 }
 
-export default PDV
+export default PDV;

@@ -1,126 +1,105 @@
-import { useState, useEffect } from 'react'
-import { getDashboard, getVendas, triggerBackup } from '../services/api'
-import './Dashboard.css'
+import { useState, useEffect } from 'react';
+import { getDashboard, triggerBackup } from '../services/api';
+import { FaDollarSign, FaExclamationTriangle, FaArchive, FaCashRegister, FaReceipt, FaChartLine } from 'react-icons/fa';
+
+// Componente para os cards de estatísticas
+const StatCard = ({ icon, label, value, detail, warning }) => (
+  <div className="card" style={{ textAlign: 'center', padding: '1.5rem' }}>
+    <div style={{ fontSize: '2rem', color: 'var(--primary)', marginBottom: '0.5rem' }}>{icon}</div>
+    <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-primary)', margin: '0' }}>{value}</p>
+    <p style={{ color: 'var(--text-secondary)', margin: '0.25rem 0 0 0' }}>{label}</p>
+    {detail && <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{detail}</p>}
+    {warning && <p style={{ fontSize: '0.8rem', color: 'var(--error)', fontWeight: 'bold' }}>{warning}</p>}
+  </div>
+);
 
 function Dashboard() {
-  const [stats, setStats] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [backupLoading, setBackupLoading] = useState(false)
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [backupLoading, setBackupLoading] = useState(false);
 
   useEffect(() => {
-    loadData()
-    // Atualiza a cada 30 segundos
-    const interval = setInterval(loadData, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    loadData();
+    const interval = setInterval(loadData, 30000); // Atualiza a cada 30 segundos
+    return () => clearInterval(interval);
+  }, []);
 
   const loadData = async () => {
     try {
-      const statsRes = await getDashboard()
-      setStats(statsRes.data)
+      const statsRes = await getDashboard();
+      setStats(statsRes.data);
     } catch (error) {
-      console.error('Erro ao carregar dados:', error)
-      if (!stats) { // Só mostra erro na primeira carga
-        alert('Erro ao carregar dados do dashboard')
-      }
+      console.error('Erro ao carregar dados do dashboard:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleBackup = async () => {
-    if (!confirm('Deseja realmente iniciar um backup do banco de dados?')) return;
-
+    if (!confirm('Deseja iniciar um backup do banco de dados?')) return;
     setBackupLoading(true);
     try {
       await triggerBackup();
-      alert('Backup iniciado com sucesso! Verifique os logs do servidor para detalhes.');
-    } catch (error) {
+      alert('Backup iniciado com sucesso!');
+    } catch (error) { 
       console.error('Erro ao iniciar backup:', error);
-      alert('Erro ao iniciar backup. Verifique a conexão e os logs.');
+      alert('Erro ao iniciar backup.');
     } finally {
       setBackupLoading(false);
     }
   };
 
   if (loading) {
-    return <div className="loading">Carregando...</div>
+    return <div>Carregando...</div>;
   }
 
   return (
     <div className="dashboard">
-      <h2>📊 Dashboard</h2>
+      <h2 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem' }}>Dashboard</h2>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">💰</div>
-          <div className="stat-content">
-            <h3>Vendas Hoje</h3>
-            <p className="stat-value">R$ {stats?.vendas_hoje?.total?.toFixed(2) || '0.00'}</p>
-            <span className="stat-label">{stats?.vendas_hoje?.quantidade || 0} vendas</span>
-          </div>
-        </div>
-
-        {/* ALERTA VERMELHO: Contas Vencidas */}
-        {stats?.contas_receber?.vencidas?.quantidade > 0 && (
-          <div className="stat-card stat-danger">
-            <div className="stat-icon">🚨</div>
-            <div className="stat-content">
-              <h3>Contas Vencidas</h3>
-              <p className="stat-value">R$ {stats?.contas_receber?.vencidas?.total?.toFixed(2) || '0.00'}</p>
-              <span className="stat-label">{stats?.contas_receber?.vencidas?.quantidade} contas atrasadas</span>
-            </div>
-          </div>
-        )}
-
-        <div className="stat-card">
-          <div className="stat-icon">📋</div>
-          <div className="stat-content">
-            <h3>Contas a Receber</h3>
-            <p className="stat-value">R$ {stats?.contas_receber?.total?.toFixed(2) || '0.00'}</p>
-            <span className="stat-label">{stats?.contas_receber?.quantidade || 0} pendentes</span>
-            {stats?.contas_receber?.vencendo_hoje?.quantidade > 0 && (
-              <span className="stat-warning">⚠️ {stats.contas_receber.vencendo_hoje.quantidade} vencendo hoje</span>
-            )}
-          </div>
-        </div>
-
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <StatCard 
+          icon={<FaDollarSign />}
+          label="Vendas Hoje"
+          value={`R$ ${stats?.vendas_hoje?.total?.toFixed(2) || '0.00'}`}
+          detail={`${stats?.vendas_hoje?.quantidade || 0} vendas`}
+        />
+        <StatCard 
+          icon={<FaChartLine />}
+          label="Lucro Hoje"
+          value={`R$ ${stats?.lucro_hoje?.toFixed(2) || '0.00'}`}
+        />
+        <StatCard 
+          icon={<FaReceipt />}
+          label="Contas a Receber"
+          value={`R$ ${stats?.contas_receber?.total?.toFixed(2) || '0.00'}`}
+          warning={stats?.contas_receber?.vencidas?.quantidade > 0 ? `${stats.contas_receber.vencidas.quantidade} vencidas!` : null}
+        />
         {stats?.caixa && (
-          <div className="stat-card stat-success">
-            <div className="stat-icon">💵</div>
-            <div className="stat-content">
-              <h3>Caixa Aberto</h3>
-              <p className="stat-value">R$ {stats.caixa.valor_atual?.toFixed(2) || '0.00'}</p>
-              <span className="stat-label">Inicial: R$ {stats.caixa.valor_inicial?.toFixed(2)}</span>
-            </div>
-          </div>
+          <StatCard 
+            icon={<FaCashRegister />}
+            label="Caixa Atual"
+            value={`R$ ${stats.caixa.valor_atual?.toFixed(2) || '0.00'}`}
+            detail={`Inicial: R$ ${stats.caixa.valor_inicial?.toFixed(2)}`}
+          />
         )}
-
-        <div className="stat-card">
-          <div className="stat-icon">⚠️</div>
-          <div className="stat-content">
-            <h3>Estoque Baixo</h3>
-            <p className="stat-value">{stats?.estoque_baixo || 0}</p>
-            <span className="stat-label">produtos</span>
-          </div>
-        </div>
+        <StatCard 
+          icon={<FaExclamationTriangle />}
+          label="Estoque Baixo"
+          value={stats?.estoque_baixo || 0}
+          detail="produtos"
+        />
       </div>
 
-      <div className="card" style={{ marginTop: '20px' }}>
-        <h3>Manutenção</h3>
-        <button
-          className="btn btn-secondary"
-          onClick={handleBackup}
-          disabled={backupLoading}
-        >
-          {backupLoading ? 'Iniciando Backup...' : '☁️ Fazer Backup Agora'}
+      <div className="card" style={{ marginTop: '2rem' }}>
+        <h3 className="card-title">Manutenção</h3>
+        <p style={{color: 'var(--text-secondary)', marginBottom: '1rem'}}>Realize o backup do banco de dados para segurança.</p>
+        <button className="btn-secondary" onClick={handleBackup} disabled={backupLoading}>
+          {backupLoading ? 'Processando...' : 'Fazer Backup'}
         </button>
-        <small style={{marginLeft: '15px', color: '#666'}}>
-          Atualização automática a cada 30 segundos
-        </small>
       </div>
     </div>
-  )
+  );
 }
 
-export default Dashboard
+export default Dashboard;

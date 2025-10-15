@@ -30,6 +30,57 @@ describe('Produtos Component', () => {
     vi.spyOn(api, 'deleteProduto').mockResolvedValue({});
   });
 
+  it('deve exibir a lista de produtos e permitir adicionar um novo com categoria', async () => {
+    const getProdutosMock = vi.spyOn(api, 'getProdutos')
+      .mockResolvedValueOnce({ data: { results: mockProdutos } }) // 1ª chamada (inicial)
+      .mockResolvedValueOnce({ data: { results: [...mockProdutos, { id: 3, nome: 'Produto C', preco: '15.00', preco_custo: '7.50', estoque: 20, codigo_barras: '333', categoria: 1, categoria_nome: 'Eletrônicos', margem_lucro: '100.00' }] } }); // 2ª chamada (após criação)
+
+    const getCategoriasMock = vi.spyOn(api, 'getCategorias')
+      .mockResolvedValueOnce({ data: { results: mockCategorias } }) // 1ª chamada (inicial)
+      .mockResolvedValueOnce({ data: { results: mockCategorias } }); // 2ª chamada (após criação)
+
+    const createProdutoMock = vi.spyOn(api, 'createProduto').mockResolvedValue({ data: { id: 3, ...mockProdutos[0] } });
+
+    renderWithRouter(<Produtos />);
+
+    // 1. Espera a lista de produtos carregar
+    expect(await screen.findByText('Produto A')).toBeInTheDocument();
+    expect(screen.getByText('Eletrônicos')).toBeInTheDocument();
+
+    // 2. Clica no botão para adicionar novo produto
+    const newProductButton = screen.getByRole('button', { name: /Novo Produto/i });
+    fireEvent.click(newProductButton);
+
+    // 3. Preenche o formulário
+    const nomeInput = screen.getByLabelText('Nome *');
+    const precoInput = screen.getByLabelText('Preço (R$) *');
+    const precoCustoInput = screen.getByLabelText('Preço de Custo (R$)');
+    const estoqueInput = screen.getByLabelText('Estoque *');
+    const codigoBarrasInput = screen.getByLabelText('Código de Barras');
+    const categoriaSelect = screen.getByLabelText('Categoria');
+    const salvarButton = screen.getByRole('button', { name: /Criar/i });
+
+    fireEvent.change(nomeInput, { target: { value: 'Produto C' } });
+    fireEvent.change(precoInput, { target: { value: '15.00' } });
+    fireEvent.change(precoCustoInput, { target: { value: '7.50' } });
+    fireEvent.change(estoqueInput, { target: { value: '20' } });
+    fireEvent.change(codigoBarrasInput, { target: { value: '333' } });
+    fireEvent.change(categoriaSelect, { target: { value: mockCategorias[0].id } }); // Seleciona Eletrônicos
+
+    fireEvent.click(salvarButton);
+
+    // 4. Verifica se a API de criação foi chamada corretamente
+    await waitFor(() => {
+      expect(createProdutoMock).toHaveBeenCalledWith({
+        nome: 'Produto C',
+        preco: '15.00',
+        preco_custo: '7.50',
+        estoque: '20',
+        codigo_barras: '333',
+        categoria: mockCategorias[0].id,
+      });
+    });
+
     // 5. Verifica se a nova categoria aparece na lista
     await waitFor(() => {
       expect(screen.getByText('Produto C')).toBeInTheDocument();
@@ -39,8 +90,6 @@ describe('Produtos Component', () => {
     expect(getProdutosMock).toHaveBeenCalledTimes(2); // Inicial e após criação
     expect(getCategoriasMock).toHaveBeenCalledTimes(2); // Inicial e após criação
   });
-
-  it('deve permitir editar um produto existente e sua categoria', async () => {
     const getProdutosMock = vi.spyOn(api, 'getProdutos')
       .mockResolvedValueOnce({ data: { results: mockProdutos } }) // 1ª chamada (inicial)
       .mockResolvedValueOnce({ data: { results: [{ ...mockProdutos[0], nome: 'Produto A Editado', categoria: 2, categoria_nome: 'Alimentos' }, mockProdutos[1]] } }); // 2ª chamada (após edição)

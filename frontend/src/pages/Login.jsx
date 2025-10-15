@@ -1,93 +1,88 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { login as loginApi } from '../services/api'
-import './Login.css'
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { login as loginApi } from '../services/api';
 
 function Login() {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const navigate = useNavigate()
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-
+    e.preventDefault();
+    setError('');
+    setLoading(true);
     try {
-      const response = await loginApi(username, password)
-      const { token, user } = response.data
-
-      // Salva token e dados do usuário
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(user))
-
-      // Redireciona para dashboard
-      navigate('/')
+      const response = await loginApi(username, password);
+      const { token, user } = response.data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      navigate('/');
     } catch (err) {
-      console.error('Erro no login:', err)
-      setError(err.response?.data?.error || 'Erro ao fazer login. Verifique suas credenciais.')
+      setError(err.response?.data?.error || 'Credenciais inválidas.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="login-page">
-      <div className="login-container">
-        <div className="login-card">
-          <div className="login-header">
-            <h1>🏪 HMConveniencia</h1>
-            <p>Sistema de PDV</p>
-          </div>
-
-          {error && (
-            <div className="alert alert-error">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="login-form">
-            <div className="form-group">
-              <label>Usuário</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Digite seu usuário"
-                required
-                autoFocus
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Senha</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Digite sua senha"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary btn-block"
-              disabled={loading}
-            >
-              {loading ? 'Entrando...' : 'Entrar'}
-            </button>
-          </form>
-
-          <div className="login-footer">
-            <small>Acesso restrito a usuários autorizados</small>
-          </div>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--gradient)',
+      padding: '1rem'
+    }}>
+      <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '1.8rem', color: 'var(--primary)', margin: 0 }}>HM Conveniência</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>Acesse seu painel</p>
         </div>
+
+        {error && (
+          <div style={{ 
+            padding: '0.75rem', 
+            marginBottom: '1rem', 
+            borderRadius: '8px', 
+            background: '#ffebee', 
+            color: 'var(--error)', 
+            textAlign: 'center' 
+          }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">Usuário</label>
+            <input
+              type="text"
+              className="form-control"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Senha</label>
+            <input
+              type="password"
+              className="form-control"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: '1rem' }}>
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
       </div>
     </div>
-  )
+  );
 }
 
-export default Login
+export default Login;
