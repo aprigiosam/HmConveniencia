@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { getProdutosMaisLucrativos } from '../services/api';
-import { FaChartLine } from 'react-icons/fa';
+import './RelatorioLucro.css';
 
 function RelatorioLucro() {
   const [produtos, setProdutos] = useState([]);
@@ -15,8 +16,8 @@ function RelatorioLucro() {
       const response = await getProdutosMaisLucrativos();
       setProdutos(response.data);
     } catch (error) {
-      console.error('Erro ao carregar relatório de lucro:', error);
-      alert('Erro ao carregar relatório.');
+      console.error('Erro ao carregar produtos mais lucrativos:', error);
+      alert('Erro ao carregar relatório de lucro.');
     } finally {
       setLoading(false);
     }
@@ -27,51 +28,53 @@ function RelatorioLucro() {
     return isNaN(number) ? 'R$ 0.00' : `R$ ${number.toFixed(2)}`;
   };
 
-  const totalLucro = produtos.reduce((sum, p) => sum + parseFloat(p.lucro_total), 0);
-
-  const InfoLine = ({ label, value }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
-      <span style={{ fontWeight: '500' }}>{value}</span>
-    </div>
-  );
+  const formatPercentage = (value) => {
+    const number = parseFloat(value);
+    return isNaN(number) ? '0.00%' : `${number.toFixed(2)}%`;
+  };
 
   if (loading) {
-    return <div>Carregando...</div>;
+    return <div className="loading">Carregando...</div>;
   }
 
   return (
     <div className="relatorio-lucro-page">
-      <h2 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem' }}>Relatório de Lucratividade</h2>
+      <h2>📈 Relatório: Produtos Mais Lucrativos</h2>
 
-      <div className="card" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Lucro Total (Período)</p>
-        <p style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--success)', margin: '0.5rem 0 0 0' }}>
-          {formatCurrency(totalLucro)}
-        </p>
-      </div>
-
-      <div className="item-list">
-        {produtos.length > 0 ? (
-          produtos.map((produto, index) => (
-            <div className="card" key={index}>
-              <div className="card-header">
-                <h3 className="card-title">{produto.nome_produto}</h3>
-                <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--success)' }}>
-                  Lucro: {formatCurrency(produto.lucro_total)}
-                </span>
-              </div>
-              <InfoLine label="Qtd. Vendida" value={parseInt(produto.total_vendido)} />
-              <InfoLine label="Receita Total" value={formatCurrency(produto.receita_total)} />
-              <InfoLine label="Custo Total" value={formatCurrency(produto.custo_total)} />
-              <InfoLine label="Preço Médio Venda" value={formatCurrency(produto.preco_venda)} />
-            </div>
-          ))
+      <div className="card">
+        {produtos.length === 0 ? (
+          <p style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+            Nenhum produto com lucro registrado ainda.
+          </p>
         ) : (
-          <div className="empty-state">
-            <FaChartLine className="empty-icon" />
-            <p className="empty-text">Não há dados de lucro para exibir.</p>
-          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Preço Venda</th>
+                <th>Preço Custo</th>
+                <th>Margem Lucro</th>
+                <th>Qtd. Vendida</th>
+                <th>Receita Total</th>
+                <th>Custo Total</th>
+                <th>Lucro Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {produtos.map((produto, index) => (
+                <tr key={index}>
+                  <td>{produto.nome_produto}</td>
+                  <td>{formatCurrency(produto.preco_venda)}</td>
+                  <td>{formatCurrency(produto.preco_custo)}</td>
+                  <td>{formatPercentage((produto.lucro_total / produto.custo_total) * 100)}</td>
+                  <td>{parseFloat(produto.total_vendido).toFixed(0)}</td>
+                  <td>{formatCurrency(produto.receita_total)}</td>
+                  <td>{formatCurrency(produto.custo_total)}</td>
+                  <td>{formatCurrency(produto.lucro_total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

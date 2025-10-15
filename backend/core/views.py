@@ -265,7 +265,6 @@ class VendaViewSet(viewsets.ModelViewSet):
             },
             'estoque_baixo': estoque_baixo,
             'vendas_por_pagamento': list(vendas_por_pagamento),
-            'lucro_hoje': float(lucro_hoje),
             'contas_receber': {
                 'total': float(total_a_receber),
                 'quantidade': contas_pendentes.count(),

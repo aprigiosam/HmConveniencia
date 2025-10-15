@@ -1,0 +1,64 @@
+.categorias-page {
+  padding: 20px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.categorias-page h2 {
+  margin: 0;
+  color: var(--dark-text);
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: var(--card-bg);
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 8px 25px var(--shadow-light);
+  width: 90%;
+  max-width: 550px;
+  position: relative;
+}
+
+.modal h3 {
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-size: 22px;
+  color: var(--dark-text);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 30px;
+}

@@ -1,0 +1,144 @@
+.pdv-page h2 {
+  margin-bottom: 25px;
+  color: var(--dark-text);
+}
+
+.pdv-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.produtos-list {
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 10px; /* Espaçamento para scrollbar */
+}
+
+.produto-item {
+  padding: 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+  background: var(--card-bg);
+  box-shadow: 0 2px 4px var(--shadow-light);
+}
+
+.produto-item:hover {
+  background: var(--secondary-light);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.produto-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.produto-item strong {
+  color: var(--dark-text);
+}
+
+.produto-item small {
+  color: var(--light-text);
+  font-size: 12px;
+}
+
+.produto-item .preco {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--success-color);
+}
+
+.carrinho-items {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 20px;
+  padding-right: 10px; /* Espaçamento para scrollbar */
+}
+
+.carrinho-item {
+  padding: 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background: var(--light-bg);
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.item-info strong {
+  color: var(--dark-text);
+}
+
+.item-info span {
+  color: var(--light-text);
+  font-size: 14px;
+}
+
+.item-controls {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.item-controls input {
+  width: 60px;
+  text-align: center;
+  padding: 8px;
+}
+
+.item-subtotal {
+  text-align: right;
+  font-weight: 700;
+  color: var(--success-color);
+  font-size: 18px;
+}
+
+.total-section {
+  margin-top: 20px;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 24px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: var(--secondary-light);
+  border-radius: 8px;
+}
+
+.total strong {
+  color: var(--primary-color);
+  font-size: 32px;
+}
+
+.btn-finalizar {
+  width: 100%;
+  font-size: 18px;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+@media (max-width: 968px) {
+  .pdv-container {
+    grid-template-columns: 1fr;
+  }
+}

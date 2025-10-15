@@ -1,21 +1,20 @@
-import { BrowserRouter, Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { FaHome, FaPlusCircle, FaUserFriends, FaBoxOpen, FaCashRegister, FaChartLine, FaSignOutAlt } from 'react-icons/fa';
-
-import Dashboard from './pages/Dashboard';
-import PDV from './pages/PDV';
-import Produtos from './pages/Produtos';
-import Clientes from './pages/Clientes';
-import ContasReceber from './pages/ContasReceber';
-import Caixa from './pages/Caixa';
-import HistoricoCaixa from './pages/HistoricoCaixa';
-import RelatorioLucro from './pages/RelatorioLucro';
-import Categorias from './pages/Categorias';
-import Login from './pages/Login';
-import SyncStatus from './components/SyncStatus';
-import { localDB } from './utils/db';
-import { syncManager } from './utils/syncManager';
-import { logout as logoutApi } from './services/api';
+import { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom'
+import Dashboard from './pages/Dashboard'
+import PDV from './pages/PDV'
+import Produtos from './pages/Produtos'
+import Clientes from './pages/Clientes'
+import ContasReceber from './pages/ContasReceber'
+import Caixa from './pages/Caixa'
+import HistoricoCaixa from './pages/HistoricoCaixa'
+import RelatorioLucro from './pages/RelatorioLucro'
+import Categorias from './pages/Categorias'
+import Login from './pages/Login'
+import SyncStatus from './components/SyncStatus'
+import { localDB } from './utils/db'
+import { syncManager } from './utils/syncManager'
+import { logout as logoutApi } from './services/api'
+import './App.css'
 
 // Componente para proteger rotas
 function PrivateRoute({ children }) {
@@ -23,89 +22,125 @@ function PrivateRoute({ children }) {
   return token ? children : <Navigate to="/login" replace />;
 }
 
-// Header que aparece em todas as páginas
-function Header() {
-    const navigate = useNavigate();
-
-    const handleLogout = async () => {
-        if (!confirm('Deseja realmente sair?')) return;
-        try {
-            await logoutApi();
-        } catch (error) {
-            console.error('Erro ao fazer logout:', error);
-        } finally {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            navigate('/login');
-        }
-    };
-
-    return (
-        <header className="header" style={{ background: 'var(--gradient)', color: 'white', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1 style={{ fontSize: '1.5rem', margin: 0 }}>HM Conveniência</h1>
-            <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }} title="Sair">
-                <FaSignOutAlt size={24} />
-            </button>
-        </header>
-    );
-}
-
-// Barra de Navegação Inferior
-function BottomNav() {
-  const location = useLocation();
-  const navItems = [
-    { path: '/', label: 'Início', icon: <FaHome className="nav-icon" /> },
-    { path: '/pdv', label: 'PDV', icon: <FaPlusCircle className="nav-icon" /> },
-    { path: '/caixa', label: 'Caixa', icon: <FaCashRegister className="nav-icon" /> },
-    { path: '/produtos', label: 'Produtos', icon: <FaBoxOpen className="nav-icon" /> },
-    { path: '/clientes', label: 'Clientes', icon: <FaUserFriends className="nav-icon" /> },
-  ];
-
-  return (
-    <nav className="bottom-nav">
-      {navItems.map(item => (
-        <Link to={item.path} key={item.path} className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}>
-          {item.icon}
-          <span className="nav-label">{item.label}</span>
-        </Link>
-      ))}
-    </nav>
-  );
-}
-
 // Componente da aplicação principal
 function AppContent() {
-  const token = localStorage.getItem('token');
+  const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [theme, setTheme] = useState(() => {
+    // Tenta carregar o tema do localStorage, senão usa a preferência do sistema
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      return savedTheme;
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
 
   useEffect(() => {
-    localDB.init().then(() => console.log('IndexedDB inicializado'));
-    syncManager.init();
-    return () => syncManager.stop();
+    // Carrega usuário do localStorage
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
   }, []);
 
+  useEffect(() => {
+    // Aplica a classe 'dark-mode' ao body
+    document.body.className = theme + '-mode';
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    // Inicializa o banco local
+    localDB.init().then(() => {
+      console.log('IndexedDB inicializado')
+    })
+
+    // Inicializa o gerenciador de sincronização
+    syncManager.init()
+
+    return () => {
+      syncManager.stop()
+    }
+  }, [])
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const toggleTheme = () => {
+    setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
+  };
+
+  const handleLogout = async () => {
+    if (!confirm('Deseja realmente sair?')) return;
+
+    try {
+      await logoutApi();
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    } finally {
+      // Remove dados locais independentemente
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
+      navigate('/login');
+    }
+  };
+
+  const token = localStorage.getItem('token');
+
   return (
-    <div className="app">
-      {token && <Header />}
-      {token && <SyncStatus />}
+      <div className="app">
+        {token && (
+        <nav className="navbar">
+          <div className="container">
+            <h1>🏪 HMConveniencia</h1>
+            <div className="navbar-actions">
+              {user && <span className="navbar-user">👤 {user.username}</span>}
+              <button onClick={toggleTheme} className="btn-icon theme-toggle">
+                {theme === 'light' ? '🌙' : '☀️'}
+              </button>
+              <button onClick={handleLogout} className="btn-icon" title="Sair">
+                🚪
+              </button>
+              <button className="hamburger-menu" onClick={toggleMobileMenu}>
+                ☰
+              </button>
+            </div>
+            <div className={`nav-links ${isMobileMenuOpen ? 'open' : ''}`}>
+              <Link to="/" onClick={toggleMobileMenu}>Dashboard</Link>
+              <Link to="/pdv" onClick={toggleMobileMenu}>PDV</Link>
+              <Link to="/caixa" onClick={toggleMobileMenu}>Caixa</Link>
+              <Link to="/produtos" onClick={toggleMobileMenu}>Produtos</Link>
+              <Link to="/clientes" onClick={toggleMobileMenu}>Clientes</Link>
+              <Link to="/contas-receber" onClick={toggleMobileMenu}>Contas a Receber</Link>
+              <Link to="/caixa/historico" onClick={toggleMobileMenu}>Histórico de Caixas</Link>
+              <Link to="/relatorios/lucro" onClick={toggleMobileMenu}>Relatório de Lucro</Link>
+              <Link to="/categorias" onClick={toggleMobileMenu}>Categorias</Link>
+            </div>
+          </div>
+        </nav>
+        )}
 
-      <main className="container">
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/pdv" element={<PrivateRoute><PDV /></PrivateRoute>} />
-          <Route path="/produtos" element={<PrivateRoute><Produtos /></PrivateRoute>} />
-          <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
-          <Route path="/contas-receber" element={<PrivateRoute><ContasReceber /></PrivateRoute>} />
-          <Route path="/caixa" element={<PrivateRoute><Caixa /></PrivateRoute>} />
-          <Route path="/caixa/historico" element={<PrivateRoute><HistoricoCaixa /></PrivateRoute>} />
-          <Route path="/relatorios/lucro" element={<PrivateRoute><RelatorioLucro /></PrivateRoute>} />
-          <Route path="/categorias" element={<PrivateRoute><Categorias /></PrivateRoute>} />
-        </Routes>
-      </main>
+        {token && <SyncStatus />}
 
-      {token && <BottomNav />}
-    </div>
-  );
+        <main className={token ? "container" : ""}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/pdv" element={<PrivateRoute><PDV /></PrivateRoute>} />
+            <Route path="/produtos" element={<PrivateRoute><Produtos /></PrivateRoute>} />
+            <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
+            <Route path="/contas-receber" element={<PrivateRoute><ContasReceber /></PrivateRoute>} />
+            <Route path="/caixa" element={<PrivateRoute><Caixa /></PrivateRoute>} />
+            <Route path="/caixa/historico" element={<PrivateRoute><HistoricoCaixa /></PrivateRoute>} />
+            <Route path="/relatorios/lucro" element={<PrivateRoute><RelatorioLucro /></PrivateRoute>} />
+            <Route path="/categorias" element={<PrivateRoute><Categorias /></PrivateRoute>} />
+          </Routes>
+        </main>
+      </div>
+  )
 }
 
 function App() {
@@ -116,4 +151,4 @@ function App() {
   );
 }
 
-export default App;
+export default App

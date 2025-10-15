@@ -1,0 +1,111 @@
+.app {
+  min-height: 100vh;
+}
+
+.navbar {
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border-color);
+  padding: 10px 0;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px var(--shadow-light);
+}
+
+.navbar .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar h1 {
+  color: var(--primary-color);
+  font-size: 26px;
+  margin-bottom: 0;
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.navbar-user {
+  color: var(--dark-text);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 12px;
+  background: var(--secondary-light);
+  border-radius: 20px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 15px;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--dark-text);
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.nav-links a:hover {
+  background: var(--secondary-light);
+  color: var(--primary-color);
+}
+
+.hamburger-menu {
+  display: none; /* Oculta por padrão em desktop */
+  font-size: 28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dark-text);
+  padding: 5px;
+}
+
+@media (max-width: 768px) {
+  .navbar .container {
+    flex-direction: row; /* Mantém o título e o hambúrguer na mesma linha */
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .hamburger-menu {
+    display: block; /* Mostra o hambúrguer em mobile */
+  }
+
+  .nav-links {
+    display: none; /* Oculta os links por padrão em mobile */
+    flex-direction: column;
+    width: 100%;
+    position: absolute;
+    top: 65px; /* Ajuste conforme a altura da sua navbar */
+    left: 0;
+    background: var(--card-bg);
+    box-shadow: 0 4px 12px var(--shadow-light);
+    padding: 10px 0;
+    z-index: 1000;
+  }
+
+  .nav-links.open {
+    display: flex; /* Mostra os links quando o menu está aberto */
+  }
+
+  .nav-links a {
+    padding: 12px 20px;
+    border-radius: 0;
+    text-align: center;
+    border-bottom: 1px solid var(--secondary-light);
+  }
+
+  .nav-links a:last-child {
+    border-bottom: none;
+  }
+
+  .nav-links a:hover {
+    background: var(--secondary-light);
+  }
+}
