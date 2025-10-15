@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Box } from '@mantine/core';
+import { AppShell, Text, Burger, Group, NavLink, Button, Menu } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle } from 'react-icons/fa';
 
