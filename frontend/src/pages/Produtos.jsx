@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias } from '../services/api';
+import { localDB } from '../utils/db';
 import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, ActionIcon, Stack, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
@@ -17,13 +18,25 @@ function Produtos() {
   }, []);
 
   const loadInitialData = async () => {
-    setLoading(true);
+    // CACHE-FIRST: Carrega do cache imediatamente
+    const cachedProdutos = await localDB.getCachedProdutos();
+    if (cachedProdutos.length > 0) {
+      setProdutos(cachedProdutos);
+      setLoading(false);
+    }
+
+    // Tenta sincronizar com servidor em background
     try {
       const [produtosRes, categoriasRes] = await Promise.all([getProdutos(), getCategorias()]);
-      setProdutos(produtosRes.data.results || produtosRes.data);
-      setCategorias(categoriasRes.data.results || categoriasRes.data);
+      const produtosData = produtosRes.data.results || produtosRes.data;
+      const categoriasData = categoriasRes.data.results || categoriasRes.data;
+
+      setProdutos(produtosData);
+      setCategorias(categoriasData);
+      await localDB.cacheProdutos(produtosData);
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      // Se falhar, mantém dados do cache (já carregados)
+      console.error('Servidor offline, usando cache local');
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getClientes, createCliente, updateCliente, deleteCliente } from '../services/api';
+import { localDB } from '../utils/db';
 import { Table, Button, Modal, TextInput, NumberInput, Group, Title, ActionIcon, Stack, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FaEdit, FaTrash, FaUserPlus } from 'react-icons/fa';
@@ -16,12 +17,22 @@ function Clientes() {
   }, []);
 
   const loadClientes = async () => {
-    setLoading(true);
+    // CACHE-FIRST: Carrega do cache imediatamente
+    const cachedClientes = await localDB.getCachedClientes();
+    if (cachedClientes.length > 0) {
+      setClientes(cachedClientes);
+      setLoading(false);
+    }
+
+    // Tenta sincronizar com servidor em background
     try {
       const response = await getClientes();
-      setClientes(response.data.results || response.data);
+      const clientesData = response.data.results || response.data;
+      setClientes(clientesData);
+      await localDB.cacheClientes(clientesData);
     } catch (error) {
-      console.error('Erro ao carregar clientes:', error);
+      // Se falhar, mantém dados do cache (já carregados)
+      console.error('Servidor offline, usando cache local');
     } finally {
       setLoading(false);
     }

@@ -22,6 +22,16 @@ function PDV() {
   }, []);
 
   const loadInitialData = async () => {
+    // CACHE-FIRST: Carrega do cache imediatamente (PDV precisa ser rápido!)
+    const [cachedProdutos, cachedClientes] = await Promise.all([
+      localDB.getCachedProdutos(),
+      localDB.getCachedClientes()
+    ]);
+
+    if (cachedProdutos.length > 0) setProdutos(cachedProdutos);
+    if (cachedClientes.length > 0) setClientes(cachedClientes);
+
+    // Sincroniza com servidor em background
     try {
       const [produtosData, clientesData] = await Promise.all([
         getProdutos({ ativo: true }).then(res => res.data.results || res.data),
@@ -32,10 +42,8 @@ function PDV() {
       await localDB.cacheProdutos(produtosData);
       await localDB.cacheClientes(clientesData);
     } catch (error) {
-      console.warn('App offline, carregando dados do cache.');
-      const [cachedProdutos, cachedClientes] = await Promise.all([localDB.getCachedProdutos(), localDB.getCachedClientes()]);
-      setProdutos(cachedProdutos);
-      setClientes(cachedClientes);
+      // Mantém dados do cache se servidor falhar
+      console.warn('Servidor offline, usando cache local');
     }
   };
 
