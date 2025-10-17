@@ -86,26 +86,52 @@ function PDV() {
     setLoading(true);
     const vendaData = {
       forma_pagamento: formaPagamento,
-      cliente_id: formaPagamento === 'FIADO' ? clienteId : null,
+      cliente_id: formaPagamento === 'FIADO' ? parseInt(clienteId) : null,
       data_vencimento: formaPagamento === 'FIADO' ? dataVencimento.toISOString().split('T')[0] : null,
-      itens: carrinho.map(item => ({ produto_id: item.produto.id, quantidade: item.quantidade.toString() }))
+      itens: carrinho.map(item => ({
+        produto_id: item.produto.id,
+        quantidade: item.quantidade
+      }))
     };
 
     try {
       await createVenda(vendaData);
       alert('Venda registrada com sucesso!');
-    } catch (networkError) {
-      await localDB.saveVendaPendente(vendaData);
-      setTimeout(() => syncManager.syncAll(), 1000);
-      alert('Venda salva localmente! Será sincronizada automaticamente.');
-    }
 
-    setCarrinho([]);
-    setBusca('');
-    setClienteId(null);
-    setDataVencimento(null);
-    setLoading(false);
-    loadInitialData();
+      // Limpa carrinho e recarrega apenas em caso de sucesso
+      setCarrinho([]);
+      setBusca('');
+      setClienteId(null);
+      setDataVencimento(null);
+      loadInitialData();
+    } catch (error) {
+      // Diferencia entre erro de rede e erro de validação
+      if (error.response) {
+        // Erro de validação do backend (400, 500, etc)
+        const errorMsg = error.response.data?.detail
+          || error.response.data?.error
+          || Object.values(error.response.data || {}).flat().join(', ')
+          || 'Erro ao processar venda';
+        alert(`ERRO: ${errorMsg}`);
+      } else if (error.request) {
+        // Erro de rede - salva offline
+        await localDB.saveVendaPendente(vendaData);
+        setTimeout(() => syncManager.syncAll(), 1000);
+        alert('Sem conexão! Venda salva localmente e será sincronizada quando houver internet.');
+
+        // Limpa carrinho apenas em caso de venda offline
+        setCarrinho([]);
+        setBusca('');
+        setClienteId(null);
+        setDataVencimento(null);
+        loadInitialData();
+      } else {
+        // Outro tipo de erro
+        alert('Erro inesperado: ' + error.message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

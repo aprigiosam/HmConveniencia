@@ -150,30 +150,41 @@ class VendaCreateSerializer(serializers.Serializer):
         if not value:
             raise serializers.ValidationError("Venda deve ter pelo menos um item")
 
-        for item in value:
+        for idx, item in enumerate(value):
             if 'produto_id' not in item or 'quantidade' not in item:
-                raise serializers.ValidationError("Cada item deve ter produto_id e quantidade")
+                raise serializers.ValidationError(
+                    f"Item {idx + 1}: deve ter produto_id e quantidade"
+                )
 
             try:
                 produto_id = int(item['produto_id'])
-                quantidade = Decimal(item['quantidade'])
+                quantidade = Decimal(str(item['quantidade']))
 
                 if quantidade <= 0:
-                    raise serializers.ValidationError("Quantidade deve ser maior que zero")
+                    raise serializers.ValidationError(
+                        f"Item {idx + 1}: quantidade deve ser maior que zero"
+                    )
 
                 produto = Produto.objects.get(id=produto_id)
                 if not produto.ativo:
-                    raise serializers.ValidationError(f"Produto {produto.nome} está inativo")
+                    raise serializers.ValidationError(
+                        f"Produto '{produto.nome}' está inativo e não pode ser vendido"
+                    )
 
                 if not produto.tem_estoque(quantidade):
                     raise serializers.ValidationError(
-                        f"Estoque insuficiente para {produto.nome}. Disponível: {produto.estoque}"
+                        f"Estoque insuficiente para '{produto.nome}'. "
+                        f"Disponível: {produto.estoque}, solicitado: {quantidade}"
                     )
 
             except Produto.DoesNotExist:
-                raise serializers.ValidationError(f"Produto {produto_id} não encontrado")
-            except (ValueError, TypeError):
-                raise serializers.ValidationError("produto_id e quantidade devem ser números válidos")
+                raise serializers.ValidationError(
+                    f"Item {idx + 1}: produto com ID {produto_id} não encontrado"
+                )
+            except (ValueError, TypeError) as e:
+                raise serializers.ValidationError(
+                    f"Item {idx + 1}: produto_id e quantidade devem ser números válidos"
+                )
 
         return value
 

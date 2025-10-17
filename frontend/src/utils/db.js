@@ -87,7 +87,7 @@ class LocalDB {
       const store = transaction.objectStore('vendas_pendentes')
       const index = store.index('synced')
 
-      const request = index.getAll(false)
+      const request = index.getAll(IDBKeyRange.only(false))
 
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
@@ -223,7 +223,7 @@ class LocalDB {
       const store = transaction.objectStore('vendas_pendentes')
       const index = store.index('synced')
 
-      const request = index.count(false)
+      const request = index.count(IDBKeyRange.only(false))
 
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
