@@ -104,6 +104,11 @@ class VendaCreateSerializer(serializers.Serializer):
                     'cliente_id': 'Cliente é obrigatório para vendas fiado'
                 })
 
+            if not data.get('data_vencimento'):
+                raise serializers.ValidationError({
+                    'data_vencimento': 'Data de vencimento é obrigatória para vendas fiado'
+                })
+
             # Verifica se cliente existe
             try:
                 cliente = Cliente.objects.get(id=data['cliente_id'])

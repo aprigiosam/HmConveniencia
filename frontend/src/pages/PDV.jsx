@@ -84,10 +84,21 @@ function PDV() {
     }
 
     setLoading(true);
+
+    // Prepara data de vencimento
+    let dataVencimentoFormatada = null;
+    if (formaPagamento === 'FIADO' && dataVencimento) {
+      if (dataVencimento instanceof Date) {
+        dataVencimentoFormatada = dataVencimento.toISOString().split('T')[0];
+      } else if (typeof dataVencimento === 'string') {
+        dataVencimentoFormatada = dataVencimento;
+      }
+    }
+
     const vendaData = {
       forma_pagamento: formaPagamento,
       cliente_id: formaPagamento === 'FIADO' ? parseInt(clienteId) : null,
-      data_vencimento: formaPagamento === 'FIADO' ? dataVencimento.toISOString().split('T')[0] : null,
+      data_vencimento: dataVencimentoFormatada,
       itens: carrinho.map(item => ({
         produto_id: item.produto.id,
         quantidade: item.quantidade
