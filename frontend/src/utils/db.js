@@ -85,11 +85,15 @@ class LocalDB {
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['vendas_pendentes'], 'readonly')
       const store = transaction.objectStore('vendas_pendentes')
-      const index = store.index('synced')
 
-      const request = index.getAll(false)
+      // Busca todas as vendas e filtra no JavaScript
+      // (valores booleanos não funcionam bem com índices em alguns navegadores)
+      const request = store.getAll()
 
-      request.onsuccess = () => resolve(request.result)
+      request.onsuccess = () => {
+        const vendas = request.result.filter(venda => !venda.synced)
+        resolve(vendas)
+      }
       request.onerror = () => reject(request.error)
     })
   }
@@ -221,11 +225,15 @@ class LocalDB {
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['vendas_pendentes'], 'readonly')
       const store = transaction.objectStore('vendas_pendentes')
-      const index = store.index('synced')
 
-      const request = index.count(false)
+      // Busca todas as vendas e conta no JavaScript
+      // (valores booleanos não funcionam bem com índices em alguns navegadores)
+      const request = store.getAll()
 
-      request.onsuccess = () => resolve(request.result)
+      request.onsuccess = () => {
+        const count = request.result.filter(venda => !venda.synced).length
+        resolve(count)
+      }
       request.onerror = () => reject(request.error)
     })
   }
