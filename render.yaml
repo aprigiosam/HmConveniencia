@@ -1,0 +1,41 @@
+services:
+  # Backend API (Django)
+  - type: web
+    name: hmconveniencia-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: "cd backend && pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate"
+    startCommand: "cd backend && gunicorn hmconveniencia.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hmconveniencia-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+
+  # Frontend (React + Vite)
+  - type: web
+    name: hmconveniencia-frontend
+    env: static
+    region: oregon
+    plan: free
+    buildCommand: "cd frontend && npm install && npm run build"
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://hmconveniencia-api.onrender.com/api
+
+databases:
+  - name: hmconveniencia-db
+    databaseName: hmconveniencia
+    user: hmconveniencia
+    plan: free
+    region: oregon
