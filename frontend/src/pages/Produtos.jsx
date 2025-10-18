@@ -5,13 +5,14 @@ import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, Act
 import { DatePickerInput } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes, FaExclamationTriangle, FaSearch } from 'react-icons/fa';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import './Produtos.css';
 
 function Produtos() {
   const [produtos, setProdutos] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
   const [opened, { open, close }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
@@ -230,7 +231,14 @@ function Produtos() {
     return <Badge color="green">{produto.dias_para_vencer} dias</Badge>;
   };
 
-  const rows = produtos.map((produto) => (
+  // Filtra produtos pela busca
+  const produtosFiltrados = produtos.filter(produto =>
+    produto.nome.toLowerCase().includes(busca.toLowerCase()) ||
+    produto.codigo_barras?.includes(busca) ||
+    produto.categoria_nome?.toLowerCase().includes(busca.toLowerCase())
+  );
+
+  const rows = produtosFiltrados.map((produto) => (
     <Table.Tr key={produto.id} style={{ backgroundColor: produto.esta_vencido ? '#fee' : produto.proximo_vencimento ? '#ffeaa7' : 'inherit' }}>
       <Table.Td>
         <Group gap="xs">
@@ -255,7 +263,7 @@ function Produtos() {
     </Table.Tr>
   ));
 
-  const cards = produtos.map((produto) => (
+  const cards = produtosFiltrados.map((produto) => (
     <Card
       withBorder
       radius="md"
@@ -309,6 +317,15 @@ function Produtos() {
           Novo Produto
         </Button>
       </Group>
+
+      <TextInput
+        placeholder="Buscar por nome, código de barras ou categoria..."
+        leftSection={<FaSearch />}
+        value={busca}
+        onChange={(e) => setBusca(e.target.value)}
+        size="md"
+        mb="md"
+      />
 
       <Modal opened={opened} onClose={handleCloseModal} title={editingProduct ? 'Editar Produto' : 'Novo Produto'} size="md">
         <form onSubmit={handleSubmit}>
