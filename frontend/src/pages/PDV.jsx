@@ -122,8 +122,8 @@ function PDV() {
     if (leituraEmAndamentoRef.current) return;
     leituraEmAndamentoRef.current = true;
 
-    // Fecha o scanner IMEDIATAMENTE
-    fecharScanner();
+    // FECHA O MODAL PRIMEIRO (seta estado)
+    setScannerAberto(false);
 
     // Busca produto pelo código de barras
     const produto = produtos.find(p => p.codigo_barras === codigoBarras);

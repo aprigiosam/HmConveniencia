@@ -132,11 +132,11 @@ function Produtos() {
     if (leituraEmAndamentoRef.current) return;
     leituraEmAndamentoRef.current = true;
 
-    // Fecha o scanner IMEDIATAMENTE
-    fecharScanner();
+    // FECHA O MODAL PRIMEIRO (seta estado)
+    setScannerAberto(false);
 
     // Preenche o código no formulário
-    setFormData({ ...formData, codigo_barras: codigoBarras });
+    setFormData(prev => ({ ...prev, codigo_barras: codigoBarras }));
 
     notifications.show({
       title: 'Código capturado!',
