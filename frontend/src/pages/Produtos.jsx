@@ -80,6 +80,25 @@ function Produtos() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // VALIDAÇÃO: Verifica se código de barras já existe
+    if (formData.codigo_barras && formData.codigo_barras.trim()) {
+      const codigoDuplicado = produtos.find(p =>
+        p.codigo_barras === formData.codigo_barras.trim() &&
+        p.id !== editingProduct?.id  // Ignora o próprio produto ao editar
+      );
+
+      if (codigoDuplicado) {
+        notifications.show({
+          title: 'Código de barras duplicado!',
+          message: `Este código já está cadastrado no produto: ${codigoDuplicado.nome}`,
+          color: 'red',
+          icon: <FaTimes />,
+          autoClose: 6000,
+        });
+        return; // Bloqueia o envio
+      }
+    }
+
     // Conversão segura da data de validade
     let dataValidadeFormatada = null;
     if (formData.data_validade) {
@@ -99,13 +118,35 @@ function Produtos() {
     try {
       if (editingProduct) {
         await updateProduto(editingProduct.id, dataToSend);
+        notifications.show({
+          title: 'Produto atualizado!',
+          message: `${formData.nome} foi atualizado com sucesso`,
+          color: 'green',
+          icon: <FaCheck />,
+        });
       } else {
         await createProduto(dataToSend);
+        notifications.show({
+          title: 'Produto criado!',
+          message: `${formData.nome} foi cadastrado com sucesso`,
+          color: 'green',
+          icon: <FaCheck />,
+        });
       }
       handleCloseModal();
       loadInitialData();
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
+      const errorMsg = error.response?.data?.codigo_barras?.[0]
+        || error.response?.data?.detail
+        || 'Erro ao salvar produto';
+
+      notifications.show({
+        title: 'Erro ao salvar',
+        message: errorMsg,
+        color: 'red',
+        icon: <FaTimes />,
+      });
     }
   };
 
