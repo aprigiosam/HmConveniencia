@@ -12,7 +12,8 @@ from .views import (
     CategoriaViewSet,
     login,
     logout,
-    me
+    me,
+    health_check
 )
 
 router = DefaultRouter()
@@ -28,4 +29,5 @@ urlpatterns = [
     path('auth/login/', login, name='login'),
     path('auth/logout/', logout, name='logout'),
     path('auth/me/', me, name='me'),
+    path('health/', health_check, name='health_check'),
 ]

@@ -10,8 +10,10 @@ from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
+from django.db import connection
 from datetime import timedelta
 from decimal import Decimal
+from django_ratelimit.decorators import ratelimit
 from .models import Cliente, Produto, Venda, Caixa, MovimentacaoCaixa, Categoria
 from .serializers import (
     ClienteSerializer,
@@ -42,8 +44,9 @@ class BackupViewSet(viewsets.ViewSet):
     """ViewSet para acionar backups do banco de dados"""
 
     @action(detail=False, methods=['post'])
+    @ratelimit(key='user', rate='1/m', method='POST', block=True)
     def trigger_backup(self, request):
-        """Aciona o comando de backup do banco de dados."""
+        """Aciona o comando de backup do banco de dados - Rate limited: 1 backup por minuto"""
         try:
             call_command('backup_db')
             return Response({'message': 'Backup iniciado com sucesso!'},
@@ -153,7 +156,9 @@ class VendaViewSet(viewsets.ModelViewSet):
             return VendaCreateSerializer
         return VendaSerializer
 
+    @ratelimit(key='user', rate='30/m', method='POST', block=True)
     def create(self, request, *args, **kwargs):
+        """Cria nova venda - Rate limited: 30 vendas por minuto por usuário"""
         create_serializer = self.get_serializer(data=request.data)
         create_serializer.is_valid(raise_exception=True)
         venda = create_serializer.save()
@@ -435,8 +440,9 @@ class CaixaViewSet(viewsets.ViewSet):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@ratelimit(key='ip', rate='5/m', method='POST', block=True)
 def login(request):
-    """Autentica usuário e retorna token"""
+    """Autentica usuário e retorna token - Rate limited: 5 tentativas por minuto por IP"""
     username = request.data.get('username')
     password = request.data.get('password')
 
@@ -491,4 +497,23 @@ def me(request):
         'email': request.user.email,
         'first_name': request.user.first_name,
         'last_name': request.user.last_name,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health_check(request):
+    """Health check endpoint para monitoramento"""
+    try:
+        # Testa conexão com banco de dados
+        connection.ensure_connection()
+        db_status = 'connected'
+    except Exception as e:
+        db_status = f'error: {str(e)}'
+
+    return Response({
+        'status': 'healthy',
+        'timestamp': timezone.now().isoformat(),
+        'database': db_status,
+        'version': '1.0.0',
     })

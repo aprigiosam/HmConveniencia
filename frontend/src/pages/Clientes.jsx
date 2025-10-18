@@ -9,7 +9,9 @@ function Clientes() {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [opened, { open, close }] = useDisclosure(false);
+  const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [editingCliente, setEditingCliente] = useState(null);
+  const [deletingCliente, setDeletingCliente] = useState(null);
   const [formData, setFormData] = useState({ nome: '', telefone: '', limite_credito: 0 });
 
   useEffect(() => {
@@ -77,14 +79,27 @@ function Clientes() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
+  const handleOpenDeleteModal = (cliente) => {
+    setDeletingCliente(cliente);
+    openDeleteModal();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCliente) return;
     try {
-      await deleteCliente(id);
+      await deleteCliente(deletingCliente.id);
+      closeDeleteModal();
+      setDeletingCliente(null);
       loadClientes();
     } catch (error) {
       console.error('Erro ao excluir cliente:', error);
+      alert('Erro ao excluir cliente');
     }
+  };
+
+  const handleCancelDelete = () => {
+    closeDeleteModal();
+    setDeletingCliente(null);
   };
 
   const rows = clientes.map((cliente) => (
@@ -98,7 +113,7 @@ function Clientes() {
           <ActionIcon color="blue" onClick={() => handleOpenModal(cliente)} size="lg">
             <FaEdit size={16} />
           </ActionIcon>
-          <ActionIcon color="red" onClick={() => handleDelete(cliente.id)} size="lg">
+          <ActionIcon color="red" onClick={() => handleOpenDeleteModal(cliente)} size="lg">
             <FaTrash size={16} />
           </ActionIcon>
         </Group>
@@ -154,6 +169,32 @@ function Clientes() {
             </Group>
           </Stack>
         </form>
+      </Modal>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Modal
+        opened={deleteModalOpened}
+        onClose={handleCancelDelete}
+        title="Confirmar Exclusão"
+        centered
+        size="sm"
+      >
+        <Stack gap="md">
+          <Text>
+            Tem certeza que deseja excluir o cliente <strong>{deletingCliente?.nome}</strong>?
+          </Text>
+          <Text size="sm" c="dimmed">
+            Esta ação não pode ser desfeita.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={handleCancelDelete}>
+              Cancelar
+            </Button>
+            <Button color="red" onClick={handleConfirmDelete}>
+              Excluir
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
 
       <ScrollArea>

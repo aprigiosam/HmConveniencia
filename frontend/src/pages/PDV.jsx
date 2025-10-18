@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { getProdutos, createVenda, getClientes } from '../services/api';
 import { localDB } from '../utils/db';
 import { syncManager } from '../utils/syncManager';
-import { Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center } from '@mantine/core';
+import { Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode } from 'react-icons/fa';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 function PDV() {
   const [produtos, setProdutos] = useState([]);
@@ -16,7 +17,9 @@ function PDV() {
   const [clienteId, setClienteId] = useState(null);
   const [dataVencimento, setDataVencimento] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [scannerAberto, setScannerAberto] = useState(false);
   const buscaRef = useRef(null);
+  const scannerRef = useRef(null);
 
   useEffect(() => {
     loadInitialData();
@@ -99,6 +102,83 @@ function PDV() {
   };
 
   const calcularTotal = () => carrinho.reduce((total, item) => total + (parseFloat(item.produto.preco) * item.quantidade), 0);
+
+  const abrirScanner = () => {
+    setScannerAberto(true);
+  };
+
+  const fecharScanner = () => {
+    if (scannerRef.current) {
+      scannerRef.current.clear();
+      scannerRef.current = null;
+    }
+    setScannerAberto(false);
+  };
+
+  const processarCodigoBarras = (codigoBarras) => {
+    // Busca produto pelo código de barras
+    const produto = produtos.find(p => p.codigo_barras === codigoBarras);
+
+    if (produto) {
+      adicionarAoCarrinho(produto);
+      fecharScanner();
+      notifications.show({
+        title: 'Produto encontrado!',
+        message: `${produto.nome} adicionado ao carrinho`,
+        color: 'green',
+        icon: <FaCheck />,
+        autoClose: 3000,
+      });
+    } else {
+      notifications.show({
+        title: 'Produto não encontrado',
+        message: `Código ${codigoBarras} não cadastrado`,
+        color: 'orange',
+        icon: <FaTimes />,
+        autoClose: 4000,
+      });
+    }
+  };
+
+  // Inicializa o scanner quando o modal abre
+  useEffect(() => {
+    if (scannerAberto && !scannerRef.current) {
+      const scanner = new Html5QrcodeScanner('reader', {
+        qrbox: {
+          width: 250,
+          height: 150,
+        },
+        fps: 10,
+        formatsToSupport: [
+          0,  // EAN_13
+          1,  // EAN_8
+          3,  // UPC_A
+          4,  // UPC_E
+          5,  // CODE_39
+          6,  // CODE_93
+          7,  // CODE_128
+        ],
+      });
+
+      scanner.render(
+        (decodedText) => {
+          processarCodigoBarras(decodedText);
+        },
+        (error) => {
+          // Ignora erros de leitura contínua
+        }
+      );
+
+      scannerRef.current = scanner;
+    }
+
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+    };
+  }, [scannerAberto]);
 
   const finalizarVenda = async () => {
     if (carrinho.length === 0) {
@@ -224,15 +304,27 @@ function PDV() {
     <Grid gutter="md">
       <Grid.Col span={12} md={5}>
         <Stack gap="sm">
-          <TextInput
-            ref={buscaRef}
-            placeholder="Buscar produto..."
-            leftSection={<FaSearch />}
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            size="md"
-            autoFocus
-          />
+          <Group gap="xs">
+            <TextInput
+              ref={buscaRef}
+              placeholder="Buscar produto..."
+              leftSection={<FaSearch />}
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              size="md"
+              autoFocus
+              style={{ flex: 1 }}
+            />
+            <ActionIcon
+              size={42}
+              color="orange"
+              variant="filled"
+              onClick={abrirScanner}
+              title="Ler código de barras"
+            >
+              <FaBarcode size={20} />
+            </ActionIcon>
+          </Group>
           {busca && (
             <Stack gap="xs">
               {produtosFiltrados.length > 0 ? (
@@ -349,6 +441,25 @@ function PDV() {
           )}
         </Card>
       </Grid.Col>
+
+      {/* Modal do Scanner de Código de Barras */}
+      <Modal
+        opened={scannerAberto}
+        onClose={fecharScanner}
+        title="Ler Código de Barras"
+        size="lg"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            Aponte a câmera para o código de barras do produto
+          </Text>
+          <div id="reader" style={{ width: '100%' }}></div>
+          <Button onClick={fecharScanner} variant="light" fullWidth>
+            Cancelar
+          </Button>
+        </Stack>
+      </Modal>
     </Grid>
   );
 }

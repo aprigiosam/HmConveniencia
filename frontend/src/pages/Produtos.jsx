@@ -10,7 +10,9 @@ function Produtos() {
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [opened, { open, close }] = useDisclosure(false);
+  const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [deletingProduct, setDeletingProduct] = useState(null);
   const [formData, setFormData] = useState({ nome: '', preco: '', estoque: '', categoria: '' });
 
   useEffect(() => {
@@ -83,14 +85,27 @@ function Produtos() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+  const handleOpenDeleteModal = (produto) => {
+    setDeletingProduct(produto);
+    openDeleteModal();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingProduct) return;
     try {
-      await deleteProduto(id);
+      await deleteProduto(deletingProduct.id);
+      closeDeleteModal();
+      setDeletingProduct(null);
       loadInitialData();
     } catch (error) {
       console.error('Erro ao excluir produto:', error);
+      alert('Erro ao excluir produto');
     }
+  };
+
+  const handleCancelDelete = () => {
+    closeDeleteModal();
+    setDeletingProduct(null);
   };
 
   const rows = produtos.map((produto) => (
@@ -104,7 +119,7 @@ function Produtos() {
           <ActionIcon color="blue" aria-label="Editar" onClick={() => handleOpenModal(produto)} size="lg">
             <FaEdit size={16} />
           </ActionIcon>
-          <ActionIcon color="red" aria-label="Excluir" onClick={() => handleDelete(produto.id)} size="lg">
+          <ActionIcon color="red" aria-label="Excluir" onClick={() => handleOpenDeleteModal(produto)} size="lg">
             <FaTrash size={16} />
           </ActionIcon>
         </Group>
@@ -136,6 +151,32 @@ function Produtos() {
             </Group>
           </Stack>
         </form>
+      </Modal>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Modal
+        opened={deleteModalOpened}
+        onClose={handleCancelDelete}
+        title="Confirmar Exclusão"
+        centered
+        size="sm"
+      >
+        <Stack gap="md">
+          <Text>
+            Tem certeza que deseja excluir o produto <strong>{deletingProduct?.nome}</strong>?
+          </Text>
+          <Text size="sm" c="dimmed">
+            Esta ação não pode ser desfeita.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={handleCancelDelete}>
+              Cancelar
+            </Button>
+            <Button color="red" onClick={handleConfirmDelete}>
+              Excluir
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
 
       <ScrollArea>
