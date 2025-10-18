@@ -3,46 +3,61 @@ import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MantineProvider } from '@mantine/core';
 import { BrowserRouter } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
 
-// Mock window.matchMedia for MantineProvider in JSDOM environment
-// Only run this mock if 'vi' (Vitest global) is defined, meaning we are in a test environment.
+// Mock ResizeObserver e IntersectionObserver para ambiente JSDOM
 if (typeof vi !== 'undefined') {
+  const ResizeObserverMock = vi.fn(() => ({
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+  }));
+
+  const IntersectionObserverMock = vi.fn(() => ({
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+    root: null,
+    rootMargin: '',
+    thresholds: [],
+    takeRecords: () => [],
+  }));
+
+  vi.stubGlobal('ResizeObserver', ResizeObserverMock);
+  vi.stubGlobal('IntersectionObserver', IntersectionObserverMock);
+
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation(query => ({
       matches: false,
       media: query,
       onchange: null,
-      addListener: vi.fn(), // Deprecated
-      removeListener: vi.fn(), // Deprecated
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
     })),
   });
-
-  // Mock ResizeObserver
-  global.ResizeObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  }));
 }
 
-// Custom render function to wrap components with MantineProvider and BrowserRouter
+// Função de renderização customizada com providers
 const renderWithProviders = (ui, options) => {
-  return render(ui, {
-    wrapper: ({ children }) => (
-      <BrowserRouter>
-        <MantineProvider>{children}</MantineProvider>
-      </BrowserRouter>
-    ),
-    ...options,
-  });
+  return {
+    user: userEvent.setup(),
+    ...render(ui, {
+      wrapper: ({ children }) => (
+        <BrowserRouter>
+          <MantineProvider>{children}</MantineProvider>
+        </BrowserRouter>
+      ),
+      ...options,
+    }),
+  };
 };
 
-// Re-export everything from @testing-library/react
+// Re-exporta tudo do testing-library
 export * from '@testing-library/react';
 
-// Export the custom render method
+// Exporta o render customizado
 export { renderWithProviders as render };

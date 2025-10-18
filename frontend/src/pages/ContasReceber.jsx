@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getContasReceber, receberPagamento } from '../services/api';
-import { Table, Button, Group, Title, Text, Card, Badge } from '@mantine/core';
+import { Table, Button, Group, Title, Text, Card, Badge, ScrollArea, Stack } from '@mantine/core';
 import { FaCheck } from 'react-icons/fa';
+import './ContasReceber.css';
 
 function ContasReceber() {
   const [contas, setContas] = useState([]);
@@ -47,21 +48,48 @@ function ContasReceber() {
   const rows = contas.map((venda) => {
     const vencida = isVencida(venda.data_vencimento);
     return (
-      <tr key={venda.id} style={{ backgroundColor: vencida ? 'var(--mantine-color-red-0)' : 'transparent' }}>
-        <td>{venda.cliente_nome}</td>
-        <td>{new Date(venda.data_vencimento).toLocaleDateString('pt-BR')}</td>
-        <td>R$ {parseFloat(venda.total).toFixed(2)}</td>
-        <td>
+      <Table.Tr key={venda.id} style={{ backgroundColor: vencida ? 'var(--mantine-color-red-0)' : 'transparent' }}>
+        <Table.Td>{venda.cliente_nome}</Table.Td>
+        <Table.Td>{new Date(venda.data_vencimento).toLocaleDateString('pt-BR')}</Table.Td>
+        <Table.Td>R$ {parseFloat(venda.total).toFixed(2)}</Table.Td>
+        <Table.Td>
           <Badge color={vencida ? 'red' : 'yellow'} variant="light">
             {vencida ? 'Vencida' : 'Pendente'}
           </Badge>
-        </td>
-        <td>
+        </Table.Td>
+        <Table.Td>
           <Button size="xs" leftIcon={<FaCheck />} onClick={() => handleReceber(venda.id)}>
             Receber
           </Button>
-        </td>
-      </tr>
+        </Table.Td>
+      </Table.Tr>
+    );
+  });
+
+  const cards = contas.map((venda) => {
+    const vencida = isVencida(venda.data_vencimento);
+    return (
+      <Card withBorder radius="md" p="sm" key={venda.id} className={`conta-card ${vencida ? 'vencida' : ''}`}>
+        <Stack gap="xs">
+          <Group justify="space-between">
+            <Text fw={500}>{venda.cliente_nome}</Text>
+            <Badge color={vencida ? 'red' : 'yellow'} variant="light">
+              {vencida ? 'Vencida' : 'Pendente'}
+            </Badge>
+          </Group>
+          <Group justify="space-between">
+            <Text size="sm" c="dimmed">Vencimento:</Text>
+            <Text size="sm">{new Date(venda.data_vencimento).toLocaleDateString('pt-BR')}</Text>
+          </Group>
+          <Group justify="space-between">
+            <Text size="sm" c="dimmed">Valor:</Text>
+            <Text size="sm" fw={500}>R$ {parseFloat(venda.total).toFixed(2)}</Text>
+          </Group>
+          <Button mt="sm" size="sm" leftIcon={<FaCheck />} onClick={() => handleReceber(venda.id)} fullWidth>
+            Receber Pagamento
+          </Button>
+        </Stack>
+      </Card>
     );
   });
 
@@ -76,24 +104,34 @@ function ContasReceber() {
         <Title order={1} align="center" color="blue">R$ {totalDevedor.toFixed(2)}</Title>
       </Card>
 
-      <Table striped highlightOnHover withBorder withColumnBorders>
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>Vencimento</th>
-            <th>Valor</th>
-            <th>Status</th>
-            <th>Ação</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length > 0 ? rows : (
-            <tr>
-              <td colSpan={5}><Text color="dimmed" align="center">Nenhuma conta pendente.</Text></td>
-            </tr>
-          )}
-        </tbody>
-      </Table>
+      <div className="table-desktop">
+        <ScrollArea>
+          <Table striped highlightOnHover withBorder withColumnBorders>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Cliente</Table.Th>
+                <Table.Th>Vencimento</Table.Th>
+                <Table.Th>Valor</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th>Ação</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.length > 0 ? rows : (
+                <Table.Tr>
+                  <Table.Td colSpan={5}><Text color="dimmed" align="center">Nenhuma conta pendente.</Text></Table.Td>
+                </Table.Tr>
+              )}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
+      </div>
+
+      <div className="contas-cards">
+        {cards.length > 0 ? cards : (
+          <Text c="dimmed" ta="center">Nenhuma conta pendente.</Text>
+        )}
+      </div>
     </>
   );
 }

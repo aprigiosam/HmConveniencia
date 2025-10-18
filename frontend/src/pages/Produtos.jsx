@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias } from '../services/api';
 import { localDB } from '../utils/db';
-import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, ActionIcon, Stack, Text, ScrollArea } from '@mantine/core';
+import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, ActionIcon, Stack, Text, ScrollArea, Card } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes } from 'react-icons/fa';
 import { BrowserMultiFormatReader } from '@zxing/browser';
+import './Produtos.css';
 
 function Produtos() {
   const [produtos, setProdutos] = useState([]);
@@ -25,14 +26,12 @@ function Produtos() {
   }, []);
 
   const loadInitialData = async () => {
-    // CACHE-FIRST: Carrega do cache imediatamente
     const cachedProdutos = await localDB.getCachedProdutos();
     if (cachedProdutos.length > 0) {
       setProdutos(cachedProdutos);
       setLoading(false);
     }
 
-    // Tenta sincronizar com servidor em background
     try {
       const [produtosRes, categoriasRes] = await Promise.all([getProdutos(), getCategorias()]);
       const produtosData = produtosRes.data.results || produtosRes.data;
@@ -42,7 +41,6 @@ function Produtos() {
       setCategorias(categoriasData);
       await localDB.cacheProdutos(produtosData);
     } catch (error) {
-      // Se falhar, mantém dados do cache (já carregados)
       console.error('Servidor offline, usando cache local');
     } finally {
       setLoading(false);
@@ -115,7 +113,7 @@ function Produtos() {
   };
 
   const abrirScanner = () => {
-    leituraEmAndamentoRef.current = false; // Reseta o lock
+    leituraEmAndamentoRef.current = false;
     setScannerAberto(true);
   };
 
@@ -128,25 +126,19 @@ function Produtos() {
   };
 
   const processarCodigoBarras = (codigoBarras) => {
-    // Proteção dupla: verifica lock E se scanner ainda existe
     if (leituraEmAndamentoRef.current || !scannerRef.current) return;
 
-    // Seta lock e limpa ref IMEDIATAMENTE (bloqueia callbacks futuros)
     leituraEmAndamentoRef.current = true;
     const scanner = scannerRef.current;
-    scannerRef.current = null; // <- CRÍTICO: impede novos callbacks
+    scannerRef.current = null;
 
-    // Para o scanner
     try {
       scanner.reset();
     } catch (error) {
       console.log('Erro ao parar scanner (ignorado):', error);
     }
 
-    // Fecha o modal
     setScannerAberto(false);
-
-    // Preenche o código no formulário
     setFormData(prev => ({ ...prev, codigo_barras: codigoBarras }));
 
     notifications.show({
@@ -157,18 +149,15 @@ function Produtos() {
       autoClose: 3000,
     });
 
-    // Reseta o lock após delay
     setTimeout(() => {
       leituraEmAndamentoRef.current = false;
     }, 1000);
   };
 
-  // Inicializa o scanner quando o modal abre
   useEffect(() => {
     if (scannerAberto && !scannerRef.current) {
       const codeReader = new BrowserMultiFormatReader();
 
-      // Aguarda o DOM renderizar
       setTimeout(async () => {
         const videoElement = document.getElementById('video-reader-produtos');
         if (!videoElement) {
@@ -177,16 +166,13 @@ function Produtos() {
         }
 
         try {
-          // Inicia detecção contínua (usa câmera padrão/traseira automaticamente)
           await codeReader.decodeFromVideoDevice(
-            undefined,  // undefined = usa câmera padrão
+            undefined,
             videoElement,
             (result, error) => {
               if (result) {
-                // Código detectado!
                 processarCodigoBarras(result.getText());
               }
-              // Ignora erros de leitura (scanner tentando ler)
             }
           );
 
@@ -230,6 +216,40 @@ function Produtos() {
         </Group>
       </Table.Td>
     </Table.Tr>
+  ));
+
+  const cards = produtos.map((produto) => (
+    <Card withBorder radius="md" p="sm" key={produto.id} className="produto-card">
+      <Group justify="space-between" mb="xs">
+        <Text fw={500}>{produto.nome}</Text>
+        <Group gap="xs" wrap="nowrap">
+          <ActionIcon color="blue" variant="light" onClick={() => handleOpenModal(produto)} size="lg">
+            <FaEdit size={16} />
+          </ActionIcon>
+          <ActionIcon color="red" variant="light" onClick={() => handleOpenDeleteModal(produto)} size="lg">
+            <FaTrash size={16} />
+          </ActionIcon>
+        </Group>
+      </Group>
+      <Stack gap="xs">
+        <Group justify="space-between">
+          <Text size="sm" c="dimmed">Preço:</Text>
+          <Text size="sm" fw={500}>R$ {parseFloat(produto.preco).toFixed(2)}</Text>
+        </Group>
+        <Group justify="space-between">
+          <Text size="sm" c="dimmed">Estoque:</Text>
+          <Text size="sm" fw={500}>{parseInt(produto.estoque)}</Text>
+        </Group>
+        <Group justify="space-between">
+          <Text size="sm" c="dimmed">Categoria:</Text>
+          <Text size="sm">{produto.categoria_nome || '-'}</Text>
+        </Group>
+        <Group justify="space-between">
+          <Text size="sm" c="dimmed">Cód. Barras:</Text>
+          <Text size="sm">{produto.codigo_barras || '-'}</Text>
+        </Group>
+      </Stack>
+    </Card>
   ));
 
   const categoriaOptions = categorias.map(cat => ({ value: cat.id.toString(), label: cat.nome }));
@@ -282,7 +302,6 @@ function Produtos() {
         </form>
       </Modal>
 
-      {/* Modal de Confirmação de Exclusão */}
       <Modal
         opened={deleteModalOpened}
         onClose={handleCancelDelete}
@@ -308,7 +327,6 @@ function Produtos() {
         </Stack>
       </Modal>
 
-      {/* Modal do Scanner de Código de Barras */}
       <Modal
         opened={scannerAberto}
         onClose={fecharScanner}
@@ -335,29 +353,37 @@ function Produtos() {
         </Stack>
       </Modal>
 
-      <ScrollArea>
-        <Table striped highlightOnHover withTableBorder withColumnBorders>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Nome</Table.Th>
-              <Table.Th>Código de Barras</Table.Th>
-              <Table.Th>Preço</Table.Th>
-              <Table.Th>Estoque</Table.Th>
-              <Table.Th>Categoria</Table.Th>
-              <Table.Th style={{ width: '120px' }}>Ações</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.length > 0 ? rows : (
+      <div className="table-desktop">
+        <ScrollArea>
+          <Table striped highlightOnHover withTableBorder withColumnBorders>
+            <Table.Thead>
               <Table.Tr>
-                <Table.Td colSpan={6}>
-                  <Text c="dimmed" ta="center">Nenhum produto cadastrado.</Text>
-                </Table.Td>
+                <Table.Th>Nome</Table.Th>
+                <Table.Th>Código de Barras</Table.Th>
+                <Table.Th>Preço</Table.Th>
+                <Table.Th>Estoque</Table.Th>
+                <Table.Th>Categoria</Table.Th>
+                <Table.Th style={{ width: '120px' }}>Ações</Table.Th>
               </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
-      </ScrollArea>
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.length > 0 ? rows : (
+                <Table.Tr>
+                  <Table.Td colSpan={6}>
+                    <Text c="dimmed" ta="center">Nenhum produto cadastrado.</Text>
+                  </Table.Td>
+                </Table.Tr>
+              )}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
+      </div>
+
+      <div className="produtos-cards">
+        {cards.length > 0 ? cards : (
+          <Text c="dimmed" ta="center">Nenhum produto cadastrado.</Text>
+        )}
+      </div>
     </>
   );
 }

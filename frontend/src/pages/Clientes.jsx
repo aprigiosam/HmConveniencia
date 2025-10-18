@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { getClientes, createCliente, updateCliente, deleteCliente } from '../services/api';
 import { localDB } from '../utils/db';
-import { Table, Button, Modal, TextInput, NumberInput, Group, Title, ActionIcon, Stack, Text, ScrollArea } from '@mantine/core';
+import { Table, Button, Modal, TextInput, NumberInput, Group, Title, ActionIcon, Stack, Text, ScrollArea, Card } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FaEdit, FaTrash, FaUserPlus } from 'react-icons/fa';
+import './Clientes.css'; // Importa o CSS
 
 function Clientes() {
   const [clientes, setClientes] = useState([]);
@@ -19,21 +20,18 @@ function Clientes() {
   }, []);
 
   const loadClientes = async () => {
-    // CACHE-FIRST: Carrega do cache imediatamente
     const cachedClientes = await localDB.getCachedClientes();
     if (cachedClientes.length > 0) {
       setClientes(cachedClientes);
       setLoading(false);
     }
 
-    // Tenta sincronizar com servidor em background
     try {
       const response = await getClientes();
       const clientesData = response.data.results || response.data;
       setClientes(clientesData);
       await localDB.cacheClientes(clientesData);
     } catch (error) {
-      // Se falhar, mantém dados do cache (já carregados)
       console.error('Servidor offline, usando cache local');
     } finally {
       setLoading(false);
@@ -121,6 +119,36 @@ function Clientes() {
     </Table.Tr>
   ));
 
+  const cards = clientes.map((cliente) => (
+    <Card withBorder radius="md" p="sm" key={cliente.id} className="cliente-card">
+      <Group justify="space-between" mb="xs">
+        <Text fw={500}>{cliente.nome}</Text>
+        <Group gap="xs" wrap="nowrap">
+          <ActionIcon color="blue" variant="light" onClick={() => handleOpenModal(cliente)} size="lg">
+            <FaEdit size={16} />
+          </ActionIcon>
+          <ActionIcon color="red" variant="light" onClick={() => handleOpenDeleteModal(cliente)} size="lg">
+            <FaTrash size={16} />
+          </ActionIcon>
+        </Group>
+      </Group>
+      <Stack gap="xs">
+        <Group justify="space-between">
+          <Text size="sm" c="dimmed">Telefone:</Text>
+          <Text size="sm">{cliente.telefone || '-'}</Text>
+        </Group>
+        <Group justify="space-between">
+          <Text size="sm" c="dimmed">Saldo Devedor:</Text>
+          <Text size="sm" fw={500} c="red">R$ {parseFloat(cliente.saldo_devedor || 0).toFixed(2)}</Text>
+        </Group>
+        <Group justify="space-between">
+          <Text size="sm" c="dimmed">Limite:</Text>
+          <Text size="sm">R$ {parseFloat(cliente.limite_credito).toFixed(2)}</Text>
+        </Group>
+      </Stack>
+    </Card>
+  ));
+
   return (
     <>
       <Group justify="space-between" mb="md" wrap="wrap" gap="xs">
@@ -171,7 +199,6 @@ function Clientes() {
         </form>
       </Modal>
 
-      {/* Modal de Confirmação de Exclusão */}
       <Modal
         opened={deleteModalOpened}
         onClose={handleCancelDelete}
@@ -197,28 +224,38 @@ function Clientes() {
         </Stack>
       </Modal>
 
-      <ScrollArea>
-        <Table striped highlightOnHover withTableBorder withColumnBorders>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Nome</Table.Th>
-              <Table.Th>Telefone</Table.Th>
-              <Table.Th>Saldo Devedor</Table.Th>
-              <Table.Th>Limite</Table.Th>
-              <Table.Th style={{ width: '120px' }}>Ações</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.length > 0 ? rows : (
+      {/* Layout de Tabela para Desktop */}
+      <div className="table-desktop">
+        <ScrollArea>
+          <Table striped highlightOnHover withTableBorder withColumnBorders>
+            <Table.Thead>
               <Table.Tr>
-                <Table.Td colSpan={5}>
-                  <Text c="dimmed" ta="center">Nenhum cliente cadastrado.</Text>
-                </Table.Td>
+                <Table.Th>Nome</Table.Th>
+                <Table.Th>Telefone</Table.Th>
+                <Table.Th>Saldo Devedor</Table.Th>
+                <Table.Th>Limite</Table.Th>
+                <Table.Th style={{ width: '120px' }}>Ações</Table.Th>
               </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
-      </ScrollArea>
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.length > 0 ? rows : (
+                <Table.Tr>
+                  <Table.Td colSpan={5}>
+                    <Text c="dimmed" ta="center">Nenhum cliente cadastrado.</Text>
+                  </Table.Td>
+                </Table.Tr>
+              )}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
+      </div>
+
+      {/* Layout de Cards para Mobile */}
+      <div className="clientes-cards">
+        {cards.length > 0 ? cards : (
+          <Text c="dimmed" ta="center">Nenhum cliente cadastrado.</Text>
+        )}
+      </div>
     </>
   );
 }
