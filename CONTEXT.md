@@ -120,6 +120,18 @@ HmConveniencia/
   - Validação que impede finalizar com valor insuficiente
   - Limpeza automática ao trocar forma de pagamento
 
+### Sprint 4 (Concluída)
+- ✅ **PWA (Progressive Web App) Completo**
+  - Manifest.json configurado com nome, ícones e atalhos
+  - Service Worker com cache estratégico
+  - Instalável na tela inicial do celular (Android/iOS)
+  - Funciona em tela cheia (sem barra do navegador)
+  - Cache de app shell para carregamento instantâneo
+  - Network-first para API com fallback para cache
+  - Stale-while-revalidate para assets estáticos
+  - Sincronização em background
+  - Auto-atualização a cada 1 minuto
+
 ### Módulos Principais
 
 #### 1. PDV (Ponto de Venda)
@@ -213,6 +225,17 @@ GET    /health/                # Health check
 - Notificações informam se venda foi online ou offline
 - Retry automático quando conexão retornar
 
+### PWA (Progressive Web App)
+- **Manifest:** `/public/manifest.json` com nome, ícones, shortcuts
+- **Service Worker:** `/public/sw.js` registrado em `App.jsx`
+- **Estratégias de Cache:**
+  - App Shell: Pre-cache de arquivos essenciais (index.html, manifest, logo)
+  - API: Network-first com fallback para cache offline
+  - Assets: Stale-while-revalidate (retorna cache + atualiza em background)
+- **Instalação:** Botão "Adicionar à tela inicial" em Android/iOS
+- **Atualizações:** Verificação automática a cada 1 minuto
+- **Background Sync:** Sincronização de vendas quando volta online
+
 ## Deploy
 
 ### Como fazer deploy manual
@@ -272,7 +295,7 @@ npm test             # testes (vitest)
 
 ## Próximas Melhorias Sugeridas
 
-### Sprint 4 (Sugestões)
+### Sprint 5 (Sugestões)
 - [ ] **Múltiplas unidades de embalagem** (caixa/fardo vs unidade)
 - [ ] Relatórios de vendas por período com gráficos
 - [ ] Impressão de cupom fiscal/comprovante
@@ -281,12 +304,13 @@ npm test             # testes (vitest)
 - [ ] Notas fiscais de entrada
 - [ ] Multi-usuários com permissões
 - [ ] Controle de troco no caixa (alertas)
+- [ ] Gerar ícones PWA otimizados (192x192, 512x512)
 
 ### Otimizações Futuras
-- [ ] Service Worker para PWA completo
 - [ ] Compressão de imagens de produtos
-- [ ] Lazy loading de rotas
+- [ ] Notificações push (via PWA)
 - [ ] Testes E2E (Playwright/Cypress)
+- [ ] Performance: Code splitting avançado
 
 ## Informações de Contato
 
@@ -297,5 +321,5 @@ npm test             # testes (vitest)
 ---
 
 **Última atualização:** 2025-10-18
-**Sprint atual:** Sprint 3 Concluída ✅
-**Versão:** 1.2.0
+**Sprint atual:** Sprint 4 Concluída ✅ (PWA Implementado)
+**Versão:** 1.3.0
