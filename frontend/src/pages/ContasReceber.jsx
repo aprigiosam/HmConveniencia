@@ -1,15 +1,29 @@
 import { useState, useEffect } from 'react';
-import { getContasReceber, receberPagamento } from '../services/api';
-import { Table, Button, Group, Title, Text, Card, Badge, ScrollArea, Stack } from '@mantine/core';
-import { FaCheck } from 'react-icons/fa';
+import { getContasReceber, receberPagamento, getClientes, createVenda, getProdutos } from '../services/api';
+import { Table, Button, Group, Title, Text, Card, Badge, ScrollArea, Stack, Modal, Select, NumberInput, Textarea } from '@mantine/core';
+import { DatePickerInput } from '@mantine/dates';
+import { useDisclosure } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
+import { FaCheck, FaPlus, FaTimes } from 'react-icons/fa';
 import './ContasReceber.css';
 
 function ContasReceber() {
   const [contas, setContas] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [opened, { open, close }] = useDisclosure(false);
+  const [formData, setFormData] = useState({
+    cliente_id: '',
+    descricao: '',
+    valor: '',
+    data_vencimento: null
+  });
 
   useEffect(() => {
     loadContas();
+    loadClientes();
+    loadProdutos();
   }, []);
 
   const loadContas = async () => {
@@ -24,15 +38,138 @@ function ContasReceber() {
     }
   };
 
+  const loadClientes = async () => {
+    try {
+      const response = await getClientes({ ativo: true });
+      setClientes(response.data.results || response.data);
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+    }
+  };
+
+  const loadProdutos = async () => {
+    try {
+      const response = await getProdutos({ ativo: true });
+      setProdutos(response.data.results || response.data);
+    } catch (error) {
+      console.error('Erro ao carregar produtos:', error);
+    }
+  };
+
   const handleReceber = async (vendaId) => {
     if (!confirm('Confirmar recebimento desta conta?')) return;
     try {
       await receberPagamento(vendaId);
+      notifications.show({
+        title: 'Pagamento recebido!',
+        message: 'Conta marcada como paga com sucesso',
+        color: 'green',
+        icon: <FaCheck />,
+      });
       loadContas();
-      alert('Pagamento recebido com sucesso!');
     } catch (error) {
       console.error('Erro ao receber pagamento:', error);
-      alert('Erro ao processar recebimento.');
+      notifications.show({
+        title: 'Erro ao receber',
+        message: 'Não foi possível processar o recebimento',
+        color: 'red',
+        icon: <FaTimes />,
+      });
+    }
+  };
+
+  const handleOpenModal = () => {
+    setFormData({
+      cliente_id: '',
+      descricao: '',
+      valor: '',
+      data_vencimento: null
+    });
+    open();
+  };
+
+  const handleCloseModal = () => {
+    close();
+    setFormData({
+      cliente_id: '',
+      descricao: '',
+      valor: '',
+      data_vencimento: null
+    });
+  };
+
+  const handleAdicionarDivida = async (e) => {
+    e.preventDefault();
+
+    if (!formData.cliente_id || !formData.valor || !formData.data_vencimento) {
+      notifications.show({
+        title: 'Campos obrigatórios',
+        message: 'Preencha cliente, valor e data de vencimento',
+        color: 'orange',
+        icon: <FaTimes />,
+      });
+      return;
+    }
+
+    // Encontra ou cria um produto "LANÇAMENTO MANUAL" para representar dívidas avulsas
+    let produtoManual = produtos.find(p => p.nome === 'LANÇAMENTO MANUAL' || p.nome === 'DIVIDA AVULSA');
+
+    // Se não existe, usa o primeiro produto disponível como placeholder
+    // (idealmente deveria criar um produto específico, mas por ora usa qualquer um)
+    if (!produtoManual && produtos.length > 0) {
+      produtoManual = produtos[0];
+    }
+
+    if (!produtoManual) {
+      notifications.show({
+        title: 'Erro',
+        message: 'Nenhum produto disponível. Cadastre ao menos um produto primeiro.',
+        color: 'red',
+        icon: <FaTimes />,
+      });
+      return;
+    }
+
+    try {
+      const dataVencimentoFormatada = formData.data_vencimento instanceof Date
+        ? formData.data_vencimento.toISOString().split('T')[0]
+        : formData.data_vencimento;
+
+      const vendaData = {
+        forma_pagamento: 'FIADO',
+        cliente_id: parseInt(formData.cliente_id),
+        data_vencimento: dataVencimentoFormatada,
+        observacao: formData.descricao || 'Dívida avulsa',
+        itens: [{
+          produto_id: produtoManual.id,
+          quantidade: parseFloat(formData.valor) / parseFloat(produtoManual.preco),
+          // Ajusta quantidade para que o total seja exatamente o valor desejado
+        }]
+      };
+
+      await createVenda(vendaData);
+
+      notifications.show({
+        title: 'Dívida adicionada!',
+        message: `Dívida de R$ ${parseFloat(formData.valor).toFixed(2)} registrada com sucesso`,
+        color: 'green',
+        icon: <FaCheck />,
+      });
+
+      handleCloseModal();
+      loadContas();
+    } catch (error) {
+      console.error('Erro ao adicionar dívida:', error);
+      const errorMsg = error.response?.data?.detail
+        || Object.values(error.response?.data || {}).flat().join(', ')
+        || 'Erro ao registrar dívida';
+
+      notifications.show({
+        title: 'Erro ao adicionar dívida',
+        message: errorMsg,
+        color: 'red',
+        icon: <FaTimes />,
+      });
     }
   };
 
@@ -93,10 +230,15 @@ function ContasReceber() {
     );
   });
 
+  const clienteOptions = clientes.map(c => ({ value: c.id.toString(), label: c.nome }));
+
   return (
     <>
-      <Group position="apart" mb="lg">
+      <Group justify="space-between" mb="lg">
         <Title order={2}>Contas a Receber</Title>
+        <Button leftSection={<FaPlus />} onClick={handleOpenModal} color="orange">
+          Adicionar Dívida
+        </Button>
       </Group>
 
       <Card withBorder p="lg" radius="md" mb="lg">
@@ -132,6 +274,70 @@ function ContasReceber() {
           <Text c="dimmed" ta="center">Nenhuma conta pendente.</Text>
         )}
       </div>
+
+      {/* Modal Adicionar Dívida */}
+      <Modal
+        opened={opened}
+        onClose={handleCloseModal}
+        title="Adicionar Dívida Avulsa"
+        size="md"
+        centered
+      >
+        <form onSubmit={handleAdicionarDivida}>
+          <Stack gap="md">
+            <Select
+              label="Cliente"
+              placeholder="Selecione o cliente"
+              data={clienteOptions}
+              value={formData.cliente_id}
+              onChange={(value) => setFormData({ ...formData, cliente_id: value })}
+              searchable
+              required
+              size="md"
+            />
+
+            <Textarea
+              label="Descrição"
+              placeholder="Ex: Empréstimo, Venda antiga, etc..."
+              value={formData.descricao}
+              onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+              size="md"
+              description="Opcional - Descreva o motivo da dívida"
+            />
+
+            <NumberInput
+              label="Valor da Dívida"
+              placeholder="0.00"
+              value={formData.valor}
+              onChange={(value) => setFormData({ ...formData, valor: value })}
+              precision={2}
+              min={0.01}
+              leftSection="R$"
+              required
+              size="md"
+            />
+
+            <DatePickerInput
+              label="Data de Vencimento"
+              placeholder="Selecione a data"
+              value={formData.data_vencimento}
+              onChange={(value) => setFormData({ ...formData, data_vencimento: value })}
+              minDate={new Date()}
+              required
+              size="md"
+            />
+
+            <Group justify="flex-end" mt="md">
+              <Button variant="default" onClick={handleCloseModal}>
+                Cancelar
+              </Button>
+              <Button type="submit" color="orange" leftSection={<FaPlus />}>
+                Adicionar Dívida
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
     </>
   );
 }
