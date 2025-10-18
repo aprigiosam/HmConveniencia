@@ -1,5 +1,5 @@
 import { Paper, Text, Group, Stack, Divider, Button } from '@mantine/core';
-import { FaPrint, FaTimes } from 'react-icons/fa';
+import { FaPrint, FaTimes, FaWhatsapp } from 'react-icons/fa';
 import './Comprovante.css';
 
 function Comprovante({ venda, onClose }) {
@@ -29,12 +29,66 @@ function Comprovante({ venda, onClose }) {
     return labels[forma] || forma;
   };
 
+  const handleWhatsApp = () => {
+    // Monta mensagem formatada para WhatsApp
+    let mensagem = `*🧾 COMPROVANTE DE VENDA*\n`;
+    mensagem += `*HM CONVENIÊNCIA*\n\n`;
+    mensagem += `📅 Data: ${formatDate(venda.created_at || new Date())}\n`;
+    mensagem += `🔢 Venda Nº: #${venda.id || '---'}\n\n`;
+    mensagem += `*📦 ITENS:*\n`;
+
+    venda.itens?.forEach((item, index) => {
+      const nome = item.produto?.nome || item.produto_nome;
+      const qtd = item.quantidade;
+      const preco = parseFloat(item.preco_unitario || item.produto?.preco || 0);
+      const subtotal = (qtd * preco).toFixed(2);
+      mensagem += `${index + 1}. ${nome}\n`;
+      mensagem += `   ${qtd} x R$ ${preco.toFixed(2)} = R$ ${subtotal}\n`;
+    });
+
+    mensagem += `\n*💰 TOTAL: R$ ${parseFloat(venda.valor_total || venda.total || 0).toFixed(2)}*\n\n`;
+    mensagem += `💳 Pagamento: ${getFormaPagamentoLabel(venda.forma_pagamento)}\n`;
+
+    // Detalhes específicos por forma de pagamento
+    if (venda.forma_pagamento === 'DINHEIRO' && venda.valor_recebido) {
+      const troco = (parseFloat(venda.valor_recebido) - parseFloat(venda.valor_total || venda.total || 0)).toFixed(2);
+      mensagem += `💵 Recebido: R$ ${parseFloat(venda.valor_recebido).toFixed(2)}\n`;
+      mensagem += `💸 Troco: R$ ${troco}\n`;
+    }
+
+    if (venda.forma_pagamento === 'FIADO') {
+      mensagem += `👤 Cliente: ${venda.cliente?.nome || venda.cliente_nome || 'N/A'}\n`;
+      if (venda.data_vencimento) {
+        mensagem += `📅 Vencimento: ${new Date(venda.data_vencimento).toLocaleDateString('pt-BR')}\n`;
+      }
+    }
+
+    mensagem += `\n_Obrigado pela preferência!_\n`;
+    mensagem += `_Volte sempre! 🙏_`;
+
+    // Pega telefone do cliente (se for fiado) ou usa número padrão
+    let telefone = '';
+    if (venda.cliente?.telefone) {
+      telefone = venda.cliente.telefone.replace(/\D/g, ''); // Remove não-números
+    }
+
+    // Abre WhatsApp Web
+    const url = telefone
+      ? `https://wa.me/55${telefone}?text=${encodeURIComponent(mensagem)}`
+      : `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
+
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="comprovante-container">
       <div className="comprovante-actions no-print">
         <Group justify="space-between" mb="md">
           <Text size="lg" fw={700}>Comprovante de Venda</Text>
           <Group gap="xs">
+            <Button leftSection={<FaWhatsapp />} onClick={handleWhatsApp} color="green">
+              WhatsApp
+            </Button>
             <Button leftSection={<FaPrint />} onClick={handlePrint} color="blue">
               Imprimir
             </Button>

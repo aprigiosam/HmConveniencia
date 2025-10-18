@@ -4,7 +4,7 @@ import { Table, Button, Group, Title, Text, Card, Badge, ScrollArea, Stack, Moda
 import { DatePickerInput } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { FaCheck, FaPlus, FaTimes } from 'react-icons/fa';
+import { FaCheck, FaPlus, FaTimes, FaWhatsapp } from 'react-icons/fa';
 import './ContasReceber.css';
 
 function ContasReceber() {
@@ -180,6 +180,50 @@ function ContasReceber() {
     return new Date(dataVencimento) < hoje;
   };
 
+  const handleEnviarWhatsApp = (clienteNome) => {
+    // Agrupa todas as dívidas do cliente
+    const dividasCliente = contas.filter(c => c.cliente_nome === clienteNome);
+
+    if (dividasCliente.length === 0) return;
+
+    // Pega telefone do primeiro registro (todos são do mesmo cliente)
+    const telefone = dividasCliente[0].cliente_telefone?.replace(/\D/g, '') || '';
+
+    // Monta mensagem
+    let mensagem = `*📋 EXTRATO DE CONTAS*\n`;
+    mensagem += `*HM CONVENIÊNCIA*\n\n`;
+    mensagem += `👤 Cliente: *${clienteNome}*\n\n`;
+    mensagem += `*💳 CONTAS PENDENTES:*\n\n`;
+
+    let totalGeral = 0;
+    dividasCliente.forEach((divida, index) => {
+      const vencimento = new Date(divida.data_vencimento).toLocaleDateString('pt-BR');
+      const valor = parseFloat(divida.total);
+      const vencida = isVencida(divida.data_vencimento);
+
+      totalGeral += valor;
+
+      mensagem += `${index + 1}. `;
+      if (vencida) {
+        mensagem += `🔴 *VENCIDA* - `;
+      }
+      mensagem += `Venda #${divida.id}\n`;
+      mensagem += `   📅 Vencimento: ${vencimento}\n`;
+      mensagem += `   💰 Valor: R$ ${valor.toFixed(2)}\n\n`;
+    });
+
+    mensagem += `*💵 TOTAL A PAGAR: R$ ${totalGeral.toFixed(2)}*\n\n`;
+    mensagem += `_Para regularizar suas pendências, entre em contato conosco._\n`;
+    mensagem += `_Obrigado! 🙏_`;
+
+    // Abre WhatsApp
+    const url = telefone
+      ? `https://wa.me/55${telefone}?text=${encodeURIComponent(mensagem)}`
+      : `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
+
+    window.open(url, '_blank');
+  };
+
   const totalDevedor = contas.reduce((sum, venda) => sum + parseFloat(venda.total), 0);
 
   const rows = contas.map((venda) => {
@@ -195,9 +239,14 @@ function ContasReceber() {
           </Badge>
         </Table.Td>
         <Table.Td>
-          <Button size="xs" leftIcon={<FaCheck />} onClick={() => handleReceber(venda.id)}>
-            Receber
-          </Button>
+          <Group gap="xs">
+            <Button size="xs" leftSection={<FaWhatsapp />} onClick={() => handleEnviarWhatsApp(venda.cliente_nome)} color="green">
+              WhatsApp
+            </Button>
+            <Button size="xs" leftSection={<FaCheck />} onClick={() => handleReceber(venda.id)}>
+              Receber
+            </Button>
+          </Group>
         </Table.Td>
       </Table.Tr>
     );
@@ -222,9 +271,14 @@ function ContasReceber() {
             <Text size="sm" c="dimmed">Valor:</Text>
             <Text size="sm" fw={500}>R$ {parseFloat(venda.total).toFixed(2)}</Text>
           </Group>
-          <Button mt="sm" size="sm" leftIcon={<FaCheck />} onClick={() => handleReceber(venda.id)} fullWidth>
-            Receber Pagamento
-          </Button>
+          <Group gap="xs" mt="sm">
+            <Button size="sm" leftSection={<FaWhatsapp />} onClick={() => handleEnviarWhatsApp(venda.cliente_nome)} color="green" style={{ flex: 1 }}>
+              WhatsApp
+            </Button>
+            <Button size="sm" leftSection={<FaCheck />} onClick={() => handleReceber(venda.id)} style={{ flex: 1 }}>
+              Receber
+            </Button>
+          </Group>
         </Stack>
       </Card>
     );
