@@ -140,38 +140,62 @@ function Produtos() {
   // Inicializa o scanner quando o modal abre
   useEffect(() => {
     if (scannerAberto && !scannerRef.current) {
-      const scanner = new Html5QrcodeScanner('reader-produtos', {
-        qrbox: {
-          width: 250,
-          height: 150,
-        },
-        fps: 10,
-        formatsToSupport: [
-          0,  // EAN_13
-          1,  // EAN_8
-          3,  // UPC_A
-          4,  // UPC_E
-          5,  // CODE_39
-          6,  // CODE_93
-          7,  // CODE_128
-        ],
-      });
-
-      scanner.render(
-        (decodedText) => {
-          processarCodigoBarras(decodedText);
-        },
-        (error) => {
-          // Ignora erros de leitura contínua
+      // Aguarda o DOM renderizar o elemento
+      setTimeout(() => {
+        const element = document.getElementById('reader-produtos');
+        if (!element) {
+          console.error('Elemento reader-produtos não encontrado');
+          return;
         }
-      );
 
-      scannerRef.current = scanner;
+        try {
+          const scanner = new Html5QrcodeScanner('reader-produtos', {
+            qrbox: {
+              width: 250,
+              height: 150,
+            },
+            fps: 10,
+            formatsToSupport: [
+              0,  // EAN_13
+              1,  // EAN_8
+              3,  // UPC_A
+              4,  // UPC_E
+              5,  // CODE_39
+              6,  // CODE_93
+              7,  // CODE_128
+            ],
+          });
+
+          scanner.render(
+            (decodedText) => {
+              processarCodigoBarras(decodedText);
+            },
+            (error) => {
+              // Ignora erros de leitura contínua
+            }
+          );
+
+          scannerRef.current = scanner;
+        } catch (error) {
+          console.error('Erro ao inicializar scanner:', error);
+          notifications.show({
+            title: 'Erro ao abrir câmera',
+            message: 'Não foi possível inicializar o scanner. Tente novamente.',
+            color: 'red',
+            icon: <FaTimes />,
+          });
+          setScannerAberto(false);
+        }
+      }, 100);
     }
 
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.clear();
+        try {
+          scannerRef.current.clear();
+        } catch (error) {
+          console.error('Erro ao limpar scanner:', error);
+        }
         scannerRef.current = null;
       }
     };
