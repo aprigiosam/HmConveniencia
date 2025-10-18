@@ -41,19 +41,15 @@ desktop.ini
 *.backup
 *.old
 
-# Test files
-*.test.js
-*.test.py
-*.spec.js
-*.spec.jsx
-test_*.py
-tests/
-__tests__/
-pytest.ini
+# Test cache and artifacts (NOT test files themselves!)
 .pytest_cache/
 coverage/
 .coverage
 htmlcov/
+*.coverage
+.vitest/
+test-results/
+playwright-report/
 
 # Documentation (keep only CONTEXT.md and README.md)
 docs/
