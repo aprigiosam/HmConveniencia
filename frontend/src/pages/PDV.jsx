@@ -7,6 +7,7 @@ import { DatePickerInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode } from 'react-icons/fa';
 import { BrowserMultiFormatReader } from '@zxing/browser';
+import Comprovante from '../components/Comprovante';
 
 function PDV() {
   const [produtos, setProdutos] = useState([]);
@@ -19,6 +20,8 @@ function PDV() {
   const [valorRecebido, setValorRecebido] = useState('');
   const [loading, setLoading] = useState(false);
   const [scannerAberto, setScannerAberto] = useState(false);
+  const [comprovanteAberto, setComprovanteAberto] = useState(false);
+  const [dadosVenda, setDadosVenda] = useState(null);
   const buscaRef = useRef(null);
   const scannerRef = useRef(null);
   const leituraEmAndamentoRef = useRef(false);
@@ -287,7 +290,29 @@ function PDV() {
     };
 
     try {
-      await createVenda(vendaData);
+      const response = await createVenda(vendaData);
+
+      // Prepara dados do comprovante
+      const vendaCompleta = {
+        ...response.data,
+        itens: carrinho.map(item => ({
+          produto: item.produto,
+          produto_nome: item.produto.nome,
+          quantidade: item.quantidade,
+          preco_unitario: item.produto.preco
+        })),
+        forma_pagamento: formaPagamento,
+        valor_total: calcularTotal(),
+        valor_recebido: formaPagamento === 'DINHEIRO' ? valorRecebido : null,
+        cliente: formaPagamento === 'FIADO' ? clientes.find(c => c.id === parseInt(clienteId)) : null,
+        cliente_nome: formaPagamento === 'FIADO' ? clientes.find(c => c.id === parseInt(clienteId))?.nome : null,
+        data_vencimento: dataVencimentoFormatada,
+        created_at: new Date().toISOString()
+      };
+
+      // Salva dados da venda e abre comprovante
+      setDadosVenda(vendaCompleta);
+      setComprovanteAberto(true);
 
       notifications.show({
         title: 'Venda finalizada!',
@@ -548,6 +573,23 @@ function PDV() {
             Cancelar
           </Button>
         </Stack>
+      </Modal>
+
+      {/* Modal do Comprovante de Venda */}
+      <Modal
+        opened={comprovanteAberto}
+        onClose={() => setComprovanteAberto(false)}
+        title=""
+        size="lg"
+        centered
+        padding={0}
+      >
+        {dadosVenda && (
+          <Comprovante
+            venda={dadosVenda}
+            onClose={() => setComprovanteAberto(false)}
+          />
+        )}
       </Modal>
     </Grid>
   );

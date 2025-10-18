@@ -1,0 +1,93 @@
+.comprovante-container {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.comprovante-paper {
+  background: white;
+}
+
+.comprovante-header {
+  margin-bottom: 1rem;
+}
+
+.comprovante-footer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+/* Estilos para impressão */
+@media print {
+  /* Esconde tudo da página */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Mostra apenas o comprovante */
+  .comprovante-container,
+  .comprovante-container * {
+    visibility: visible;
+  }
+
+  /* Esconde botões e elementos que não devem ser impressos */
+  .no-print,
+  .no-print * {
+    display: none !important;
+  }
+
+  /* Posiciona o comprovante no topo da página */
+  .comprovante-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm; /* Largura padrão de impressora térmica */
+    max-width: 100%;
+  }
+
+  .comprovante-paper {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  /* Ajusta tamanhos de fonte para impressão */
+  .comprovante-header {
+    margin-bottom: 8px;
+  }
+
+  /* Remove cores de fundo e bordas */
+  * {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Mantém negrito */
+  [data-fw="700"],
+  strong,
+  b {
+    font-weight: bold !important;
+  }
+
+  /* Remove margens da página */
+  @page {
+    margin: 0;
+    size: 80mm auto; /* Largura de impressora térmica, altura automática */
+  }
+
+  body {
+    margin: 0;
+    padding: 10mm;
+  }
+}
+
+/* Estilos para tela */
+@media screen {
+  .comprovante-actions {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 100;
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+  }
+}
