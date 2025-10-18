@@ -13,7 +13,7 @@ function Produtos() {
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [deletingProduct, setDeletingProduct] = useState(null);
-  const [formData, setFormData] = useState({ nome: '', preco: '', estoque: '', categoria: '' });
+  const [formData, setFormData] = useState({ nome: '', preco: '', estoque: '', categoria: '', codigo_barras: '' });
 
   useEffect(() => {
     loadInitialData();
@@ -45,7 +45,7 @@ function Produtos() {
   };
 
   const resetForm = () => {
-    setFormData({ nome: '', preco: '', estoque: '', categoria: '' });
+    setFormData({ nome: '', preco: '', estoque: '', categoria: '', codigo_barras: '' });
     setEditingProduct(null);
   };
 
@@ -57,6 +57,7 @@ function Produtos() {
         preco: produto.preco,
         estoque: produto.estoque,
         categoria: produto.categoria?.toString() || '',
+        codigo_barras: produto.codigo_barras || '',
       });
     } else {
       resetForm();
@@ -111,6 +112,7 @@ function Produtos() {
   const rows = produtos.map((produto) => (
     <Table.Tr key={produto.id}>
       <Table.Td>{produto.nome}</Table.Td>
+      <Table.Td>{produto.codigo_barras || '-'}</Table.Td>
       <Table.Td>R$ {parseFloat(produto.preco).toFixed(2)}</Table.Td>
       <Table.Td>{parseInt(produto.estoque)}</Table.Td>
       <Table.Td>{produto.categoria_nome || 'Sem categoria'}</Table.Td>
@@ -142,6 +144,7 @@ function Produtos() {
         <form onSubmit={handleSubmit}>
           <Stack gap="sm">
             <TextInput label="Nome" placeholder="Nome do produto" required value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} size="md" />
+            <TextInput label="Código de Barras" placeholder="7891234567890" value={formData.codigo_barras} onChange={(e) => setFormData({ ...formData, codigo_barras: e.target.value })} size="md" description="Opcional - Usado para leitura com câmera no PDV" />
             <NumberInput label="Preço" placeholder="9.99" required precision={2} value={Number(formData.preco)} onChange={(value) => setFormData({ ...formData, preco: value })} size="md" />
             <NumberInput label="Estoque" placeholder="0" required value={Number(formData.estoque)} onChange={(value) => setFormData({ ...formData, estoque: value })} size="md" />
             <Select label="Categoria" placeholder="Selecione uma categoria" data={categoriaOptions} value={formData.categoria} onChange={(value) => setFormData({ ...formData, categoria: value })} clearable size="md" />
@@ -184,6 +187,7 @@ function Produtos() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Nome</Table.Th>
+              <Table.Th>Código de Barras</Table.Th>
               <Table.Th>Preço</Table.Th>
               <Table.Th>Estoque</Table.Th>
               <Table.Th>Categoria</Table.Th>
@@ -193,7 +197,7 @@ function Produtos() {
           <Table.Tbody>
             {rows.length > 0 ? rows : (
               <Table.Tr>
-                <Table.Td colSpan={5}>
+                <Table.Td colSpan={6}>
                   <Text c="dimmed" ta="center">Nenhum produto cadastrado.</Text>
                 </Table.Td>
               </Table.Tr>
