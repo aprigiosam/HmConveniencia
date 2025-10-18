@@ -40,3 +40,39 @@ desktop.ini
 *.bak
 *.backup
 *.old
+
+# Test files
+*.test.js
+*.test.jsx
+*.test.py
+*.spec.js
+*.spec.jsx
+test_*.py
+tests/
+__tests__/
+pytest.ini
+.pytest_cache/
+coverage/
+.coverage
+htmlcov/
+
+# Documentation (keep only CONTEXT.md and README.md)
+docs/
+*.md
+!README.md
+!CONTEXT.md
+
+# Build artifacts
+frontend/dist/
+frontend/build/
+backend/staticfiles/
+backend/static/
+backend/media/
+
+# Security
+*.pem
+*.key
+*.cert
+*.crt
+credentials.json
+secrets.json
