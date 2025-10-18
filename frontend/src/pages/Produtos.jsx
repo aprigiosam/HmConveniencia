@@ -5,7 +5,7 @@ import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, Act
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes } from 'react-icons/fa';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
 function Produtos() {
   const [produtos, setProdutos] = useState([]);
@@ -141,7 +141,7 @@ function Produtos() {
   useEffect(() => {
     if (scannerAberto && !scannerRef.current) {
       // Aguarda o DOM renderizar o elemento
-      setTimeout(() => {
+      setTimeout(async () => {
         const element = document.getElementById('reader-produtos');
         if (!element) {
           console.error('Elemento reader-produtos não encontrado');
@@ -149,21 +149,23 @@ function Produtos() {
         }
 
         try {
-          const scanner = new Html5QrcodeScanner('reader-produtos', {
-            fps: 20,  // Aumenta FPS para melhor detecção
-            qrbox: 250,  // Área de leitura maior
-            aspectRatio: 1.0,
-            disableFlip: false,
-            rememberLastUsedCamera: true,
-            supportedScanTypes: [1],  // 1 = Código de barras (não QR code)
-          });
+          const scanner = new Html5Qrcode('reader-produtos');
 
-          scanner.render(
+          // Inicia câmera (traseira preferencialmente)
+          await scanner.start(
+            { facingMode: 'environment' },  // Câmera traseira
+            {
+              fps: 20,
+              qrbox: { width: 250, height: 250 },
+              aspectRatio: 1.0,
+              supportedScanTypes: [1],  // Apenas códigos de barras
+            },
             (decodedText) => {
+              // Sucesso na leitura
               processarCodigoBarras(decodedText);
             },
-            (error) => {
-              // Ignora erros de leitura contínua
+            (errorMessage) => {
+              // Ignora erros de leitura contínua (scanner tentando ler)
             }
           );
 
@@ -172,7 +174,7 @@ function Produtos() {
           console.error('Erro ao inicializar scanner:', error);
           notifications.show({
             title: 'Erro ao abrir câmera',
-            message: 'Não foi possível inicializar o scanner. Tente novamente.',
+            message: 'Permita o acesso à câmera ou verifique se outro app está usando.',
             color: 'red',
             icon: <FaTimes />,
           });
@@ -183,12 +185,15 @@ function Produtos() {
 
     return () => {
       if (scannerRef.current) {
-        try {
-          scannerRef.current.clear();
-        } catch (error) {
-          console.error('Erro ao limpar scanner:', error);
-        }
-        scannerRef.current = null;
+        scannerRef.current.stop()
+          .then(() => {
+            scannerRef.current.clear();
+            scannerRef.current = null;
+          })
+          .catch((error) => {
+            console.error('Erro ao parar scanner:', error);
+            scannerRef.current = null;
+          });
       }
     };
   }, [scannerAberto]);

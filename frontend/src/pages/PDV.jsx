@@ -6,7 +6,7 @@ import { Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIc
 import { DatePickerInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode } from 'react-icons/fa';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
 function PDV() {
   const [produtos, setProdutos] = useState([]);
@@ -144,7 +144,7 @@ function PDV() {
   useEffect(() => {
     if (scannerAberto && !scannerRef.current) {
       // Aguarda o DOM renderizar o elemento
-      setTimeout(() => {
+      setTimeout(async () => {
         const element = document.getElementById('reader');
         if (!element) {
           console.error('Elemento reader não encontrado');
@@ -152,21 +152,23 @@ function PDV() {
         }
 
         try {
-          const scanner = new Html5QrcodeScanner('reader', {
-            fps: 20,  // Aumenta FPS para melhor detecção
-            qrbox: 250,  // Área de leitura maior
-            aspectRatio: 1.0,
-            disableFlip: false,
-            rememberLastUsedCamera: true,
-            supportedScanTypes: [1],  // 1 = Código de barras (não QR code)
-          });
+          const scanner = new Html5Qrcode('reader');
 
-          scanner.render(
+          // Inicia câmera (traseira preferencialmente)
+          await scanner.start(
+            { facingMode: 'environment' },  // Câmera traseira
+            {
+              fps: 20,
+              qrbox: { width: 250, height: 250 },
+              aspectRatio: 1.0,
+              supportedScanTypes: [1],  // Apenas códigos de barras
+            },
             (decodedText) => {
+              // Sucesso na leitura
               processarCodigoBarras(decodedText);
             },
-            (error) => {
-              // Ignora erros de leitura contínua
+            (errorMessage) => {
+              // Ignora erros de leitura contínua (scanner tentando ler)
             }
           );
 
@@ -175,7 +177,7 @@ function PDV() {
           console.error('Erro ao inicializar scanner:', error);
           notifications.show({
             title: 'Erro ao abrir câmera',
-            message: 'Não foi possível inicializar o scanner. Tente novamente.',
+            message: 'Permita o acesso à câmera ou verifique se outro app está usando.',
             color: 'red',
             icon: <FaTimes />,
           });
@@ -186,12 +188,15 @@ function PDV() {
 
     return () => {
       if (scannerRef.current) {
-        try {
-          scannerRef.current.clear();
-        } catch (error) {
-          console.error('Erro ao limpar scanner:', error);
-        }
-        scannerRef.current = null;
+        scannerRef.current.stop()
+          .then(() => {
+            scannerRef.current.clear();
+            scannerRef.current = null;
+          })
+          .catch((error) => {
+            console.error('Erro ao parar scanner:', error);
+            scannerRef.current = null;
+          });
       }
     };
   }, [scannerAberto]);
