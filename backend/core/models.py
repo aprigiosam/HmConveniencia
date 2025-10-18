@@ -89,6 +89,7 @@ class Produto(models.Model):
         validators=[MinValueValidator(Decimal('0.00'), message='Estoque não pode ser negativo')]
     )
     codigo_barras = models.CharField('Código de Barras', max_length=50, blank=True)
+    data_validade = models.DateField('Data de Validade', null=True, blank=True, help_text='Deixe em branco para produtos sem validade')
     categoria = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='produtos', verbose_name='Categoria')
     ativo = models.BooleanField('Ativo', default=True)
     created_at = models.DateTimeField('Criado em', auto_now_add=True)
@@ -118,6 +119,31 @@ class Produto(models.Model):
         if self.preco_custo > 0:
             return ((self.preco - self.preco_custo) / self.preco_custo) * 100
         return Decimal('0.00')
+
+    @property
+    def esta_vencido(self):
+        """Verifica se o produto está vencido"""
+        if not self.data_validade:
+            return False
+        from django.utils import timezone
+        return self.data_validade < timezone.now().date()
+
+    @property
+    def dias_para_vencer(self):
+        """Retorna quantos dias faltam para vencer (negativo se vencido)"""
+        if not self.data_validade:
+            return None
+        from django.utils import timezone
+        delta = self.data_validade - timezone.now().date()
+        return delta.days
+
+    @property
+    def proximo_vencimento(self):
+        """Verifica se está próximo do vencimento (7 dias)"""
+        if not self.data_validade:
+            return False
+        dias = self.dias_para_vencer
+        return dias is not None and 0 <= dias <= 7
 
 
 class Venda(models.Model):

@@ -206,6 +206,31 @@ class VendaViewSet(viewsets.ModelViewSet):
         # Produtos com estoque baixo
         estoque_baixo = Produto.objects.filter(estoque__lt=10, ativo=True).count()
 
+        # Cálculo de Lucro Hoje
+        from core.models import ItemVenda
+        from django.db.models import F
+        lucro_hoje = ItemVenda.objects.filter(
+            venda__created_at__date=hoje,
+            venda__status='FINALIZADA',
+            produto__preco_custo__gt=0
+        ).aggregate(
+            lucro=Sum(F('quantidade') * (F('preco_unitario') - F('produto__preco_custo')))
+        )['lucro'] or Decimal('0')
+
+        # Produtos vencidos e próximos ao vencimento
+        produtos_vencidos = Produto.objects.filter(
+            data_validade__lt=hoje,
+            ativo=True
+        ).count()
+
+        # Produtos vencendo em até 7 dias
+        data_limite = hoje + timedelta(days=7)
+        produtos_vencendo = Produto.objects.filter(
+            data_validade__gte=hoje,
+            data_validade__lte=data_limite,
+            ativo=True
+        ).count()
+
         # Vendas por forma de pagamento hoje
         vendas_por_pagamento = vendas_hoje.values('forma_pagamento').annotate(
             total=Sum('total'),
@@ -268,7 +293,10 @@ class VendaViewSet(viewsets.ModelViewSet):
                 'total': float(total_hoje),
                 'quantidade': quantidade_vendas,
             },
+            'lucro_hoje': float(lucro_hoje),
             'estoque_baixo': estoque_baixo,
+            'produtos_vencidos': produtos_vencidos,
+            'produtos_vencendo': produtos_vencendo,
             'vendas_por_pagamento': list(vendas_por_pagamento),
             'contas_receber': {
                 'total': float(total_a_receber),

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getDashboard } from '../services/api';
 import { Card, Text, Grid, Title, Group, Center, Loader } from '@mantine/core';
-import { FaDollarSign, FaExclamationTriangle, FaCashRegister, FaReceipt, FaChartLine } from 'react-icons/fa';
+import { FaDollarSign, FaExclamationTriangle, FaCashRegister, FaReceipt, FaChartLine, FaCalendarTimes, FaClock } from 'react-icons/fa';
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -85,6 +85,32 @@ function Dashboard() {
             </Group>
             <Text size="lg" fw={700}>{stats?.estoque_baixo || 0}</Text>
             <Text size="xs" c="dimmed">produtos</Text>
+          </Card>
+        </Grid.Col>
+
+        <Grid.Col span={12} sm={6} lg={3}>
+          <Card withBorder p="sm" radius="md" bg={stats?.produtos_vencidos > 0 ? 'red.1' : 'transparent'}>
+            <Group justify="space-between" mb="xs">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Produtos Vencidos</Text>
+              <FaCalendarTimes size={18} color='red' />
+            </Group>
+            <Text size="lg" fw={700} c={stats?.produtos_vencidos > 0 ? 'red' : 'inherit'}>
+              {stats?.produtos_vencidos || 0}
+            </Text>
+            <Text size="xs" c="dimmed">produtos</Text>
+          </Card>
+        </Grid.Col>
+
+        <Grid.Col span={12} sm={6} lg={3}>
+          <Card withBorder p="sm" radius="md" bg={stats?.produtos_vencendo > 0 ? 'yellow.1' : 'transparent'}>
+            <Group justify="space-between" mb="xs">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Próximos ao Vencimento</Text>
+              <FaClock size={18} color='orange' />
+            </Group>
+            <Text size="lg" fw={700} c={stats?.produtos_vencendo > 0 ? 'orange' : 'inherit'}>
+              {stats?.produtos_vencendo || 0}
+            </Text>
+            <Text size="xs" c="dimmed">≤ 7 dias</Text>
           </Card>
         </Grid.Col>
       </Grid>

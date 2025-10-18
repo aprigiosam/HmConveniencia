@@ -34,14 +34,28 @@ class CategoriaSerializer(serializers.ModelSerializer):
 class ProdutoSerializer(serializers.ModelSerializer):
     margem_lucro = serializers.SerializerMethodField()
     categoria_nome = serializers.CharField(source='categoria.nome', read_only=True)
+    esta_vencido = serializers.SerializerMethodField()
+    dias_para_vencer = serializers.SerializerMethodField()
+    proximo_vencimento = serializers.SerializerMethodField()
 
     class Meta:
         model = Produto
-        fields = ['id', 'nome', 'preco', 'preco_custo', 'estoque', 'codigo_barras', 'ativo', 'created_at', 'margem_lucro', 'categoria', 'categoria_nome']
-        read_only_fields = ['created_at', 'margem_lucro']
+        fields = ['id', 'nome', 'preco', 'preco_custo', 'estoque', 'codigo_barras', 'data_validade',
+                  'ativo', 'created_at', 'margem_lucro', 'categoria', 'categoria_nome',
+                  'esta_vencido', 'dias_para_vencer', 'proximo_vencimento']
+        read_only_fields = ['created_at', 'margem_lucro', 'esta_vencido', 'dias_para_vencer', 'proximo_vencimento']
 
     def get_margem_lucro(self, obj):
         return float(obj.margem_lucro)
+
+    def get_esta_vencido(self, obj):
+        return obj.esta_vencido
+
+    def get_dias_para_vencer(self, obj):
+        return obj.dias_para_vencer
+
+    def get_proximo_vencimento(self, obj):
+        return obj.proximo_vencimento
 
 
 class ItemVendaSerializer(serializers.ModelSerializer):

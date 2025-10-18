@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias } from '../services/api';
 import { localDB } from '../utils/db';
-import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, ActionIcon, Stack, Text, ScrollArea, Card } from '@mantine/core';
+import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, ActionIcon, Stack, Text, ScrollArea, Card, Badge } from '@mantine/core';
+import { DatePickerInput } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import './Produtos.css';
 
@@ -17,7 +18,7 @@ function Produtos() {
   const [scannerAberto, setScannerAberto] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [deletingProduct, setDeletingProduct] = useState(null);
-  const [formData, setFormData] = useState({ nome: '', preco: '', estoque: '', categoria: '', codigo_barras: '' });
+  const [formData, setFormData] = useState({ nome: '', preco: '', estoque: '', categoria: '', codigo_barras: '', data_validade: null });
   const scannerRef = useRef(null);
   const leituraEmAndamentoRef = useRef(false);
 
@@ -48,7 +49,7 @@ function Produtos() {
   };
 
   const resetForm = () => {
-    setFormData({ nome: '', preco: '', estoque: '', categoria: '', codigo_barras: '' });
+    setFormData({ nome: '', preco: '', estoque: '', categoria: '', codigo_barras: '', data_validade: null });
     setEditingProduct(null);
   };
 
@@ -61,6 +62,7 @@ function Produtos() {
         estoque: produto.estoque,
         categoria: produto.categoria?.toString() || '',
         codigo_barras: produto.codigo_barras || '',
+        data_validade: produto.data_validade ? new Date(produto.data_validade) : null,
       });
     } else {
       resetForm();
@@ -75,7 +77,11 @@ function Produtos() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const dataToSend = { ...formData, categoria: formData.categoria ? parseInt(formData.categoria) : null };
+    const dataToSend = {
+      ...formData,
+      categoria: formData.categoria ? parseInt(formData.categoria) : null,
+      data_validade: formData.data_validade ? formData.data_validade.toISOString().split('T')[0] : null
+    };
     try {
       if (editingProduct) {
         await updateProduto(editingProduct.id, dataToSend);
@@ -198,9 +204,28 @@ function Produtos() {
     };
   }, [scannerAberto]);
 
+  const getValidadeBadge = (produto) => {
+    if (!produto.data_validade) return null;
+
+    if (produto.esta_vencido) {
+      return <Badge color="red" leftSection={<FaExclamationTriangle />}>VENCIDO</Badge>;
+    }
+
+    if (produto.proximo_vencimento) {
+      return <Badge color="yellow" leftSection={<FaExclamationTriangle />}>{produto.dias_para_vencer} dias</Badge>;
+    }
+
+    return <Badge color="green">{produto.dias_para_vencer} dias</Badge>;
+  };
+
   const rows = produtos.map((produto) => (
-    <Table.Tr key={produto.id}>
-      <Table.Td>{produto.nome}</Table.Td>
+    <Table.Tr key={produto.id} style={{ backgroundColor: produto.esta_vencido ? '#fee' : produto.proximo_vencimento ? '#ffeaa7' : 'inherit' }}>
+      <Table.Td>
+        <Group gap="xs">
+          <Text>{produto.nome}</Text>
+          {getValidadeBadge(produto)}
+        </Group>
+      </Table.Td>
       <Table.Td>{produto.codigo_barras || '-'}</Table.Td>
       <Table.Td>R$ {parseFloat(produto.preco).toFixed(2)}</Table.Td>
       <Table.Td>{parseInt(produto.estoque)}</Table.Td>
@@ -219,9 +244,19 @@ function Produtos() {
   ));
 
   const cards = produtos.map((produto) => (
-    <Card withBorder radius="md" p="sm" key={produto.id} className="produto-card">
+    <Card
+      withBorder
+      radius="md"
+      p="sm"
+      key={produto.id}
+      className="produto-card"
+      style={{ borderColor: produto.esta_vencido ? '#fa5252' : produto.proximo_vencimento ? '#fab005' : undefined }}
+    >
       <Group justify="space-between" mb="xs">
-        <Text fw={500}>{produto.nome}</Text>
+        <Stack gap={4}>
+          <Text fw={500}>{produto.nome}</Text>
+          {getValidadeBadge(produto)}
+        </Stack>
         <Group gap="xs" wrap="nowrap">
           <ActionIcon color="blue" variant="light" onClick={() => handleOpenModal(produto)} size="lg">
             <FaEdit size={16} />
@@ -294,6 +329,16 @@ function Produtos() {
             <NumberInput label="Preço" placeholder="9.99" required precision={2} value={Number(formData.preco)} onChange={(value) => setFormData({ ...formData, preco: value })} size="md" />
             <NumberInput label="Estoque" placeholder="0" required value={Number(formData.estoque)} onChange={(value) => setFormData({ ...formData, estoque: value })} size="md" />
             <Select label="Categoria" placeholder="Selecione uma categoria" data={categoriaOptions} value={formData.categoria} onChange={(value) => setFormData({ ...formData, categoria: value })} clearable size="md" />
+            <DatePickerInput
+              label="Data de Validade"
+              placeholder="Selecione a data"
+              value={formData.data_validade}
+              onChange={(value) => setFormData({ ...formData, data_validade: value })}
+              minDate={new Date()}
+              clearable
+              size="md"
+              description="Deixe em branco para produtos sem validade"
+            />
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={handleCloseModal}>Cancelar</Button>
               <Button type="submit">{editingProduct ? 'Salvar' : 'Criar'}</Button>
