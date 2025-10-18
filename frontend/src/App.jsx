@@ -2,7 +2,7 @@ import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Center, Loader } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle, FaListAlt } from 'react-icons/fa';
+import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt } from 'react-icons/fa';
 
 // Lazy loading das páginas para reduzir bundle inicial
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -13,6 +13,7 @@ const ContasReceber = lazy(() => import('./pages/ContasReceber'));
 const Caixa = lazy(() => import('./pages/Caixa'));
 const HistoricoCaixa = lazy(() => import('./pages/HistoricoCaixa'));
 const HistoricoVendas = lazy(() => import('./pages/HistoricoVendas'));
+const GiroEstoque = lazy(() => import('./pages/GiroEstoque'));
 const RelatorioLucro = lazy(() => import('./pages/RelatorioLucro'));
 const Categorias = lazy(() => import('./pages/Categorias'));
 const Login = lazy(() => import('./pages/Login'));
@@ -42,6 +43,7 @@ const navLinks = [
   { icon: <FaUsers />, label: 'Clientes', path: '/clientes' },
   { icon: <FaFileInvoiceDollar />, label: 'Contas a Receber', path: '/contas-receber' },
   { icon: <FaListAlt />, label: 'Histórico de Vendas', path: '/vendas/historico' },
+  { icon: <FaSyncAlt />, label: 'Giro de Estoque', path: '/estoque/giro' },
   { icon: <FaHistory />, label: 'Histórico de Caixas', path: '/caixa/historico' },
   { icon: <FaChartBar />, label: 'Relatório de Lucro', path: '/relatorios/lucro' },
   { icon: <FaTags />, label: 'Categorias', path: '/categorias' },
@@ -128,6 +130,7 @@ function AppContent() {
             <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
             <Route path="/contas-receber" element={<PrivateRoute><ContasReceber /></PrivateRoute>} />
             <Route path="/vendas/historico" element={<PrivateRoute><HistoricoVendas /></PrivateRoute>} />
+            <Route path="/estoque/giro" element={<PrivateRoute><GiroEstoque /></PrivateRoute>} />
             <Route path="/caixa" element={<PrivateRoute><Caixa /></PrivateRoute>} />
             <Route path="/caixa/historico" element={<PrivateRoute><HistoricoCaixa /></PrivateRoute>} />
             <Route path="/relatorios/lucro" element={<PrivateRoute><RelatorioLucro /></PrivateRoute>} />
