@@ -151,19 +151,9 @@ function Produtos() {
         }
 
         try {
-          // Lista dispositivos de vídeo
-          const videoInputDevices = await codeReader.listVideoInputDevices();
-
-          if (videoInputDevices.length === 0) {
-            throw new Error('Nenhuma câmera encontrada');
-          }
-
-          // Pega a última câmera (geralmente a traseira em celulares)
-          const selectedDeviceId = videoInputDevices[videoInputDevices.length - 1].deviceId;
-
-          // Inicia detecção contínua
+          // Inicia detecção contínua (usa câmera padrão/traseira automaticamente)
           await codeReader.decodeFromVideoDevice(
-            selectedDeviceId,
+            undefined,  // undefined = usa câmera padrão
             videoElement,
             (result, error) => {
               if (result) {
