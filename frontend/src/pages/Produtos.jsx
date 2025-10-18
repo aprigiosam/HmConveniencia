@@ -150,20 +150,12 @@ function Produtos() {
 
         try {
           const scanner = new Html5QrcodeScanner('reader-produtos', {
-            qrbox: {
-              width: 250,
-              height: 150,
-            },
-            fps: 10,
-            formatsToSupport: [
-              0,  // EAN_13
-              1,  // EAN_8
-              3,  // UPC_A
-              4,  // UPC_E
-              5,  // CODE_39
-              6,  // CODE_93
-              7,  // CODE_128
-            ],
+            fps: 20,  // Aumenta FPS para melhor detecção
+            qrbox: 250,  // Área de leitura maior
+            aspectRatio: 1.0,
+            disableFlip: false,
+            rememberLastUsedCamera: true,
+            supportedScanTypes: [1],  // 1 = Código de barras (não QR code)
           });
 
           scanner.render(
