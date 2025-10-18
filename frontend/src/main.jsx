@@ -1,10 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { MantineProvider, createTheme } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import App from './App';
 
 // Importar estilos do Mantine
 import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
 
 // Tema customizado com as cores do HM Conveniência
 const theme = createTheme({
@@ -30,6 +32,7 @@ const theme = createTheme({
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <MantineProvider theme={theme}>
+      <Notifications position="top-right" zIndex={1000} />
       <App />
     </MantineProvider>
   </React.StrictMode>,

@@ -109,6 +109,13 @@ class VendaCreateSerializer(serializers.Serializer):
                     'data_vencimento': 'Data de vencimento é obrigatória para vendas fiado'
                 })
 
+            # Valida que data de vencimento não pode ser no passado
+            from datetime import date
+            if data['data_vencimento'] < date.today():
+                raise serializers.ValidationError({
+                    'data_vencimento': 'Data de vencimento não pode ser no passado'
+                })
+
             # Verifica se cliente existe
             try:
                 cliente = Cliente.objects.get(id=data['cliente_id'])

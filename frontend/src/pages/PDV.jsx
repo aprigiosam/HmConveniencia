@@ -4,7 +4,8 @@ import { localDB } from '../utils/db';
 import { syncManager } from '../utils/syncManager';
 import { Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
-import { FaSearch, FaTrash, FaShoppingCart } from 'react-icons/fa';
+import { notifications } from '@mantine/notifications';
+import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes } from 'react-icons/fa';
 
 function PDV() {
   const [produtos, setProdutos] = useState([]);
@@ -53,11 +54,34 @@ function PDV() {
 
   const adicionarAoCarrinho = (produto) => {
     const itemExistente = carrinho.find(item => item.produto.id === produto.id);
+    const quantidadeAtual = itemExistente ? itemExistente.quantidade : 0;
+    const novaQuantidade = quantidadeAtual + 1;
+
+    // Validação de estoque em tempo real
+    if (novaQuantidade > produto.estoque) {
+      notifications.show({
+        title: 'Estoque insuficiente',
+        message: `${produto.nome} - Disponível: ${produto.estoque}`,
+        color: 'red',
+        icon: <FaTimes />,
+      });
+      return;
+    }
+
     if (itemExistente) {
-      setCarrinho(carrinho.map(item => item.produto.id === produto.id ? { ...item, quantidade: item.quantidade + 1 } : item));
+      setCarrinho(carrinho.map(item => item.produto.id === produto.id ? { ...item, quantidade: novaQuantidade } : item));
     } else {
       setCarrinho([...carrinho, { produto, quantidade: 1 }]);
     }
+
+    notifications.show({
+      title: 'Produto adicionado',
+      message: `${produto.nome} adicionado ao carrinho`,
+      color: 'green',
+      icon: <FaCheck />,
+      autoClose: 2000,
+    });
+
     setBusca('');
     buscaRef.current?.focus();
   };
@@ -77,10 +101,35 @@ function PDV() {
   const calcularTotal = () => carrinho.reduce((total, item) => total + (parseFloat(item.produto.preco) * item.quantidade), 0);
 
   const finalizarVenda = async () => {
-    if (carrinho.length === 0) return alert('Carrinho vazio!');
+    if (carrinho.length === 0) {
+      notifications.show({
+        title: 'Carrinho vazio',
+        message: 'Adicione produtos ao carrinho antes de finalizar',
+        color: 'orange',
+        icon: <FaTimes />,
+      });
+      return;
+    }
+
     if (formaPagamento === 'FIADO') {
-      if (!clienteId) return alert('Selecione o cliente!');
-      if (!dataVencimento) return alert('Informe a data de vencimento!');
+      if (!clienteId) {
+        notifications.show({
+          title: 'Cliente não selecionado',
+          message: 'Selecione um cliente para venda fiado',
+          color: 'orange',
+          icon: <FaTimes />,
+        });
+        return;
+      }
+      if (!dataVencimento) {
+        notifications.show({
+          title: 'Data de vencimento obrigatória',
+          message: 'Informe a data de vencimento para venda fiado',
+          color: 'orange',
+          icon: <FaTimes />,
+        });
+        return;
+      }
     }
 
     setLoading(true);
@@ -107,7 +156,14 @@ function PDV() {
 
     try {
       await createVenda(vendaData);
-      alert('Venda registrada com sucesso!');
+
+      notifications.show({
+        title: 'Venda finalizada!',
+        message: `Venda de R$ ${calcularTotal().toFixed(2)} registrada com sucesso`,
+        color: 'green',
+        icon: <FaCheck />,
+        autoClose: 4000,
+      });
 
       // Limpa carrinho e recarrega apenas em caso de sucesso
       setCarrinho([]);
@@ -123,12 +179,26 @@ function PDV() {
           || error.response.data?.error
           || Object.values(error.response.data || {}).flat().join(', ')
           || 'Erro ao processar venda';
-        alert(`ERRO: ${errorMsg}`);
+
+        notifications.show({
+          title: 'Erro ao finalizar venda',
+          message: errorMsg,
+          color: 'red',
+          icon: <FaTimes />,
+          autoClose: 8000,
+        });
       } else if (error.request) {
         // Erro de rede - salva offline
         await localDB.saveVendaPendente(vendaData);
         setTimeout(() => syncManager.syncAll(), 1000);
-        alert('Sem conexão! Venda salva localmente e será sincronizada quando houver internet.');
+
+        notifications.show({
+          title: 'Venda salva offline',
+          message: 'Sem conexão! Venda será sincronizada automaticamente quando houver internet',
+          color: 'blue',
+          icon: <FaCheck />,
+          autoClose: 6000,
+        });
 
         // Limpa carrinho apenas em caso de venda offline
         setCarrinho([]);
@@ -138,7 +208,12 @@ function PDV() {
         loadInitialData();
       } else {
         // Outro tipo de erro
-        alert('Erro inesperado: ' + error.message);
+        notifications.show({
+          title: 'Erro inesperado',
+          message: error.message,
+          color: 'red',
+          icon: <FaTimes />,
+        });
       }
     } finally {
       setLoading(false);
@@ -255,6 +330,7 @@ function PDV() {
                     placeholder="Selecione a data"
                     value={dataVencimento}
                     onChange={setDataVencimento}
+                    minDate={new Date()}
                     size="md"
                     required
                   />
