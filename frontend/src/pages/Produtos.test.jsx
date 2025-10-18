@@ -85,7 +85,8 @@ describe('Página de Produtos', () => {
         estoque: 75,
         categoria: null,
         codigo_barras: '',
+        data_validade: null, // Adicionado para corresponder à chamada real da API
       });
     });
-  }, 10000); // Aumenta o timeout para 10 segundos
+  }, 10000);
 });

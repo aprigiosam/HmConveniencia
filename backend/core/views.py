@@ -14,6 +14,7 @@ from django.db import connection
 from datetime import timedelta
 from decimal import Decimal
 from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
 from .models import Cliente, Produto, Venda, Caixa, MovimentacaoCaixa, Categoria
 from .serializers import (
     ClienteSerializer,
@@ -44,7 +45,7 @@ class BackupViewSet(viewsets.ViewSet):
     """ViewSet para acionar backups do banco de dados"""
 
     @action(detail=False, methods=['post'])
-    @ratelimit(key='user', rate='1/m', method='POST', block=True)
+    @method_decorator(ratelimit(key='user', rate='1/m', method='POST', block=True))
     def trigger_backup(self, request):
         """Aciona o comando de backup do banco de dados - Rate limited: 1 backup por minuto"""
         try:
@@ -156,7 +157,7 @@ class VendaViewSet(viewsets.ModelViewSet):
             return VendaCreateSerializer
         return VendaSerializer
 
-    @ratelimit(key='user', rate='30/m', method='POST', block=True)
+    @method_decorator(ratelimit(key='user', rate='30/m', block=True))
     def create(self, request, *args, **kwargs):
         """Cria nova venda - Rate limited: 30 vendas por minuto por usuário"""
         create_serializer = self.get_serializer(data=request.data)
@@ -164,7 +165,6 @@ class VendaViewSet(viewsets.ModelViewSet):
         venda = create_serializer.save()
         read_serializer = VendaSerializer(venda)
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
-
 
     def get_queryset(self):
         queryset = super().get_queryset()
