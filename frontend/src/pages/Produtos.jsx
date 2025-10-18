@@ -77,10 +77,22 @@ function Produtos() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Conversão segura da data de validade
+    let dataValidadeFormatada = null;
+    if (formData.data_validade) {
+      if (formData.data_validade instanceof Date) {
+        dataValidadeFormatada = formData.data_validade.toISOString().split('T')[0];
+      } else if (typeof formData.data_validade === 'string') {
+        // Se já é uma string, usa diretamente
+        dataValidadeFormatada = formData.data_validade;
+      }
+    }
+
     const dataToSend = {
       ...formData,
       categoria: formData.categoria ? parseInt(formData.categoria) : null,
-      data_validade: formData.data_validade ? formData.data_validade.toISOString().split('T')[0] : null
+      data_validade: dataValidadeFormatada
     };
     try {
       if (editingProduct) {
