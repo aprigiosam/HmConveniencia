@@ -137,6 +137,35 @@ function AppContent() {
 }
 
 function App() {
+  useEffect(() => {
+    // Registra o Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker
+          .register('/sw.js')
+          .then((registration) => {
+            console.log('[PWA] Service Worker registrado com sucesso:', registration.scope);
+
+            // Escuta mensagens do Service Worker
+            navigator.serviceWorker.addEventListener('message', (event) => {
+              if (event.data.type === 'SYNC_VENDAS') {
+                console.log('[PWA] Recebida solicitação de sincronização de vendas');
+                syncManager.syncAll();
+              }
+            });
+
+            // Verifica atualizações periodicamente
+            setInterval(() => {
+              registration.update();
+            }, 60000); // Verifica a cada 1 minuto
+          })
+          .catch((error) => {
+            console.error('[PWA] Falha ao registrar Service Worker:', error);
+          });
+      });
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <AppContent />

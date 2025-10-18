@@ -1,24 +1,67 @@
 {
-  "name": "HMConveniencia PDV",
-  "short_name": "HM PDV",
-  "description": "Sistema de PDV com suporte offline",
+  "name": "HM Conveniência",
+  "short_name": "HM Conveniência",
+  "description": "Sistema completo de gestão para conveniências - PDV, estoque, caixa e relatórios offline-first",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#FF6B35",
-  "orientation": "portrait",
+  "theme_color": "#228be6",
+  "orientation": "portrait-primary",
+  "categories": ["business", "finance", "productivity"],
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "PDV",
+      "short_name": "PDV",
+      "description": "Abrir ponto de venda",
+      "url": "/pdv",
+      "icons": [{ "src": "/logo.jpeg", "sizes": "512x512" }]
+    },
+    {
+      "name": "Produtos",
+      "short_name": "Produtos",
+      "description": "Gerenciar produtos",
+      "url": "/produtos",
+      "icons": [{ "src": "/logo.jpeg", "sizes": "512x512" }]
+    },
+    {
+      "name": "Caixa",
+      "short_name": "Caixa",
+      "description": "Controle de caixa",
+      "url": "/caixa",
+      "icons": [{ "src": "/logo.jpeg", "sizes": "512x512" }]
     }
   ]
 }

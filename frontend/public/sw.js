@@ -1,5 +1,5 @@
-const CACHE_NAME = 'hmconv-v2'; // Versão do cache atualizada
-const API_CACHE = 'hmconv-api-v2';
+const CACHE_NAME = 'hmconv-v3'; // Versão do cache atualizada
+const API_CACHE = 'hmconv-api-v3';
 
 // Arquivos essenciais para o app shell
 const STATIC_CACHE = [
@@ -10,6 +10,8 @@ const STATIC_CACHE = [
   '/icon-192.png',
   '/icon-512.png'
 ];
+
+// Não precisa pre-cachear JS/CSS do Vite pois usa hash nos nomes
 
 // Instalação do Service Worker
 self.addEventListener('install', (event) => {
