@@ -16,6 +16,7 @@ function PDV() {
   const [formaPagamento, setFormaPagamento] = useState('DINHEIRO');
   const [clienteId, setClienteId] = useState(null);
   const [dataVencimento, setDataVencimento] = useState(null);
+  const [valorRecebido, setValorRecebido] = useState('');
   const [loading, setLoading] = useState(false);
   const [scannerAberto, setScannerAberto] = useState(false);
   const buscaRef = useRef(null);
@@ -103,6 +104,12 @@ function PDV() {
   };
 
   const calcularTotal = () => carrinho.reduce((total, item) => total + (parseFloat(item.produto.preco) * item.quantidade), 0);
+
+  const calcularTroco = () => {
+    if (formaPagamento !== 'DINHEIRO' || !valorRecebido) return 0;
+    const troco = parseFloat(valorRecebido) - calcularTotal();
+    return troco > 0 ? troco : 0;
+  };
 
   const abrirScanner = () => {
     leituraEmAndamentoRef.current = false; // Reseta o lock
@@ -224,6 +231,18 @@ function PDV() {
       return;
     }
 
+    if (formaPagamento === 'DINHEIRO') {
+      if (!valorRecebido || parseFloat(valorRecebido) < calcularTotal()) {
+        notifications.show({
+          title: 'Valor insuficiente',
+          message: 'O valor recebido deve ser maior ou igual ao total da venda',
+          color: 'orange',
+          icon: <FaTimes />,
+        });
+        return;
+      }
+    }
+
     if (formaPagamento === 'FIADO') {
       if (!clienteId) {
         notifications.show({
@@ -283,6 +302,7 @@ function PDV() {
       setBusca('');
       setClienteId(null);
       setDataVencimento(null);
+      setValorRecebido('');
       loadInitialData();
     } catch (error) {
       // Diferencia entre erro de rede e erro de validação
@@ -318,6 +338,7 @@ function PDV() {
         setBusca('');
         setClienteId(null);
         setDataVencimento(null);
+        setValorRecebido('');
         loadInitialData();
       } else {
         // Outro tipo de erro
@@ -427,7 +448,10 @@ function PDV() {
               <Select
                 label="Forma de Pagamento"
                 value={formaPagamento}
-                onChange={setFormaPagamento}
+                onChange={(value) => {
+                  setFormaPagamento(value);
+                  setValorRecebido(''); // Limpa valor recebido ao trocar forma de pagamento
+                }}
                 size="md"
                 data={[
                   { value: 'DINHEIRO', label: 'Dinheiro' },
@@ -437,6 +461,30 @@ function PDV() {
                   { value: 'FIADO', label: 'Fiado' },
                 ]}
               />
+
+              {formaPagamento === 'DINHEIRO' && (
+                <>
+                  <NumberInput
+                    label="Valor Recebido"
+                    placeholder="0.00"
+                    value={valorRecebido}
+                    onChange={setValorRecebido}
+                    precision={2}
+                    min={0}
+                    size="md"
+                    leftSection="R$"
+                    required
+                  />
+                  {valorRecebido && parseFloat(valorRecebido) >= calcularTotal() && (
+                    <Paper p="md" withBorder style={{ backgroundColor: '#d3f9d8', borderColor: '#51cf66' }}>
+                      <Group justify="space-between">
+                        <Text fw={600} c="green.9">TROCO:</Text>
+                        <Text size="xl" fw={700} c="green.9">R$ {calcularTroco().toFixed(2)}</Text>
+                      </Group>
+                    </Paper>
+                  )}
+                </>
+              )}
 
               {formaPagamento === 'FIADO' && (
                 <>
