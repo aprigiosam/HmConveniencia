@@ -28,20 +28,21 @@ Sistema de gestão para conveniências/mercadinhos com funcionalidades de PDV, c
 ### Hospedagem (Render.com)
 **Serviços ativos:**
 1. **Web Service (API Backend)**
-   - Nome: `hmconveniencia`
-   - URL: https://hmconveniencia.onrender.com
+   - Nome: `hmconveniencia-api`
+   - URL: https://hmconveniencia-api.onrender.com
    - Branch: `main`
    - Build Command: `pip install -r backend/requirements.txt`
-   - Start Command: `cd backend && gunicorn core.wsgi:application --bind 0.0.0.0:$PORT`
+   - Start Command: `cd backend && gunicorn hmconveniencia.wsgi:application --bind 0.0.0.0:$PORT`
    - Variáveis de ambiente:
      - `DATABASE_URL` (PostgreSQL)
      - `SECRET_KEY`
      - `DEBUG=False`
-     - `ALLOWED_HOSTS=hmconveniencia.onrender.com,hmconveniencia-frontend.onrender.com`
+     - `ALLOWED_HOSTS=hmconveniencia-api.onrender.com,hmconveniencia.onrender.com`
+     - `CORS_ALLOWED_ORIGINS=https://hmconveniencia.onrender.com`
 
 2. **Static Site (Frontend)**
-   - Nome: `hmconveniencia-frontend`
-   - URL: https://hmconveniencia-frontend.onrender.com
+   - Nome: `hmconveniencia`
+   - URL: https://hmconveniencia.onrender.com
    - Branch: `main`
    - Build Command: `cd frontend && npm install && npm run build`
    - Publish Directory: `frontend/dist`
@@ -145,7 +146,7 @@ HmConveniencia/
 ## Configuração da API
 
 ### Base URL
-Produção: `https://hmconveniencia.onrender.com/api/`
+Produção: `https://hmconveniencia-api.onrender.com/api/`
 
 ### Principais Endpoints
 ```
@@ -210,8 +211,8 @@ GET    /health/                # Health check
    - Frontend: 3-5 minutos (npm install + build + deploy estático)
 
 3. **Verificar deploy:**
-   - Backend: https://hmconveniencia.onrender.com/health/
-   - Frontend: https://hmconveniencia-frontend.onrender.com
+   - Backend: https://hmconveniencia-api.onrender.com/api/health/
+   - Frontend: https://hmconveniencia.onrender.com
 
 ### Comandos úteis de desenvolvimento
 
@@ -271,9 +272,9 @@ npm test             # testes (vitest)
 
 ## Informações de Contato
 
-**Repositório GitHub:** (adicionar URL se tiver)
-**Deploy Frontend:** https://hmconveniencia-frontend.onrender.com
-**API Backend:** https://hmconveniencia.onrender.com/api/
+**Repositório GitHub:** https://github.com/aprigiosam/HmConveniencia
+**Deploy Frontend:** https://hmconveniencia.onrender.com
+**API Backend:** https://hmconveniencia-api.onrender.com/api/
 
 ---
 
