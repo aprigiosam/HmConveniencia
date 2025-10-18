@@ -108,6 +108,18 @@ HmConveniencia/
   - Detecção automática + fechamento de modal
   - Proteção contra leituras duplicadas
 
+### Sprint 3 (Concluída)
+- ✅ **Controle de validade de produtos**
+  - Campo opcional data_validade no cadastro de produtos
+  - Badges visuais: vermelho (vencido), amarelo (≤7 dias), verde (>7 dias)
+  - Dashboard com cards de produtos vencidos e próximos ao vencimento
+  - Cálculo de lucro diário no dashboard
+- ✅ **Cálculo de troco no PDV**
+  - Campo "Valor Recebido" para pagamentos em dinheiro
+  - Exibição automática do troco em destaque verde
+  - Validação que impede finalizar com valor insuficiente
+  - Limpeza automática ao trocar forma de pagamento
+
 ### Módulos Principais
 
 #### 1. PDV (Ponto de Venda)
@@ -115,13 +127,15 @@ HmConveniencia/
 - Scanner de código de barras via câmera
 - Carrinho de compras com validação de estoque
 - Múltiplas formas de pagamento (Dinheiro, Débito, Crédito, PIX, Fiado)
+- **Cálculo automático de troco** para pagamentos em dinheiro
 - Vendas fiado com cliente e data de vencimento
 - Funcionamento offline com sincronização automática
 
 #### 2. Produtos
-- Cadastro com nome, preço, estoque, categoria e código de barras
+- Cadastro com nome, preço, estoque, categoria, código de barras e **data de validade**
 - Scanner de código de barras para cadastro
-- Listagem com filtros
+- **Alertas visuais** de produtos vencidos ou próximos ao vencimento
+- Listagem com filtros e indicadores de validade
 - Edição e exclusão
 - Cache local para performance
 
@@ -139,9 +153,12 @@ HmConveniencia/
 
 #### 5. Dashboard
 - Resumo de vendas do dia
+- **Lucro do dia** (margem bruta)
 - Total em caixa
-- Contas a receber pendentes
+- Contas a receber pendentes (com destaque para vencidas)
 - Estoque baixo (≤ 5 unidades)
+- **Produtos vencidos** (alerta vermelho)
+- **Produtos próximos ao vencimento** (≤ 7 dias, alerta amarelo)
 
 ## Configuração da API
 
@@ -255,14 +272,15 @@ npm test             # testes (vitest)
 
 ## Próximas Melhorias Sugeridas
 
-### Sprint 3 (Sugestões)
-- [ ] Relatórios de vendas por período
-- [ ] Gráficos no Dashboard (Chart.js ou Recharts)
-- [ ] Impressão de cupom fiscal
+### Sprint 4 (Sugestões)
+- [ ] **Múltiplas unidades de embalagem** (caixa/fardo vs unidade)
+- [ ] Relatórios de vendas por período com gráficos
+- [ ] Impressão de cupom fiscal/comprovante
 - [ ] Backup/export de dados (CSV/Excel)
-- [ ] Notificações push para estoque baixo
+- [ ] Controle de fornecedores
+- [ ] Notas fiscais de entrada
 - [ ] Multi-usuários com permissões
-- [ ] Controle de validade de produtos
+- [ ] Controle de troco no caixa (alertas)
 
 ### Otimizações Futuras
 - [ ] Service Worker para PWA completo
@@ -279,5 +297,5 @@ npm test             # testes (vitest)
 ---
 
 **Última atualização:** 2025-10-18
-**Sprint atual:** Sprint 2 Concluída ✅
-**Versão:** 1.0.0
+**Sprint atual:** Sprint 3 Concluída ✅
+**Versão:** 1.2.0
