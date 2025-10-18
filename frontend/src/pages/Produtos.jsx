@@ -5,7 +5,7 @@ import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, Act
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes } from 'react-icons/fa';
-import { Html5Qrcode } from 'html5-qrcode';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 
 function Produtos() {
   const [produtos, setProdutos] = useState([]);
@@ -140,41 +140,46 @@ function Produtos() {
   // Inicializa o scanner quando o modal abre
   useEffect(() => {
     if (scannerAberto && !scannerRef.current) {
-      // Aguarda o DOM renderizar o elemento
+      const codeReader = new BrowserMultiFormatReader();
+
+      // Aguarda o DOM renderizar
       setTimeout(async () => {
-        const element = document.getElementById('reader-produtos');
-        if (!element) {
-          console.error('Elemento reader-produtos não encontrado');
+        const videoElement = document.getElementById('video-reader-produtos');
+        if (!videoElement) {
+          console.error('Elemento video não encontrado');
           return;
         }
 
         try {
-          const scanner = new Html5Qrcode('reader-produtos');
+          // Lista dispositivos de vídeo
+          const videoInputDevices = await codeReader.listVideoInputDevices();
 
-          // Inicia câmera (traseira preferencialmente)
-          await scanner.start(
-            { facingMode: 'environment' },  // Câmera traseira
-            {
-              fps: 20,
-              qrbox: { width: 250, height: 250 },
-              aspectRatio: 1.0,
-              supportedScanTypes: [1],  // Apenas códigos de barras
-            },
-            (decodedText) => {
-              // Sucesso na leitura
-              processarCodigoBarras(decodedText);
-            },
-            (errorMessage) => {
-              // Ignora erros de leitura contínua (scanner tentando ler)
+          if (videoInputDevices.length === 0) {
+            throw new Error('Nenhuma câmera encontrada');
+          }
+
+          // Pega a última câmera (geralmente a traseira em celulares)
+          const selectedDeviceId = videoInputDevices[videoInputDevices.length - 1].deviceId;
+
+          // Inicia detecção contínua
+          await codeReader.decodeFromVideoDevice(
+            selectedDeviceId,
+            videoElement,
+            (result, error) => {
+              if (result) {
+                // Código detectado!
+                processarCodigoBarras(result.getText());
+              }
+              // Ignora erros de leitura (scanner tentando ler)
             }
           );
 
-          scannerRef.current = scanner;
+          scannerRef.current = codeReader;
         } catch (error) {
           console.error('Erro ao inicializar scanner:', error);
           notifications.show({
             title: 'Erro ao abrir câmera',
-            message: 'Permita o acesso à câmera ou verifique se outro app está usando.',
+            message: error.message || 'Permita o acesso à câmera nas configurações do navegador.',
             color: 'red',
             icon: <FaTimes />,
           });
@@ -185,15 +190,8 @@ function Produtos() {
 
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.stop()
-          .then(() => {
-            scannerRef.current.clear();
-            scannerRef.current = null;
-          })
-          .catch((error) => {
-            console.error('Erro ao parar scanner:', error);
-            scannerRef.current = null;
-          });
+        scannerRef.current.reset();
+        scannerRef.current = null;
       }
     };
   }, [scannerAberto]);
@@ -306,7 +304,15 @@ function Produtos() {
           <Text size="sm" c="dimmed">
             Aponte a câmera para o código de barras do produto
           </Text>
-          <div id="reader-produtos" style={{ width: '100%' }}></div>
+          <video
+            id="video-reader-produtos"
+            style={{
+              width: '100%',
+              maxHeight: '400px',
+              borderRadius: '8px',
+              backgroundColor: '#000'
+            }}
+          />
           <Button onClick={fecharScanner} variant="light" fullWidth>
             Cancelar
           </Button>
