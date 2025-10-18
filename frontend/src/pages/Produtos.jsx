@@ -128,21 +128,22 @@ function Produtos() {
   };
 
   const processarCodigoBarras = (codigoBarras) => {
-    // Evita processar múltiplas vezes o mesmo código
-    if (leituraEmAndamentoRef.current) return;
-    leituraEmAndamentoRef.current = true;
+    // Proteção dupla: verifica lock E se scanner ainda existe
+    if (leituraEmAndamentoRef.current || !scannerRef.current) return;
 
-    // Para o scanner PRIMEIRO (de forma segura)
-    if (scannerRef.current) {
-      try {
-        scannerRef.current.reset();
-      } catch (error) {
-        console.log('Erro ao parar scanner (ignorado):', error);
-      }
-      scannerRef.current = null;
+    // Seta lock e limpa ref IMEDIATAMENTE (bloqueia callbacks futuros)
+    leituraEmAndamentoRef.current = true;
+    const scanner = scannerRef.current;
+    scannerRef.current = null; // <- CRÍTICO: impede novos callbacks
+
+    // Para o scanner
+    try {
+      scanner.reset();
+    } catch (error) {
+      console.log('Erro ao parar scanner (ignorado):', error);
     }
 
-    // DEPOIS fecha o modal
+    // Fecha o modal
     setScannerAberto(false);
 
     // Preenche o código no formulário
@@ -156,10 +157,10 @@ function Produtos() {
       autoClose: 3000,
     });
 
-    // Reseta o lock após um pequeno delay
+    // Reseta o lock após delay
     setTimeout(() => {
       leituraEmAndamentoRef.current = false;
-    }, 500);
+    }, 1000);
   };
 
   // Inicializa o scanner quando o modal abre
