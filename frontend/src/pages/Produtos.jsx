@@ -19,7 +19,7 @@ function Produtos() {
   const [scannerAberto, setScannerAberto] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [deletingProduct, setDeletingProduct] = useState(null);
-  const [formData, setFormData] = useState({ nome: '', preco: '', estoque: '', categoria: '', codigo_barras: '', data_validade: null });
+  const [formData, setFormData] = useState({ nome: '', preco: '', preco_custo: '', estoque: '', categoria: '', codigo_barras: '', data_validade: null });
   const scannerRef = useRef(null);
   const leituraEmAndamentoRef = useRef(false);
 
@@ -50,7 +50,7 @@ function Produtos() {
   };
 
   const resetForm = () => {
-    setFormData({ nome: '', preco: '', estoque: '', categoria: '', codigo_barras: '', data_validade: null });
+    setFormData({ nome: '', preco: '', preco_custo: '', estoque: '', categoria: '', codigo_barras: '', data_validade: null });
     setEditingProduct(null);
   };
 
@@ -60,6 +60,7 @@ function Produtos() {
       setFormData({
         nome: produto.nome,
         preco: produto.preco,
+        preco_custo: produto.preco_custo || '',
         estoque: produto.estoque,
         categoria: produto.categoria?.toString() || '',
         codigo_barras: produto.codigo_barras || '',
@@ -248,6 +249,16 @@ function Produtos() {
       </Table.Td>
       <Table.Td>{produto.codigo_barras || '-'}</Table.Td>
       <Table.Td>R$ {parseFloat(produto.preco).toFixed(2)}</Table.Td>
+      <Table.Td>
+        {produto.preco_custo && parseFloat(produto.preco_custo) > 0 ? (
+          <>
+            <Text size="sm">R$ {parseFloat(produto.preco_custo).toFixed(2)}</Text>
+            <Text size="xs" c="dimmed">{produto.margem_lucro?.toFixed(1)}%</Text>
+          </>
+        ) : (
+          <Text size="xs" c="red">Não cadastrado</Text>
+        )}
+      </Table.Td>
       <Table.Td>{parseInt(produto.estoque)}</Table.Td>
       <Table.Td>{produto.categoria_nome || 'Sem categoria'}</Table.Td>
       <Table.Td>
@@ -288,9 +299,20 @@ function Produtos() {
       </Group>
       <Stack gap="xs">
         <Group justify="space-between">
-          <Text size="sm" c="dimmed">Preço:</Text>
+          <Text size="sm" c="dimmed">Preço Venda:</Text>
           <Text size="sm" fw={500}>R$ {parseFloat(produto.preco).toFixed(2)}</Text>
         </Group>
+        {produto.preco_custo && parseFloat(produto.preco_custo) > 0 ? (
+          <Group justify="space-between">
+            <Text size="sm" c="dimmed">Preço Custo:</Text>
+            <Text size="sm">R$ {parseFloat(produto.preco_custo).toFixed(2)} ({produto.margem_lucro?.toFixed(1)}%)</Text>
+          </Group>
+        ) : (
+          <Group justify="space-between">
+            <Text size="sm" c="dimmed">Preço Custo:</Text>
+            <Text size="sm" c="red">Não cadastrado</Text>
+          </Group>
+        )}
         <Group justify="space-between">
           <Text size="sm" c="dimmed">Estoque:</Text>
           <Text size="sm" fw={500}>{parseInt(produto.estoque)}</Text>
@@ -355,7 +377,32 @@ function Produtos() {
               <Text size="xs" c="dimmed">Opcional - Digite ou use a câmera para escanear</Text>
             </Stack>
 
-            <NumberInput label="Preço" placeholder="9.99" required precision={2} value={Number(formData.preco)} onChange={(value) => setFormData({ ...formData, preco: value })} size="md" />
+            <NumberInput
+              label="Preço de Venda"
+              placeholder="9.99"
+              required
+              precision={2}
+              value={Number(formData.preco)}
+              onChange={(value) => setFormData({ ...formData, preco: value })}
+              size="md"
+              leftSection="R$"
+            />
+            <NumberInput
+              label="Preço de Custo"
+              placeholder="0.00"
+              precision={2}
+              value={Number(formData.preco_custo)}
+              onChange={(value) => setFormData({ ...formData, preco_custo: value })}
+              size="md"
+              leftSection="R$"
+              description="Quanto você pagou no fornecedor (opcional, mas importante para calcular lucro)"
+            />
+            {formData.preco && formData.preco_custo && Number(formData.preco_custo) > 0 && (
+              <Text size="sm" c={Number(formData.preco) > Number(formData.preco_custo) ? 'green' : 'red'} fw={600}>
+                Margem de lucro: {(((Number(formData.preco) - Number(formData.preco_custo)) / Number(formData.preco_custo)) * 100).toFixed(1)}%
+                {' '}(Lucro: R$ {(Number(formData.preco) - Number(formData.preco_custo)).toFixed(2)})
+              </Text>
+            )}
             <NumberInput label="Estoque" placeholder="0" required value={Number(formData.estoque)} onChange={(value) => setFormData({ ...formData, estoque: value })} size="md" />
             <Select label="Categoria" placeholder="Selecione uma categoria" data={categoriaOptions} value={formData.categoria} onChange={(value) => setFormData({ ...formData, categoria: value })} clearable size="md" />
             <DatePickerInput
@@ -434,7 +481,8 @@ function Produtos() {
               <Table.Tr>
                 <Table.Th>Nome</Table.Th>
                 <Table.Th>Código de Barras</Table.Th>
-                <Table.Th>Preço</Table.Th>
+                <Table.Th>Preço Venda</Table.Th>
+                <Table.Th>Custo (Margem)</Table.Th>
                 <Table.Th>Estoque</Table.Th>
                 <Table.Th>Categoria</Table.Th>
                 <Table.Th style={{ width: '120px' }}>Ações</Table.Th>
@@ -443,7 +491,7 @@ function Produtos() {
             <Table.Tbody>
               {rows.length > 0 ? rows : (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={7}>
                     <Text c="dimmed" ta="center">Nenhum produto cadastrado.</Text>
                   </Table.Td>
                 </Table.Tr>
