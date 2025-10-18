@@ -132,7 +132,17 @@ function Produtos() {
     if (leituraEmAndamentoRef.current) return;
     leituraEmAndamentoRef.current = true;
 
-    // FECHA O MODAL PRIMEIRO (seta estado)
+    // Para o scanner PRIMEIRO (de forma segura)
+    if (scannerRef.current) {
+      try {
+        scannerRef.current.reset();
+      } catch (error) {
+        console.log('Erro ao parar scanner (ignorado):', error);
+      }
+      scannerRef.current = null;
+    }
+
+    // DEPOIS fecha o modal
     setScannerAberto(false);
 
     // Preenche o código no formulário
