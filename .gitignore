@@ -43,7 +43,6 @@ desktop.ini
 
 # Test files
 *.test.js
-*.test.jsx
 *.test.py
 *.spec.js
 *.spec.jsx

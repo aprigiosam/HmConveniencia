@@ -5,7 +5,7 @@ import { MantineProvider } from '@mantine/core';
 import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 
-// Mock ResizeObserver e IntersectionObserver para ambiente JSDOM
+// Mock de APIs do navegador para o ambiente JSDOM
 if (typeof vi !== 'undefined') {
   const ResizeObserverMock = vi.fn(() => ({
     observe: vi.fn(),
@@ -25,6 +25,9 @@ if (typeof vi !== 'undefined') {
 
   vi.stubGlobal('ResizeObserver', ResizeObserverMock);
   vi.stubGlobal('IntersectionObserver', IntersectionObserverMock);
+
+  // Mock do window.alert para não travar os testes
+  window.alert = vi.fn();
 
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
