@@ -20,6 +20,7 @@ function PDV() {
   const [scannerAberto, setScannerAberto] = useState(false);
   const buscaRef = useRef(null);
   const scannerRef = useRef(null);
+  const leituraEmAndamentoRef = useRef(false);
 
   useEffect(() => {
     loadInitialData();
@@ -104,6 +105,7 @@ function PDV() {
   const calcularTotal = () => carrinho.reduce((total, item) => total + (parseFloat(item.produto.preco) * item.quantidade), 0);
 
   const abrirScanner = () => {
+    leituraEmAndamentoRef.current = false; // Reseta o lock
     setScannerAberto(true);
   };
 
@@ -116,12 +118,18 @@ function PDV() {
   };
 
   const processarCodigoBarras = (codigoBarras) => {
+    // Evita processar múltiplas vezes o mesmo código
+    if (leituraEmAndamentoRef.current) return;
+    leituraEmAndamentoRef.current = true;
+
+    // Fecha o scanner IMEDIATAMENTE
+    fecharScanner();
+
     // Busca produto pelo código de barras
     const produto = produtos.find(p => p.codigo_barras === codigoBarras);
 
     if (produto) {
       adicionarAoCarrinho(produto);
-      fecharScanner();
       notifications.show({
         title: 'Produto encontrado!',
         message: `${produto.nome} adicionado ao carrinho`,
@@ -138,6 +146,11 @@ function PDV() {
         autoClose: 4000,
       });
     }
+
+    // Reseta o lock após um pequeno delay
+    setTimeout(() => {
+      leituraEmAndamentoRef.current = false;
+    }, 500);
   };
 
   // Inicializa o scanner quando o modal abre

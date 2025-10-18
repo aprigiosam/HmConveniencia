@@ -18,6 +18,7 @@ function Produtos() {
   const [deletingProduct, setDeletingProduct] = useState(null);
   const [formData, setFormData] = useState({ nome: '', preco: '', estoque: '', categoria: '', codigo_barras: '' });
   const scannerRef = useRef(null);
+  const leituraEmAndamentoRef = useRef(false);
 
   useEffect(() => {
     loadInitialData();
@@ -114,20 +115,29 @@ function Produtos() {
   };
 
   const abrirScanner = () => {
+    leituraEmAndamentoRef.current = false; // Reseta o lock
     setScannerAberto(true);
   };
 
   const fecharScanner = () => {
     if (scannerRef.current) {
-      scannerRef.current.clear();
+      scannerRef.current.reset();
       scannerRef.current = null;
     }
     setScannerAberto(false);
   };
 
   const processarCodigoBarras = (codigoBarras) => {
-    setFormData({ ...formData, codigo_barras: codigoBarras });
+    // Evita processar múltiplas vezes o mesmo código
+    if (leituraEmAndamentoRef.current) return;
+    leituraEmAndamentoRef.current = true;
+
+    // Fecha o scanner IMEDIATAMENTE
     fecharScanner();
+
+    // Preenche o código no formulário
+    setFormData({ ...formData, codigo_barras: codigoBarras });
+
     notifications.show({
       title: 'Código capturado!',
       message: `Código ${codigoBarras} adicionado ao formulário`,
@@ -135,6 +145,11 @@ function Produtos() {
       icon: <FaCheck />,
       autoClose: 3000,
     });
+
+    // Reseta o lock após um pequeno delay
+    setTimeout(() => {
+      leituraEmAndamentoRef.current = false;
+    }, 500);
   };
 
   // Inicializa o scanner quando o modal abre
