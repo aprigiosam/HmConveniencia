@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias } from '../services/api';
 import { localDB } from '../utils/db';
 import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, ActionIcon, Stack, Text, ScrollArea } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
+import { notifications } from '@mantine/notifications';
+import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes } from 'react-icons/fa';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 function Produtos() {
   const [produtos, setProdutos] = useState([]);
@@ -11,9 +13,11 @@ function Produtos() {
   const [loading, setLoading] = useState(true);
   const [opened, { open, close }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
+  const [scannerAberto, setScannerAberto] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [deletingProduct, setDeletingProduct] = useState(null);
   const [formData, setFormData] = useState({ nome: '', preco: '', estoque: '', categoria: '', codigo_barras: '' });
+  const scannerRef = useRef(null);
 
   useEffect(() => {
     loadInitialData();
@@ -109,6 +113,70 @@ function Produtos() {
     setDeletingProduct(null);
   };
 
+  const abrirScanner = () => {
+    setScannerAberto(true);
+  };
+
+  const fecharScanner = () => {
+    if (scannerRef.current) {
+      scannerRef.current.clear();
+      scannerRef.current = null;
+    }
+    setScannerAberto(false);
+  };
+
+  const processarCodigoBarras = (codigoBarras) => {
+    setFormData({ ...formData, codigo_barras: codigoBarras });
+    fecharScanner();
+    notifications.show({
+      title: 'Código capturado!',
+      message: `Código ${codigoBarras} adicionado ao formulário`,
+      color: 'green',
+      icon: <FaCheck />,
+      autoClose: 3000,
+    });
+  };
+
+  // Inicializa o scanner quando o modal abre
+  useEffect(() => {
+    if (scannerAberto && !scannerRef.current) {
+      const scanner = new Html5QrcodeScanner('reader-produtos', {
+        qrbox: {
+          width: 250,
+          height: 150,
+        },
+        fps: 10,
+        formatsToSupport: [
+          0,  // EAN_13
+          1,  // EAN_8
+          3,  // UPC_A
+          4,  // UPC_E
+          5,  // CODE_39
+          6,  // CODE_93
+          7,  // CODE_128
+        ],
+      });
+
+      scanner.render(
+        (decodedText) => {
+          processarCodigoBarras(decodedText);
+        },
+        (error) => {
+          // Ignora erros de leitura contínua
+        }
+      );
+
+      scannerRef.current = scanner;
+    }
+
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+    };
+  }, [scannerAberto]);
+
   const rows = produtos.map((produto) => (
     <Table.Tr key={produto.id}>
       <Table.Td>{produto.nome}</Table.Td>
@@ -144,7 +212,30 @@ function Produtos() {
         <form onSubmit={handleSubmit}>
           <Stack gap="sm">
             <TextInput label="Nome" placeholder="Nome do produto" required value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} size="md" />
-            <TextInput label="Código de Barras" placeholder="7891234567890" value={formData.codigo_barras} onChange={(e) => setFormData({ ...formData, codigo_barras: e.target.value })} size="md" description="Opcional - Usado para leitura com câmera no PDV" />
+
+            <Stack gap={4}>
+              <Text size="sm" fw={500}>Código de Barras</Text>
+              <Group gap="xs">
+                <TextInput
+                  placeholder="7891234567890"
+                  value={formData.codigo_barras}
+                  onChange={(e) => setFormData({ ...formData, codigo_barras: e.target.value })}
+                  size="md"
+                  style={{ flex: 1 }}
+                />
+                <ActionIcon
+                  size={36}
+                  color="orange"
+                  variant="filled"
+                  onClick={abrirScanner}
+                  title="Ler código com câmera"
+                >
+                  <FaBarcode size={18} />
+                </ActionIcon>
+              </Group>
+              <Text size="xs" c="dimmed">Opcional - Digite ou use a câmera para escanear</Text>
+            </Stack>
+
             <NumberInput label="Preço" placeholder="9.99" required precision={2} value={Number(formData.preco)} onChange={(value) => setFormData({ ...formData, preco: value })} size="md" />
             <NumberInput label="Estoque" placeholder="0" required value={Number(formData.estoque)} onChange={(value) => setFormData({ ...formData, estoque: value })} size="md" />
             <Select label="Categoria" placeholder="Selecione uma categoria" data={categoriaOptions} value={formData.categoria} onChange={(value) => setFormData({ ...formData, categoria: value })} clearable size="md" />
@@ -179,6 +270,25 @@ function Produtos() {
               Excluir
             </Button>
           </Group>
+        </Stack>
+      </Modal>
+
+      {/* Modal do Scanner de Código de Barras */}
+      <Modal
+        opened={scannerAberto}
+        onClose={fecharScanner}
+        title="Ler Código de Barras"
+        size="lg"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            Aponte a câmera para o código de barras do produto
+          </Text>
+          <div id="reader-produtos" style={{ width: '100%' }}></div>
+          <Button onClick={fecharScanner} variant="light" fullWidth>
+            Cancelar
+          </Button>
         </Stack>
       </Modal>
 
