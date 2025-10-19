@@ -111,21 +111,21 @@ function ContasReceber() {
       return;
     }
 
-    // Encontra ou cria um produto "LANÇAMENTO MANUAL" para representar dívidas avulsas
-    let produtoManual = produtos.find(p => p.nome === 'LANÇAMENTO MANUAL' || p.nome === 'DIVIDA AVULSA');
-
-    // Se não existe, usa o primeiro produto disponível como placeholder
-    // (idealmente deveria criar um produto específico, mas por ora usa qualquer um)
-    if (!produtoManual && produtos.length > 0) {
-      produtoManual = produtos[0];
-    }
+    // Busca o produto "LANÇAMENTO MANUAL" especificamente criado para dívidas avulsas
+    const produtoManual = produtos.find(p =>
+      p.nome === 'LANÇAMENTO MANUAL' ||
+      p.nome === 'DIVIDA AVULSA' ||
+      p.nome.includes('LANÇAMENTO') ||
+      p.nome.includes('LANCAMENTO')
+    );
 
     if (!produtoManual) {
       notifications.show({
-        title: 'Erro',
-        message: 'Nenhum produto disponível. Cadastre ao menos um produto primeiro.',
+        title: 'Produto não encontrado',
+        message: 'Não foi possível encontrar o produto "LANÇAMENTO MANUAL". Entre em contato com o suporte.',
         color: 'red',
         icon: <FaTimes />,
+        autoClose: 8000,
       });
       return;
     }
