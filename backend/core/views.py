@@ -18,7 +18,7 @@ from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.core.cache import cache
-from .models import Cliente, Produto, Venda, Caixa, MovimentacaoCaixa, Categoria
+from .models import Cliente, Produto, Venda, Caixa, MovimentacaoCaixa, Categoria, Alerta
 from .serializers import (
     ClienteSerializer,
     ProdutoSerializer,
@@ -26,8 +26,10 @@ from .serializers import (
     VendaCreateSerializer,
     CaixaSerializer,
     MovimentacaoCaixaSerializer,
-    CategoriaSerializer
+    CategoriaSerializer,
+    AlertaSerializer
 )
+from .services.alert_service import AlertService
 
 # Logger para operações críticas
 logger = logging.getLogger(__name__)
@@ -758,3 +760,90 @@ def health_check(request):
 
     status_code = 200 if health_status['status'] == 'healthy' else 503
     return Response(health_status, status=status_code)
+
+
+class AlertaViewSet(viewsets.ModelViewSet):
+    """ViewSet para Alertas do Sistema"""
+    queryset = Alerta.objects.all()
+    serializer_class = AlertaSerializer
+
+    def get_queryset(self):
+        """Filtra alertas por parâmetros de query"""
+        queryset = super().get_queryset()
+
+        # Filtro por status
+        resolvido = self.request.query_params.get('resolvido', None)
+        if resolvido is not None:
+            queryset = queryset.filter(resolvido=resolvido.lower() == 'true')
+
+        lido = self.request.query_params.get('lido', None)
+        if lido is not None:
+            queryset = queryset.filter(lido=lido.lower() == 'true')
+
+        # Filtro por tipo
+        tipo = self.request.query_params.get('tipo', None)
+        if tipo:
+            queryset = queryset.filter(tipo=tipo)
+
+        # Filtro por prioridade
+        prioridade = self.request.query_params.get('prioridade', None)
+        if prioridade:
+            queryset = queryset.filter(prioridade=prioridade)
+
+        return queryset.select_related('cliente', 'produto', 'venda', 'caixa')
+
+    @action(detail=False, methods=['get'])
+    def resumo(self, request):
+        """Retorna resumo de alertas"""
+        resumo = AlertService.obter_resumo()
+        return Response(resumo)
+
+    @action(detail=False, methods=['post'])
+    def verificar(self, request):
+        """Executa verificação manual de alertas"""
+        resultado = AlertService.verificar_todos()
+        return Response({
+            'total_criados': resultado['total_criados'],
+            'resumo': AlertService.obter_resumo()
+        })
+
+    @action(detail=True, methods=['post'])
+    def marcar_lido(self, request, pk=None):
+        """Marca um alerta como lido"""
+        alerta = self.get_object()
+        alerta.marcar_como_lido()
+        serializer = self.get_serializer(alerta)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def resolver(self, request, pk=None):
+        """Marca um alerta como resolvido"""
+        alerta = self.get_object()
+        alerta.resolver()
+        serializer = self.get_serializer(alerta)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def marcar_todos_lidos(self, request):
+        """Marca todos os alertas pendentes como lidos"""
+        alertas = Alerta.objects.filter(lido=False, resolvido=False)
+        count = alertas.count()
+        alertas.update(lido=True)
+        return Response({
+            'message': f'{count} alerta(s) marcado(s) como lido(s)',
+            'count': count
+        })
+
+    @action(detail=False, methods=['get'])
+    def por_prioridade(self, request):
+        """Retorna alertas agrupados por prioridade"""
+        alertas = Alerta.objects.filter(resolvido=False)
+
+        resultado = {
+            'CRITICA': AlertaSerializer(alertas.filter(prioridade='CRITICA'), many=True).data,
+            'ALTA': AlertaSerializer(alertas.filter(prioridade='ALTA'), many=True).data,
+            'MEDIA': AlertaSerializer(alertas.filter(prioridade='MEDIA'), many=True).data,
+            'BAIXA': AlertaSerializer(alertas.filter(prioridade='BAIXA'), many=True).data,
+        }
+
+        return Response(resultado)

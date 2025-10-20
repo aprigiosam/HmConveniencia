@@ -10,6 +10,7 @@ from .views import (
     CaixaViewSet,
     BackupViewSet,
     CategoriaViewSet,
+    AlertaViewSet,
     login,
     logout,
     me,
@@ -23,6 +24,7 @@ router.register('vendas', VendaViewSet, basename='venda')
 router.register('caixa', CaixaViewSet, basename='caixa')
 router.register('backup', BackupViewSet, basename='backup')
 router.register('categorias', CategoriaViewSet, basename='categoria')
+router.register('alertas', AlertaViewSet, basename='alerta')
 
 urlpatterns = [
     path('', include(router.urls)),

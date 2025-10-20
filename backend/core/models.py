@@ -311,3 +311,67 @@ class MovimentacaoCaixa(models.Model):
 
     def __str__(self):
         return f'{self.get_tipo_display()} - R$ {self.valor}'
+
+
+class Alerta(models.Model):
+    """Alertas e notificações do sistema"""
+    TIPO_CHOICES = [
+        ('LIMITE_CREDITO', 'Limite de Crédito'),
+        ('PRODUTO_VENCENDO', 'Produto Vencendo'),
+        ('PRODUTO_VENCIDO', 'Produto Vencido'),
+        ('ESTOQUE_BAIXO', 'Estoque Baixo'),
+        ('ESTOQUE_ZERADO', 'Estoque Zerado'),
+        ('CONTA_VENCIDA', 'Conta Vencida'),
+        ('DIFERENCA_CAIXA', 'Diferença de Caixa'),
+    ]
+
+    PRIORIDADE_CHOICES = [
+        ('BAIXA', 'Baixa'),
+        ('MEDIA', 'Média'),
+        ('ALTA', 'Alta'),
+        ('CRITICA', 'Crítica'),
+    ]
+
+    tipo = models.CharField('Tipo', max_length=20, choices=TIPO_CHOICES)
+    prioridade = models.CharField('Prioridade', max_length=10, choices=PRIORIDADE_CHOICES, default='MEDIA')
+    titulo = models.CharField('Título', max_length=200)
+    mensagem = models.TextField('Mensagem')
+
+    # Relacionamentos opcionais (para rastreabilidade)
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, null=True, blank=True, related_name='alertas')
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, null=True, blank=True, related_name='alertas')
+    venda = models.ForeignKey(Venda, on_delete=models.CASCADE, null=True, blank=True, related_name='alertas')
+    caixa = models.ForeignKey(Caixa, on_delete=models.CASCADE, null=True, blank=True, related_name='alertas')
+
+    # Controle
+    lido = models.BooleanField('Lido', default=False)
+    resolvido = models.BooleanField('Resolvido', default=False)
+    notificado = models.BooleanField('Notificado', default=False)  # Via WhatsApp/Email
+
+    created_at = models.DateTimeField('Criado em', auto_now_add=True)
+    resolvido_em = models.DateTimeField('Resolvido em', null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Alerta'
+        verbose_name_plural = 'Alertas'
+        indexes = [
+            models.Index(fields=['tipo', 'resolvido']),
+            models.Index(fields=['lido']),
+            models.Index(fields=['prioridade', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'[{self.get_prioridade_display()}] {self.titulo}'
+
+    def marcar_como_lido(self):
+        """Marca o alerta como lido"""
+        self.lido = True
+        self.save(update_fields=['lido'])
+
+    def resolver(self):
+        """Marca o alerta como resolvido"""
+        from django.utils import timezone
+        self.resolvido = True
+        self.resolvido_em = timezone.now()
+        self.save(update_fields=['resolvido', 'resolvido_em'])

@@ -3,7 +3,7 @@ Serializers para API - HMConveniencia
 """
 from decimal import Decimal
 from rest_framework import serializers
-from .models import Cliente, Produto, Venda, ItemVenda, Caixa, MovimentacaoCaixa, Categoria
+from .models import Cliente, Produto, Venda, ItemVenda, Caixa, MovimentacaoCaixa, Categoria, Alerta
 
 
 class ClienteSerializer(serializers.ModelSerializer):
@@ -246,3 +246,22 @@ class VendaCreateSerializer(serializers.Serializer):
         )
 
         return venda
+
+
+class AlertaSerializer(serializers.ModelSerializer):
+    """Serializer para Alertas"""
+    cliente_nome = serializers.CharField(source='cliente.nome', read_only=True)
+    produto_nome = serializers.CharField(source='produto.nome', read_only=True)
+    venda_numero = serializers.CharField(source='venda.numero', read_only=True)
+    tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
+    prioridade_display = serializers.CharField(source='get_prioridade_display', read_only=True)
+
+    class Meta:
+        model = Alerta
+        fields = [
+            'id', 'tipo', 'tipo_display', 'prioridade', 'prioridade_display',
+            'titulo', 'mensagem', 'cliente', 'cliente_nome', 'produto', 'produto_nome',
+            'venda', 'venda_numero', 'caixa', 'lido', 'resolvido', 'notificado',
+            'created_at', 'resolvido_em'
+        ]
+        read_only_fields = ['created_at', 'resolvido_em', 'tipo_display', 'prioridade_display']

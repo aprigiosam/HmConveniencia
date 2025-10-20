@@ -2,7 +2,7 @@
 Admin para HMConveniencia
 """
 from django.contrib import admin
-from .models import Cliente, Produto, Venda, ItemVenda, Categoria, Caixa, MovimentacaoCaixa
+from .models import Cliente, Produto, Venda, ItemVenda, Categoria, Caixa, MovimentacaoCaixa, Alerta
 
 
 @admin.register(Cliente)
@@ -90,3 +90,38 @@ class MovimentacaoCaixaAdmin(admin.ModelAdmin):
         if obj and obj.caixa.status == 'FECHADO':
             return False
         return super().has_delete_permission(request, obj)
+
+
+@admin.register(Alerta)
+class AlertaAdmin(admin.ModelAdmin):
+    list_display = ['titulo', 'tipo', 'prioridade', 'lido', 'resolvido', 'created_at']
+    list_filter = ['tipo', 'prioridade', 'lido', 'resolvido', 'created_at']
+    search_fields = ['titulo', 'mensagem']
+    list_editable = ['lido', 'resolvido']
+    readonly_fields = ['created_at', 'resolvido_em']
+
+    fieldsets = (
+        ('Informações do Alerta', {
+            'fields': ('tipo', 'prioridade', 'titulo', 'mensagem')
+        }),
+        ('Relacionamentos', {
+            'fields': ('cliente', 'produto', 'venda', 'caixa'),
+            'classes': ('collapse',)
+        }),
+        ('Status', {
+            'fields': ('lido', 'resolvido', 'notificado', 'created_at', 'resolvido_em')
+        }),
+    )
+
+    actions = ['marcar_como_lido', 'marcar_como_resolvido']
+
+    def marcar_como_lido(self, request, queryset):
+        count = queryset.update(lido=True)
+        self.message_user(request, f'{count} alerta(s) marcado(s) como lido(s).')
+    marcar_como_lido.short_description = 'Marcar como lido'
+
+    def marcar_como_resolvido(self, request, queryset):
+        from django.utils import timezone
+        count = queryset.update(resolvido=True, resolvido_em=timezone.now())
+        self.message_user(request, f'{count} alerta(s) marcado(s) como resolvido(s).')
+    marcar_como_resolvido.short_description = 'Marcar como resolvido'
