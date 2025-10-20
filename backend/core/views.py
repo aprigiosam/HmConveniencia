@@ -532,16 +532,66 @@ def me(request):
 @permission_classes([AllowAny])
 def health_check(request):
     """Health check endpoint para monitoramento"""
-    try:
-        # Testa conexão com banco de dados
-        connection.ensure_connection()
-        db_status = 'connected'
-    except Exception as e:
-        db_status = f'error: {str(e)}'
+    from django.core.cache import cache
+    from django.conf import settings
 
-    return Response({
+    health_status = {
         'status': 'healthy',
         'timestamp': timezone.now().isoformat(),
-        'database': db_status,
         'version': '1.0.0',
-    })
+    }
+
+    # Testa conexão com banco de dados
+    try:
+        connection.ensure_connection()
+        # Query simples para testar performance
+        Cliente.objects.count()
+        health_status['database'] = 'connected'
+    except Exception as e:
+        health_status['database'] = f'error: {str(e)}'
+        health_status['status'] = 'unhealthy'
+
+    # Testa cache (Redis ou LocMem)
+    try:
+        cache_key = 'health_check_test'
+        cache_value = f'ok_{timezone.now().timestamp()}'
+
+        # Tenta setar e recuperar
+        cache.set(cache_key, cache_value, 30)
+        cached = cache.get(cache_key)
+
+        if cached == cache_value:
+            # Detecta o tipo de cache
+            cache_backend = settings.CACHES['default']['BACKEND']
+            if 'redis' in cache_backend.lower():
+                cache_type = 'redis'
+            elif 'locmem' in cache_backend.lower():
+                cache_type = 'locmem'
+            else:
+                cache_type = 'unknown'
+
+            health_status['cache'] = {
+                'status': 'working',
+                'backend': cache_type
+            }
+        else:
+            health_status['cache'] = {
+                'status': 'error',
+                'message': 'cache value mismatch'
+            }
+    except Exception as e:
+        health_status['cache'] = {
+            'status': 'error',
+            'message': str(e)
+        }
+        # Cache não é crítico, não muda status geral
+
+    # Verifica caixa aberto
+    try:
+        caixa_aberto = Caixa.objects.filter(status='ABERTO').exists()
+        health_status['caixa_aberto'] = caixa_aberto
+    except:
+        pass
+
+    status_code = 200 if health_status['status'] == 'healthy' else 503
+    return Response(health_status, status=status_code)

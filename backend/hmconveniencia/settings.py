@@ -69,6 +69,11 @@ if config('DATABASE_URL', default=''):
     DATABASES = {
         'default': dj_database_url.config(default=config('DATABASE_URL'))
     }
+    # Otimizações para PostgreSQL em produção
+    DATABASES['default']['CONN_MAX_AGE'] = 600  # Mantém conexão por 10 minutos
+    DATABASES['default']['OPTIONS'] = {
+        'connect_timeout': 10,
+    }
 else:
     # Development (SQLite)
     DATABASES = {
@@ -107,6 +112,42 @@ CORS_ALLOWED_ORIGINS = config(
 ).split(',')
 CORS_ALLOW_CREDENTIALS = True
 
+# CACHE - Redis (Upstash) com fallback para LocMem
+REDIS_URL = config('REDIS_URL', default=None)
+
+if REDIS_URL:
+    # Produção com Redis (Upstash)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'PARSER_CLASS': 'redis.connection.HiredisParser',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'CONNECTION_POOL_KWARGS': {
+                    'max_connections': 50,
+                    'retry_on_timeout': True,
+                },
+                'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+            },
+            'KEY_PREFIX': 'hmconv',
+            'TIMEOUT': 300,  # 5 minutos padrão
+        }
+    }
+else:
+    # Desenvolvimento - LocMemCache (memória local)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'hmconveniencia-cache',
+            'OPTIONS': {
+                'MAX_ENTRIES': 1000,
+            }
+        }
+    }
+
 # REST FRAMEWORK
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
@@ -121,4 +162,12 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',   # Usuários não autenticados
+        'user': '1000/hour',  # Usuários autenticados
+    },
 }
