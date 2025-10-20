@@ -15,6 +15,8 @@ from datetime import timedelta
 from decimal import Decimal
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from django.core.cache import cache
 from .models import Cliente, Produto, Venda, Caixa, MovimentacaoCaixa, Categoria
 from .serializers import (
     ClienteSerializer,
@@ -79,14 +81,30 @@ class ClienteViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def com_dividas(self, request):
-        """Retorna clientes com vendas pendentes"""
-        clientes_ids = Venda.objects.filter(
-            status_pagamento='PENDENTE'
-        ).values_list('cliente_id', flat=True).distinct()
+        """Retorna clientes com vendas pendentes - Cache 5 minutos"""
+        cache_key = 'clientes_com_dividas'
+        cached_data = cache.get(cache_key)
 
-        clientes = self.queryset.filter(id__in=clientes_ids)
+        if cached_data:
+            return Response(cached_data)
+
+        # Otimizado: usa annotate em vez de N+1 queries
+        clientes = Cliente.objects.filter(
+            vendas__status_pagamento='PENDENTE',
+            vendas__status='FINALIZADA',
+            ativo=True
+        ).annotate(
+            total_divida=Sum('vendas__total'),
+            qtd_vendas_pendentes=Count('vendas')
+        ).distinct().order_by('nome')
+
         serializer = ClienteSerializer(clientes, many=True)
-        return Response(serializer.data)
+        data = serializer.data
+
+        # Salva no cache por 5 minutos (300 segundos)
+        cache.set(cache_key, data, 300)
+
+        return Response(data)
 
 
 class ProdutoViewSet(viewsets.ModelViewSet):
@@ -111,16 +129,34 @@ class ProdutoViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def baixo_estoque(self, request):
-        """Retorna produtos com estoque baixo (< 10)"""
+        """Retorna produtos com estoque baixo (< 10) - Cache 5 minutos"""
+        cache_key = 'produtos_baixo_estoque'
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return Response(cached_data)
+
         produtos = self.queryset.filter(estoque__lt=10, ativo=True)
         serializer = ProdutoSerializer(produtos, many=True)
-        return Response(serializer.data)
+        data = serializer.data
+
+        # Salva no cache por 5 minutos (300 segundos)
+        cache.set(cache_key, data, 300)
+
+        return Response(data)
 
     @action(detail=False, methods=['get'])
     def mais_lucrativos(self, request):
-        """Retorna os produtos mais lucrativos com base nas vendas."""
+        """Retorna os produtos mais lucrativos - Cache 15 minutos"""
         from django.db.models import F
         from core.models import ItemVenda
+
+        # Cache key
+        cache_key = 'produtos_mais_lucrativos'
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return Response(cached_data)
 
         # Agrega os dados de vendas por produto
         produtos_lucro = ItemVenda.objects.filter(
@@ -145,6 +181,10 @@ class ProdutoViewSet(viewsets.ModelViewSet):
                 'custo_total': float(item['custo_total']),
                 'lucro_total': float(item['lucro_total']),
             })
+
+        # Salva no cache por 15 minutos (900 segundos)
+        cache.set(cache_key, results, 900)
+
         return Response(results)
 
 
@@ -163,8 +203,23 @@ class VendaViewSet(viewsets.ModelViewSet):
         create_serializer = self.get_serializer(data=request.data)
         create_serializer.is_valid(raise_exception=True)
         venda = create_serializer.save()
+
+        # Invalida caches relacionados
+        self._invalidate_vendas_cache()
+
         read_serializer = VendaSerializer(venda)
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+
+    def _invalidate_vendas_cache(self):
+        """Invalida todos os caches relacionados a vendas"""
+        hoje = timezone.now().date()
+        cache_keys = [
+            f'dashboard_{hoje.isoformat()}',
+            'produtos_mais_lucrativos',
+            'clientes_com_dividas',
+            'produtos_baixo_estoque',
+        ]
+        cache.delete_many(cache_keys)
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -190,8 +245,18 @@ class VendaViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def dashboard(self, request):
-        """Retorna estatísticas para o dashboard"""
+        """Retorna estatísticas para o dashboard - Cache 2 minutos"""
         hoje = timezone.now().date()
+
+        # Cache key única por dia
+        cache_key = f'dashboard_{hoje.isoformat()}'
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            # Retorna do cache
+            return Response(cached_data)
+
+        # Se não está em cache, calcula
         agora = timezone.now()
 
         # Vendas de hoje
@@ -288,7 +353,8 @@ class VendaViewSet(viewsets.ModelViewSet):
                 'vendas_dinheiro': float(vendas_dinheiro)
             }
 
-        return Response({
+        # Prepara dados para response e cache
+        dashboard_data = {
             'vendas_hoje': {
                 'total': float(total_hoje),
                 'quantidade': quantidade_vendas,
@@ -311,7 +377,13 @@ class VendaViewSet(viewsets.ModelViewSet):
             },
             'caixa': caixa_info,
             'data': hoje.isoformat(),
-        })
+            'cached': False  # Indica que foi calculado agora
+        }
+
+        # Salva no cache por 2 minutos (120 segundos)
+        cache.set(cache_key, dashboard_data, 120)
+
+        return Response(dashboard_data)
 
     @action(detail=True, methods=['post'])
     def cancelar(self, request, pk=None):
@@ -332,6 +404,9 @@ class VendaViewSet(viewsets.ModelViewSet):
 
         venda.status = 'CANCELADA'
         venda.save()
+
+        # Invalida caches
+        self._invalidate_vendas_cache()
 
         serializer = VendaSerializer(venda)
         return Response(serializer.data)
@@ -359,6 +434,10 @@ class VendaViewSet(viewsets.ModelViewSet):
 
         try:
             venda.receber_pagamento()
+
+            # Invalida caches
+            self._invalidate_vendas_cache()
+
             serializer = VendaSerializer(venda)
             return Response(serializer.data)
         except ValueError as e:
