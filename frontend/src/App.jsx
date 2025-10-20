@@ -2,7 +2,7 @@ import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Center, Loader } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt } from 'react-icons/fa';
+import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBell } from 'react-icons/fa';
 
 // Lazy loading das páginas para reduzir bundle inicial
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -16,6 +16,7 @@ const HistoricoVendas = lazy(() => import('./pages/HistoricoVendas'));
 const GiroEstoque = lazy(() => import('./pages/GiroEstoque'));
 const RelatorioLucro = lazy(() => import('./pages/RelatorioLucro'));
 const Categorias = lazy(() => import('./pages/Categorias'));
+const Alertas = lazy(() => import('./pages/Alertas'));
 const Login = lazy(() => import('./pages/Login'));
 const SyncStatus = lazy(() => import('./components/SyncStatus'));
 
@@ -37,6 +38,7 @@ function PrivateRoute({ children }) {
 
 const navLinks = [
   { icon: <FaTachometerAlt />, label: 'Dashboard', path: '/' },
+  { icon: <FaBell />, label: 'Alertas', path: '/alertas' },
   { icon: <FaShoppingCart />, label: 'PDV', path: '/pdv' },
   { icon: <FaCashRegister />, label: 'Caixa', path: '/caixa' },
   { icon: <FaBoxOpen />, label: 'Produtos', path: '/produtos' },
@@ -125,6 +127,7 @@ function AppContent() {
           <SyncStatus />
           <Routes>
             <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/alertas" element={<PrivateRoute><Alertas /></PrivateRoute>} />
             <Route path="/pdv" element={<PrivateRoute><PDV /></PrivateRoute>} />
             <Route path="/produtos" element={<PrivateRoute><Produtos /></PrivateRoute>} />
             <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />

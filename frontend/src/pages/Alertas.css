@@ -1,0 +1,20 @@
+.alerta-card {
+  transition: all 0.3s ease;
+}
+
+.alerta-card.nao-lido {
+  background-color: var(--mantine-color-blue-0);
+  border-left: 4px solid var(--mantine-color-blue-6);
+}
+
+.alerta-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mantine-shadow-md);
+}
+
+@media (prefers-color-scheme: dark) {
+  .alerta-card.nao-lido {
+    background-color: var(--mantine-color-dark-6);
+    border-left: 4px solid var(--mantine-color-blue-6);
+  }
+}

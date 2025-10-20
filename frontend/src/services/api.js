@@ -83,4 +83,13 @@ export const login = (username, password) => api.post('/auth/login/', { username
 export const logout = () => api.post('/auth/logout/');
 export const getMe = () => api.get('/auth/me/');
 
+// Alertas
+export const getAlertas = (params = {}) => api.get('/alertas/', { params });
+export const getAlertasResumo = () => api.get('/alertas/resumo/');
+export const getAlertasPorPrioridade = () => api.get('/alertas/por_prioridade/');
+export const verificarAlertas = () => api.post('/alertas/verificar/');
+export const marcarAlertaLido = (id) => api.post(`/alertas/${id}/marcar_lido/`);
+export const resolverAlerta = (id) => api.post(`/alertas/${id}/resolver/`);
+export const marcarTodosLidos = () => api.post('/alertas/marcar_todos_lidos/');
+
 export default api;
