@@ -249,6 +249,125 @@ class VendaViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    # ========== MÉTODOS PRIVADOS DO DASHBOARD ==========
+
+    def _calcular_vendas_hoje(self, hoje):
+        """Calcula total e quantidade de vendas do dia"""
+        vendas = Venda.objects.filter(
+            created_at__date=hoje,
+            status='FINALIZADA'
+        ).aggregate(
+            total=Sum('total'),
+            quantidade=Count('id')
+        )
+        return {
+            'total': float(vendas['total'] or 0),
+            'quantidade': vendas['quantidade']
+        }
+
+    def _calcular_lucro_hoje(self, hoje):
+        """Calcula lucro do dia baseado em itens vendidos"""
+        from core.models import ItemVenda
+        from django.db.models import F
+
+        lucro = ItemVenda.objects.filter(
+            venda__created_at__date=hoje,
+            venda__status='FINALIZADA',
+            produto__preco_custo__gt=0
+        ).aggregate(
+            lucro=Sum(F('quantidade') * (F('preco_unitario') - F('produto__preco_custo')))
+        )['lucro'] or Decimal('0')
+
+        return float(lucro)
+
+    def _calcular_vendas_por_pagamento(self, hoje):
+        """Retorna vendas agrupadas por forma de pagamento"""
+        vendas = Venda.objects.filter(
+            created_at__date=hoje,
+            status='FINALIZADA'
+        ).values('forma_pagamento').annotate(
+            total=Sum('total'),
+            quantidade=Count('id')
+        )
+        return list(vendas)
+
+    def _calcular_estoque(self):
+        """Retorna contadores de produtos por status de estoque"""
+        return {
+            'baixo': Produto.objects.filter(estoque__lt=10, ativo=True).count()
+        }
+
+    def _calcular_produtos_validade(self, hoje):
+        """Retorna contadores de produtos vencidos e vencendo"""
+        data_limite = hoje + timedelta(days=7)
+        return {
+            'vencidos': Produto.objects.filter(
+                data_validade__lt=hoje,
+                ativo=True
+            ).count(),
+            'vencendo': Produto.objects.filter(
+                data_validade__gte=hoje,
+                data_validade__lte=data_limite,
+                ativo=True
+            ).count()
+        }
+
+    def _calcular_contas_receber(self, hoje):
+        """Calcula informações de contas a receber"""
+        contas_pendentes = Venda.objects.filter(
+            status='FINALIZADA',
+            status_pagamento='PENDENTE'
+        )
+
+        contas_vencidas = contas_pendentes.filter(data_vencimento__lt=hoje)
+        contas_vencendo_hoje = contas_pendentes.filter(data_vencimento=hoje)
+
+        return {
+            'total': float(contas_pendentes.aggregate(total=Sum('total'))['total'] or Decimal('0')),
+            'quantidade': contas_pendentes.count(),
+            'vencidas': {
+                'total': float(contas_vencidas.aggregate(total=Sum('total'))['total'] or Decimal('0')),
+                'quantidade': contas_vencidas.count()
+            },
+            'vencendo_hoje': {
+                'quantidade': contas_vencendo_hoje.count()
+            }
+        }
+
+    def _calcular_info_caixa(self):
+        """Retorna informações do caixa aberto (se houver)"""
+        caixa_aberto = Caixa.objects.filter(status='ABERTO').first()
+        if not caixa_aberto:
+            return None
+
+        # Calcula vendas em dinheiro desde abertura
+        vendas_dinheiro = Venda.objects.filter(
+            created_at__gte=caixa_aberto.data_abertura,
+            forma_pagamento='DINHEIRO',
+            status='FINALIZADA'
+        ).aggregate(total=Sum('total'))['total'] or Decimal('0')
+
+        # Movimentações
+        movimentacoes = caixa_aberto.movimentacoes.aggregate(
+            sangrias=Sum('valor', filter=Q(tipo='SANGRIA')),
+            suprimentos=Sum('valor', filter=Q(tipo='SUPRIMENTO'))
+        )
+        total_sangrias = movimentacoes['sangrias'] or Decimal('0')
+        total_suprimentos = movimentacoes['suprimentos'] or Decimal('0')
+
+        valor_atual = (caixa_aberto.valor_inicial + vendas_dinheiro
+                      + total_suprimentos - total_sangrias)
+
+        return {
+            'id': caixa_aberto.id,
+            'aberto_desde': caixa_aberto.data_abertura,
+            'valor_inicial': float(caixa_aberto.valor_inicial),
+            'valor_atual': float(valor_atual),
+            'vendas_dinheiro': float(vendas_dinheiro)
+        }
+
+    # ========== ENDPOINT DASHBOARD ==========
+
     @action(detail=False, methods=['get'])
     def dashboard(self, request):
         """Retorna estatísticas para o dashboard - Cache 2 minutos"""
@@ -259,131 +378,23 @@ class VendaViewSet(viewsets.ModelViewSet):
         cached_data = cache.get(cache_key)
 
         if cached_data:
-            # Retorna do cache
             return Response(cached_data)
 
-        # Se não está em cache, calcula
-        agora = timezone.now()
+        # Calcula todas as métricas usando métodos privados
+        estoque = self._calcular_estoque()
+        validade = self._calcular_produtos_validade(hoje)
 
-        # Vendas de hoje
-        vendas_hoje = Venda.objects.filter(
-            created_at__date=hoje,
-            status='FINALIZADA'
-        )
-
-        total_hoje = vendas_hoje.aggregate(total=Sum('total'))['total'] or 0
-        quantidade_vendas = vendas_hoje.count()
-
-        # Produtos com estoque baixo
-        estoque_baixo = Produto.objects.filter(estoque__lt=10, ativo=True).count()
-
-        # Cálculo de Lucro Hoje
-        from core.models import ItemVenda
-        from django.db.models import F
-        lucro_hoje = ItemVenda.objects.filter(
-            venda__created_at__date=hoje,
-            venda__status='FINALIZADA',
-            produto__preco_custo__gt=0
-        ).aggregate(
-            lucro=Sum(F('quantidade') * (F('preco_unitario') - F('produto__preco_custo')))
-        )['lucro'] or Decimal('0')
-
-        # Produtos vencidos e próximos ao vencimento
-        produtos_vencidos = Produto.objects.filter(
-            data_validade__lt=hoje,
-            ativo=True
-        ).count()
-
-        # Produtos vencendo em até 7 dias
-        data_limite = hoje + timedelta(days=7)
-        produtos_vencendo = Produto.objects.filter(
-            data_validade__gte=hoje,
-            data_validade__lte=data_limite,
-            ativo=True
-        ).count()
-
-        # Vendas por forma de pagamento hoje
-        vendas_por_pagamento = vendas_hoje.values('forma_pagamento').annotate(
-            total=Sum('total'),
-            quantidade=Count('id')
-        )
-
-        # CONTAS A RECEBER - Informações críticas
-        contas_pendentes = Venda.objects.filter(
-            status='FINALIZADA',
-            status_pagamento='PENDENTE'
-        )
-
-        total_a_receber = contas_pendentes.aggregate(total=Sum('total'))['total'] or Decimal('0')
-
-        # Contas vencidas (ALERTA VERMELHO)
-        contas_vencidas = contas_pendentes.filter(
-            data_vencimento__lt=hoje
-        )
-        total_vencido = contas_vencidas.aggregate(total=Sum('total'))['total'] or Decimal('0')
-        quantidade_vencidas = contas_vencidas.count()
-
-        # Contas vencendo hoje
-        contas_vencendo_hoje = contas_pendentes.filter(
-            data_vencimento=hoje
-        )
-        quantidade_vencendo_hoje = contas_vencendo_hoje.count()
-
-        # Status do Caixa
-        caixa_aberto = Caixa.objects.filter(status='ABERTO').first()
-        caixa_info = None
-        if caixa_aberto:
-            # Calcula vendas em dinheiro desde abertura
-            vendas_dinheiro = Venda.objects.filter(
-                created_at__gte=caixa_aberto.data_abertura,
-                forma_pagamento='DINHEIRO',
-                status='FINALIZADA'
-            ).aggregate(total=Sum('total'))['total'] or Decimal('0')
-
-            # Movimentações
-            movimentacoes = caixa_aberto.movimentacoes.aggregate(
-                sangrias=Sum('valor', filter=Q(tipo='SANGRIA')),
-                suprimentos=Sum('valor', filter=Q(tipo='SUPRIMENTO'))
-            )
-            total_sangrias = movimentacoes['sangrias'] or Decimal('0')
-            total_suprimentos = movimentacoes['suprimentos'] or Decimal('0')
-
-            valor_atual = (caixa_aberto.valor_inicial + vendas_dinheiro
-                          + total_suprimentos - total_sangrias)
-
-            caixa_info = {
-                'id': caixa_aberto.id,
-                'aberto_desde': caixa_aberto.data_abertura,
-                'valor_inicial': float(caixa_aberto.valor_inicial),
-                'valor_atual': float(valor_atual),
-                'vendas_dinheiro': float(vendas_dinheiro)
-            }
-
-        # Prepara dados para response e cache
         dashboard_data = {
-            'vendas_hoje': {
-                'total': float(total_hoje),
-                'quantidade': quantidade_vendas,
-            },
-            'lucro_hoje': float(lucro_hoje),
-            'estoque_baixo': estoque_baixo,
-            'produtos_vencidos': produtos_vencidos,
-            'produtos_vencendo': produtos_vencendo,
-            'vendas_por_pagamento': list(vendas_por_pagamento),
-            'contas_receber': {
-                'total': float(total_a_receber),
-                'quantidade': contas_pendentes.count(),
-                'vencidas': {
-                    'total': float(total_vencido),
-                    'quantidade': quantidade_vencidas
-                },
-                'vencendo_hoje': {
-                    'quantidade': quantidade_vencendo_hoje
-                }
-            },
-            'caixa': caixa_info,
+            'vendas_hoje': self._calcular_vendas_hoje(hoje),
+            'lucro_hoje': self._calcular_lucro_hoje(hoje),
+            'estoque_baixo': estoque['baixo'],
+            'produtos_vencidos': validade['vencidos'],
+            'produtos_vencendo': validade['vencendo'],
+            'vendas_por_pagamento': self._calcular_vendas_por_pagamento(hoje),
+            'contas_receber': self._calcular_contas_receber(hoje),
+            'caixa': self._calcular_info_caixa(),
             'data': hoje.isoformat(),
-            'cached': False  # Indica que foi calculado agora
+            'cached': False
         }
 
         # Salva no cache por 2 minutos (120 segundos)
