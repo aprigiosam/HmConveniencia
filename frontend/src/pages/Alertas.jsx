@@ -18,19 +18,19 @@ import {
   ThemeIcon,
 } from '@mantine/core';
 import {
-  IconBell,
-  IconBellOff,
-  IconCheck,
-  IconRefresh,
-  IconAlertCircle,
-  IconAlertTriangle,
-  IconInfoCircle,
-  IconShoppingCart,
-  IconCalendar,
-  IconPackage,
-  IconCreditCard,
-  IconCash,
-} from '@tabler/icons-react';
+  FaBell,
+  FaBellSlash,
+  FaCheck,
+  FaSync,
+  FaExclamationCircle,
+  FaExclamationTriangle,
+  FaInfoCircle,
+  FaShoppingCart,
+  FaCalendar,
+  FaBoxOpen,
+  FaCreditCard,
+  FaMoneyBill,
+} from 'react-icons/fa';
 import { notifications } from '@mantine/notifications';
 import {
   getAlertasResumo,
@@ -146,15 +146,15 @@ const Alertas = () => {
 
   const getTipoIcon = (tipo) => {
     const icons = {
-      LIMITE_CREDITO: IconCreditCard,
-      PRODUTO_VENCENDO: IconCalendar,
-      PRODUTO_VENCIDO: IconAlertCircle,
-      ESTOQUE_BAIXO: IconPackage,
-      ESTOQUE_ZERADO: IconPackage,
-      CONTA_VENCIDA: IconCash,
-      DIFERENCA_CAIXA: IconCash,
+      LIMITE_CREDITO: FaCreditCard,
+      PRODUTO_VENCENDO: FaCalendar,
+      PRODUTO_VENCIDO: FaExclamationCircle,
+      ESTOQUE_BAIXO: FaBoxOpen,
+      ESTOQUE_ZERADO: FaBoxOpen,
+      CONTA_VENCIDA: FaMoneyBill,
+      DIFERENCA_CAIXA: FaMoneyBill,
     };
-    return icons[tipo] || IconBell;
+    return icons[tipo] || FaBell;
   };
 
   const renderAlerta = (alerta) => {
@@ -204,14 +204,14 @@ const Alertas = () => {
             {!alerta.lido && (
               <Tooltip label="Marcar como lido">
                 <ActionIcon variant="light" color="blue" onClick={() => handleMarcarLido(alerta.id)}>
-                  <IconBellOff size={16} />
+                  <FaBellSlash size={16} />
                 </ActionIcon>
               </Tooltip>
             )}
             {!alerta.resolvido && (
               <Tooltip label="Marcar como resolvido">
                 <ActionIcon variant="light" color="green" onClick={() => handleResolver(alerta.id)}>
-                  <IconCheck size={16} />
+                  <FaCheck size={16} />
                 </ActionIcon>
               </Tooltip>
             )}
@@ -236,7 +236,7 @@ const Alertas = () => {
           <div>
             <Title order={2}>
               <Group>
-                <IconBell size={32} />
+                <FaBell size={32} />
                 Alertas
               </Group>
             </Title>
@@ -249,14 +249,14 @@ const Alertas = () => {
             {resumo?.nao_lidos > 0 && (
               <Button
                 variant="light"
-                leftSection={<IconBellOff size={16} />}
+                leftSection={<FaBellSlash size={16} />}
                 onClick={handleMarcarTodosLidos}
               >
                 Marcar todos como lidos
               </Button>
             )}
             <Button
-              leftSection={<IconRefresh size={16} />}
+              leftSection={<FaSync size={16} />}
               onClick={handleVerificar}
               loading={verificando}
             >
@@ -278,7 +278,7 @@ const Alertas = () => {
                 </Text>
               </div>
               <ThemeIcon size="xl" radius="md" variant="light">
-                <IconBell size={28} />
+                <FaBell size={28} />
               </ThemeIcon>
             </Group>
           </Paper>
@@ -294,7 +294,7 @@ const Alertas = () => {
                 </Text>
               </div>
               <ThemeIcon size="xl" radius="md" color="red" variant="light">
-                <IconAlertCircle size={28} />
+                <FaExclamationCircle size={28} />
               </ThemeIcon>
             </Group>
           </Paper>
@@ -310,7 +310,7 @@ const Alertas = () => {
                 </Text>
               </div>
               <ThemeIcon size="xl" radius="md" color="orange" variant="light">
-                <IconAlertTriangle size={28} />
+                <FaExclamationTriangle size={28} />
               </ThemeIcon>
             </Group>
           </Paper>
@@ -326,7 +326,7 @@ const Alertas = () => {
                 </Text>
               </div>
               <ThemeIcon size="xl" radius="md" color="blue" variant="light">
-                <IconInfoCircle size={28} />
+                <FaInfoCircle size={28} />
               </ThemeIcon>
             </Group>
           </Paper>
@@ -334,22 +334,22 @@ const Alertas = () => {
 
         {/* Lista de Alertas */}
         {resumo?.total_pendentes === 0 ? (
-          <Alert icon={<IconCheck size={16} />} title="Tudo certo!" color="green">
+          <Alert icon={<FaCheck size={16} />} title="Tudo certo!" color="green">
             Não há alertas pendentes no momento.
           </Alert>
         ) : (
           <Tabs defaultValue="CRITICA">
             <Tabs.List>
-              <Tabs.Tab value="CRITICA" leftSection={<IconAlertCircle size={16} />}>
+              <Tabs.Tab value="CRITICA" leftSection={<FaExclamationCircle size={16} />}>
                 Críticos ({alertasPorPrioridade.CRITICA?.length || 0})
               </Tabs.Tab>
-              <Tabs.Tab value="ALTA" leftSection={<IconAlertTriangle size={16} />}>
+              <Tabs.Tab value="ALTA" leftSection={<FaExclamationTriangle size={16} />}>
                 Altos ({alertasPorPrioridade.ALTA?.length || 0})
               </Tabs.Tab>
-              <Tabs.Tab value="MEDIA" leftSection={<IconInfoCircle size={16} />}>
+              <Tabs.Tab value="MEDIA" leftSection={<FaInfoCircle size={16} />}>
                 Médios ({alertasPorPrioridade.MEDIA?.length || 0})
               </Tabs.Tab>
-              <Tabs.Tab value="BAIXA" leftSection={<IconBell size={16} />}>
+              <Tabs.Tab value="BAIXA" leftSection={<FaBell size={16} />}>
                 Baixos ({alertasPorPrioridade.BAIXA?.length || 0})
               </Tabs.Tab>
             </Tabs.List>
@@ -360,7 +360,7 @@ const Alertas = () => {
                   {alertasPorPrioridade[prioridade]?.length > 0 ? (
                     alertasPorPrioridade[prioridade].map(renderAlerta)
                   ) : (
-                    <Alert icon={<IconCheck size={16} />} color="green">
+                    <Alert icon={<FaCheck size={16} />} color="green">
                       Nenhum alerta nesta categoria
                     </Alert>
                   )}
