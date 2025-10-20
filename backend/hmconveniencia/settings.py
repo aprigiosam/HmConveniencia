@@ -124,6 +124,7 @@ if REDIS_URL:
                 'LOCATION': REDIS_URL,
                 'OPTIONS': {
                     'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                    'SERIALIZER': 'django_redis.serializers.json.JSONSerializer',  # JSON em vez de pickle
                     'SOCKET_CONNECT_TIMEOUT': 5,
                     'SOCKET_TIMEOUT': 5,
                     'CONNECTION_POOL_KWARGS': {

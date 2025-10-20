@@ -639,6 +639,10 @@ def health_check(request):
         cache.set(cache_key, cache_value, 30)
         cached = cache.get(cache_key)
 
+        # Converte para string se vier como bytes (Redis)
+        if isinstance(cached, bytes):
+            cached = cached.decode('utf-8')
+
         if cached == cache_value:
             # Detecta o tipo de cache
             cache_backend = settings.CACHES['default']['BACKEND']
