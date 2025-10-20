@@ -131,7 +131,7 @@ if REDIS_URL:
                         'max_connections': 50,
                         'retry_on_timeout': True,
                     },
-                    'IGNORE_EXCEPTIONS': True,  # Não quebra se Redis falhar
+                    'IGNORE_EXCEPTIONS': False, # Força o erro a aparecer
                 },
                 'KEY_PREFIX': 'hmconv',
                 'TIMEOUT': 300,  # 5 minutos padrão
