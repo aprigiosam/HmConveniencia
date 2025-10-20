@@ -132,6 +132,21 @@ HmConveniencia/
   - Sincronização em background
   - Auto-atualização a cada 1 minuto
 
+### Sprint 5 (Concluída)
+- ✅ **Sistema de Alertas Inteligentes**
+  - 7 tipos de alertas proativos:
+    - 💳 Limite de crédito (>80% do limite)
+    - 📅 Produtos vencendo (próximos 3 dias)
+    - ❌ Produtos vencidos
+    - 📦 Estoque baixo (<10 unidades)
+    - 🚫 Estoque zerado
+    - 💰 Contas vencidas (>7 dias de atraso)
+    - 💵 Diferença de caixa (>R$ 50)
+  - 4 níveis de prioridade (Crítico, Alto, Médio, Baixo)
+  - Backend: Model, Service Layer, Management Command, API
+  - Frontend: Página completa com dashboard e ações
+  - Comando: `python manage.py check_alerts`
+
 ### Módulos Principais
 
 #### 1. PDV (Ponto de Venda)
@@ -171,6 +186,14 @@ HmConveniencia/
 - Estoque baixo (≤ 5 unidades)
 - **Produtos vencidos** (alerta vermelho)
 - **Produtos próximos ao vencimento** (≤ 7 dias, alerta amarelo)
+
+#### 6. Alertas (Novo!)
+- **Dashboard de resumo** com estatísticas em tempo real
+- **Tabs por prioridade**: Críticos, Altos, Médios, Baixos
+- **Cards de alertas** com informações contextuais
+- **Ações rápidas**: Marcar lido, Resolver, Verificar novos
+- **Integração completa** com backend via API REST
+- **Interface moderna** com Mantine UI e React Icons
 
 ## Configuração da API
 
