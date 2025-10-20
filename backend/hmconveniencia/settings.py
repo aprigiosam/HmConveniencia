@@ -117,25 +117,34 @@ REDIS_URL = config('REDIS_URL', default=None)
 
 if REDIS_URL:
     # Produção com Redis (Upstash)
-    CACHES = {
-        'default': {
-            'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': REDIS_URL,
-            'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-                'SERIALIZER': 'django_redis.serializers.json.JSONSerializer',  # JSON em vez de pickle
-                'SOCKET_CONNECT_TIMEOUT': 5,
-                'SOCKET_TIMEOUT': 5,
-                'CONNECTION_POOL_KWARGS': {
-                    'max_connections': 50,
-                    'retry_on_timeout': True,
+    try:
+        CACHES = {
+            'default': {
+                'BACKEND': 'django_redis.cache.RedisCache',
+                'LOCATION': REDIS_URL,
+                'OPTIONS': {
+                    'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                    'SERIALIZER': 'django_redis.serializers.json.JSONSerializer',  # JSON em vez de pickle
+                    'SOCKET_CONNECT_TIMEOUT': 5,
+                    'SOCKET_TIMEOUT': 5,
+                    'CONNECTION_POOL_KWARGS': {
+                        'max_connections': 50,
+                        'retry_on_timeout': True,
+                    },
+                    'IGNORE_EXCEPTIONS': True,  # Não quebra se Redis falhar
                 },
-                'IGNORE_EXCEPTIONS': False,
-            },
-            'KEY_PREFIX': 'hmconv',
-            'TIMEOUT': 300,  # 5 minutos padrão
+                'KEY_PREFIX': 'hmconv',
+                'TIMEOUT': 300,  # 5 minutos padrão
+            }
         }
-    }
+    except Exception:
+        # Fallback para LocMem se Redis falhar
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'hmconveniencia-cache-fallback',
+            }
+        }
 else:
     # Desenvolvimento - LocMemCache (memória local)
     CACHES = {
