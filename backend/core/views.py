@@ -505,7 +505,7 @@ class CaixaViewSet(viewsets.ViewSet):
                     {'error': 'Valor inicial não pode ser negativo'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, Exception):
             return Response(
                 {'error': 'Valor inicial inválido'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -543,7 +543,7 @@ class CaixaViewSet(viewsets.ViewSet):
                     {'error': 'Valor final informado não pode ser negativo'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, Exception):
             return Response(
                 {'error': 'Valor final informado inválido'},
                 status=status.HTTP_400_BAD_REQUEST
