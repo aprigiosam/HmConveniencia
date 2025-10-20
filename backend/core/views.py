@@ -1,6 +1,7 @@
 """
 Views da API - HMConveniencia
 """
+import logging
 from django.core.management import call_command
 from django.contrib.auth import authenticate
 from rest_framework import viewsets, status
@@ -10,7 +11,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
-from django.db import connection
+from django.db import connection, transaction
 from datetime import timedelta
 from decimal import Decimal
 from django_ratelimit.decorators import ratelimit
@@ -27,6 +28,9 @@ from .serializers import (
     MovimentacaoCaixaSerializer,
     CategoriaSerializer
 )
+
+# Logger para operações críticas
+logger = logging.getLogger(__name__)
 
 
 class CategoriaViewSet(viewsets.ModelViewSet):
@@ -120,10 +124,12 @@ class ProdutoViewSet(viewsets.ModelViewSet):
         if ativo is not None:
             queryset = queryset.filter(ativo=ativo.lower() == 'true')
 
-        # Busca por nome ou código
+        # Busca por nome ou código (otimizada com Q)
         search = self.request.query_params.get('search', None)
         if search:
-            queryset = queryset.filter(nome__icontains=search) | queryset.filter(codigo_barras__icontains=search)
+            queryset = queryset.filter(
+                Q(nome__icontains=search) | Q(codigo_barras__icontains=search)
+            )
 
         return queryset
 
@@ -386,8 +392,9 @@ class VendaViewSet(viewsets.ModelViewSet):
         return Response(dashboard_data)
 
     @action(detail=True, methods=['post'])
+    @transaction.atomic
     def cancelar(self, request, pk=None):
-        """Cancela uma venda"""
+        """Cancela uma venda e devolve estoque atomicamente"""
         venda = self.get_object()
 
         if venda.status == 'CANCELADA':
@@ -397,13 +404,23 @@ class VendaViewSet(viewsets.ModelViewSet):
             )
 
         if venda.status == 'FINALIZADA':
-            # Devolve o estoque
-            for item in venda.itens.all():
+            # Devolve o estoque usando bulk_update para melhor performance
+            produtos_atualizar = []
+            for item in venda.itens.select_related('produto'):
                 item.produto.estoque += item.quantidade
-                item.produto.save()
+                produtos_atualizar.append(item.produto)
+
+            if produtos_atualizar:
+                Produto.objects.bulk_update(produtos_atualizar, ['estoque'])
 
         venda.status = 'CANCELADA'
         venda.save()
+
+        # Log de auditoria
+        logger.info(
+            f"Venda cancelada - ID: {venda.id}, Número: {venda.numero}, "
+            f"Total: R$ {venda.total}, Usuário: {request.user.username}"
+        )
 
         # Invalida caches
         self._invalidate_vendas_cache()
@@ -435,12 +452,23 @@ class VendaViewSet(viewsets.ModelViewSet):
         try:
             venda.receber_pagamento()
 
+            # Log de auditoria
+            logger.info(
+                f"Pagamento recebido - Venda ID: {venda.id}, Número: {venda.numero}, "
+                f"Total: R$ {venda.total}, Cliente: {venda.cliente.nome if venda.cliente else 'N/A'}, "
+                f"Usuário: {request.user.username}"
+            )
+
             # Invalida caches
             self._invalidate_vendas_cache()
 
             serializer = VendaSerializer(venda)
             return Response(serializer.data)
         except ValueError as e:
+            logger.warning(
+                f"Erro ao receber pagamento - Venda ID: {venda.id}, Erro: {str(e)}, "
+                f"Usuário: {request.user.username}"
+            )
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
@@ -462,30 +490,64 @@ class CaixaViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def abrir(self, request):
-        """Abre um novo caixa"""
+        """Abre um novo caixa com validação de entrada"""
         if Caixa.objects.filter(status='ABERTO').exists():
             return Response(
                 {'error': 'Já existe um caixa aberto'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        valor_inicial = request.data.get('valor_inicial', 0)
+        # Validação de input
+        try:
+            valor_inicial = Decimal(str(request.data.get('valor_inicial', 0)))
+            if valor_inicial < 0:
+                return Response(
+                    {'error': 'Valor inicial não pode ser negativo'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Valor inicial inválido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         caixa = Caixa.objects.create(valor_inicial=valor_inicial)
+
+        # Log de auditoria
+        logger.info(
+            f"Caixa aberto - ID: {caixa.id}, Valor inicial: R$ {valor_inicial}, "
+            f"Usuário: {request.user.username}"
+        )
+
         serializer = CaixaSerializer(caixa)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
+    @transaction.atomic
     def fechar(self, request, pk=None):
-        """Fecha o caixa, calculando totais e diferenças"""
+        """Fecha o caixa atomicamente, calculando totais e diferenças"""
         try:
-            caixa = Caixa.objects.get(pk=pk, status='ABERTO')
+            # select_for_update previne race condition (dois usuários fechando simultaneamente)
+            caixa = Caixa.objects.select_for_update().get(pk=pk, status='ABERTO')
         except Caixa.DoesNotExist:
             return Response(
                 {'error': 'Caixa não encontrado ou já está fechado'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        valor_final_informado = Decimal(request.data.get('valor_final_informado', 0))
+        # Validação de input
+        try:
+            valor_final_informado = Decimal(str(request.data.get('valor_final_informado', 0)))
+            if valor_final_informado < 0:
+                return Response(
+                    {'error': 'Valor final informado não pode ser negativo'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Valor final informado inválido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Calcula vendas em dinheiro desde a abertura
         vendas_dinheiro = Venda.objects.filter(
@@ -514,6 +576,13 @@ class CaixaViewSet(viewsets.ViewSet):
         caixa.status = 'FECHADO'
         caixa.observacoes = request.data.get('observacoes', '')
         caixa.save()
+
+        # Log de auditoria
+        logger.info(
+            f"Caixa fechado - ID: {caixa.id}, Valor sistema: R$ {valor_final_sistema}, "
+            f"Valor informado: R$ {valor_final_informado}, Diferença: R$ {caixa.diferenca}, "
+            f"Usuário: {request.user.username}"
+        )
 
         serializer = CaixaSerializer(caixa)
         return Response(serializer.data)
