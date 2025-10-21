@@ -745,6 +745,12 @@ function PDV() {
         size="lg"
         centered
         padding={0}
+        classNames={{
+          root: 'comprovante-modal-root',
+          content: 'comprovante-modal-content',
+          body: 'comprovante-modal-body',
+          overlay: 'comprovante-modal-overlay'
+        }}
       >
         {dadosVenda && (
           <Comprovante

@@ -18,15 +18,46 @@
 
 /* Estilos para impressão */
 @media print {
-  /* Esconde tudo da página */
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Oculta todos os elementos por padrão */
   body * {
     visibility: hidden;
   }
 
-  /* Mostra apenas o comprovante */
-  .comprovante-container,
-  .comprovante-container * {
-    visibility: visible;
+  /* Garante que toda a estrutura do modal continue visível */
+  .comprovante-modal-root,
+  .comprovante-modal-root * {
+    visibility: visible !important;
+  }
+
+  /* Remove overlay e espaçamentos do modal para impressão */
+  .comprovante-modal-root {
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    height: auto !important;
+    transform: none !important;
+    background: transparent !important;
+  }
+
+  .comprovante-modal-overlay {
+    display: none !important;
+  }
+
+  .comprovante-modal-content {
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+
+  .comprovante-modal-body {
+    padding: 0 !important;
   }
 
   /* Esconde botões e elementos que não devem ser impressos */
@@ -35,13 +66,15 @@
     display: none !important;
   }
 
-  /* Posiciona o comprovante no topo da página */
+  /* Ajusta layout do comprovante para a largura da bobina */
   .comprovante-container {
-    position: absolute;
-    left: 0;
-    top: 0;
+    position: static;
+    left: auto;
+    top: auto;
     width: 80mm; /* Largura padrão de impressora térmica */
     max-width: 100%;
+    margin: 0 auto;
+    padding: 0 !important;
   }
 
   .comprovante-paper {
@@ -55,8 +88,9 @@
     margin-bottom: 8px;
   }
 
-  /* Remove cores de fundo e bordas */
-  * {
+  /* Remove cores de fundo e garante contraste */
+  .comprovante-paper,
+  .comprovante-paper * {
     background: white !important;
     color: black !important;
   }
@@ -72,11 +106,6 @@
   @page {
     margin: 0;
     size: 80mm auto; /* Largura de impressora térmica, altura automática */
-  }
-
-  body {
-    margin: 0;
-    padding: 10mm;
   }
 }
 
