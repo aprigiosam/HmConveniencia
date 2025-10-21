@@ -58,6 +58,15 @@ export const createCategoria = (data) => api.post('/categorias/', data);
 export const updateCategoria = (id, data) => api.put(`/categorias/${id}/`, data);
 export const deleteCategoria = (id) => api.delete(`/categorias/${id}/`);
 
+// Fornecedores
+export const getFornecedores = (params = {}) => api.get('/fornecedores/', { params });
+export const getFornecedor = (id) => api.get(`/fornecedores/${id}/`);
+export const createFornecedor = (data) => api.post('/fornecedores/', data);
+export const updateFornecedor = (id, data) => api.put(`/fornecedores/${id}/`, data);
+export const deleteFornecedor = (id) => api.delete(`/fornecedores/${id}/`);
+export const getFornecedorLotes = (id) => api.get(`/fornecedores/${id}/lotes/`);
+export const getFornecedorEstatisticas = (id) => api.get(`/fornecedores/${id}/estatisticas/`);
+
 // Vendas
 export const getVendas = (params = {}) => api.get('/vendas/', { params });
 export const getVenda = (id) => api.get(`/vendas/${id}/`);

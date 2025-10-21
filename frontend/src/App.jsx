@@ -2,7 +2,7 @@ import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Center, Loader } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBell, FaTruck } from 'react-icons/fa';
+import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBell, FaTruck, FaBuilding } from 'react-icons/fa';
 
 // Lazy loading das páginas para reduzir bundle inicial
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -18,6 +18,7 @@ const RelatorioLucro = lazy(() => import('./pages/RelatorioLucro'));
 const Categorias = lazy(() => import('./pages/Categorias'));
 const Alertas = lazy(() => import('./pages/Alertas'));
 const EntradaEstoque = lazy(() => import('./pages/EntradaEstoque'));
+const Fornecedores = lazy(() => import('./pages/Fornecedores'));
 const Login = lazy(() => import('./pages/Login'));
 const SyncStatus = lazy(() => import('./components/SyncStatus'));
 
@@ -44,6 +45,7 @@ const navLinks = [
   { icon: <FaCashRegister />, label: 'Caixa', path: '/caixa' },
   { icon: <FaBoxOpen />, label: 'Produtos', path: '/produtos' },
   { icon: <FaTruck />, label: 'Entrada de Estoque', path: '/estoque/entrada' },
+  { icon: <FaBuilding />, label: 'Fornecedores', path: '/fornecedores' },
   { icon: <FaUsers />, label: 'Clientes', path: '/clientes' },
   { icon: <FaFileInvoiceDollar />, label: 'Contas a Receber', path: '/contas-receber' },
   { icon: <FaListAlt />, label: 'Histórico de Vendas', path: '/vendas/historico' },
@@ -133,6 +135,7 @@ function AppContent() {
             <Route path="/pdv" element={<PrivateRoute><PDV /></PrivateRoute>} />
             <Route path="/produtos" element={<PrivateRoute><Produtos /></PrivateRoute>} />
             <Route path="/estoque/entrada" element={<PrivateRoute><EntradaEstoque /></PrivateRoute>} />
+            <Route path="/fornecedores" element={<PrivateRoute><Fornecedores /></PrivateRoute>} />
             <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
             <Route path="/contas-receber" element={<PrivateRoute><ContasReceber /></PrivateRoute>} />
             <Route path="/vendas/historico" element={<PrivateRoute><HistoricoVendas /></PrivateRoute>} />

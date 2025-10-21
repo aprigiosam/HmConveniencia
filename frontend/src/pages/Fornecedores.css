@@ -1,0 +1,23 @@
+/* Layout responsivo para Fornecedores */
+.table-desktop {
+  display: block;
+}
+
+.fornecedores-cards {
+  display: none;
+}
+
+.fornecedor-card {
+  margin-bottom: 1rem;
+}
+
+/* Mobile: mostra cards, esconde tabela */
+@media (max-width: 768px) {
+  .table-desktop {
+    display: none;
+  }
+
+  .fornecedores-cards {
+    display: block;
+  }
+}
