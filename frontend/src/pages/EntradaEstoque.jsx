@@ -84,17 +84,29 @@ const EntradaEstoque = () => {
     try {
       setLoading(true);
 
+      // Formata a data corretamente
+      let dataValidadeFormatada = null;
+      if (dataValidade) {
+        if (dataValidade instanceof Date && !isNaN(dataValidade.getTime())) {
+          // Ajusta para UTC para evitar problemas de timezone
+          const year = dataValidade.getFullYear();
+          const month = String(dataValidade.getMonth() + 1).padStart(2, '0');
+          const day = String(dataValidade.getDate()).padStart(2, '0');
+          dataValidadeFormatada = `${year}-${month}-${day}`;
+        }
+      }
+
       const data = {
         produto_id: produtoId,
         quantidade: parseFloat(quantidade),
-        data_validade: dataValidade && dataValidade instanceof Date && !isNaN(dataValidade)
-          ? dataValidade.toISOString().split('T')[0]
-          : null,
+        data_validade: dataValidadeFormatada,
         numero_lote: numeroLote,
         fornecedor: fornecedor,
         preco_custo_lote: precoCustoLote ? parseFloat(precoCustoLote) : null,
         observacoes: observacoes,
       };
+
+      console.log('Enviando lote:', data); // Debug
 
       await entradaEstoque(data);
 
