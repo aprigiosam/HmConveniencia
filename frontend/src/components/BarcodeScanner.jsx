@@ -15,13 +15,16 @@ function BarcodeScanner({ opened, onClose, onScan, title = "Scanner de Código d
   const html5QrCodeRef = useRef(null);
 
   useEffect(() => {
-    if (opened && !scanning) {
-      startScanner();
-    }
+    if (opened) {
+      const timer = setTimeout(() => {
+        startScanner();
+      }, 150); // Delay to ensure modal is rendered
 
-    return () => {
-      stopScanner();
-    };
+      return () => {
+        clearTimeout(timer);
+        stopScanner();
+      };
+    }
   }, [opened]);
 
   const startScanner = async () => {
