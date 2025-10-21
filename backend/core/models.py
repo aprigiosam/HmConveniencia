@@ -1,6 +1,7 @@
 """
 Models simples para PDV - HMConveniencia
 """
+
 from django.db import models
 from django.core.validators import MinValueValidator
 from decimal import Decimal
@@ -8,28 +9,33 @@ from decimal import Decimal
 
 class Cliente(models.Model):
     """Cliente - para vendas fiado"""
-    nome = models.CharField('Nome', max_length=200)
-    telefone = models.CharField('Telefone', max_length=20, blank=True)
-    cpf = models.CharField('CPF', max_length=14, blank=True, unique=True, null=True)
-    endereco = models.TextField('Endereço', blank=True)
+
+    nome = models.CharField("Nome", max_length=200)
+    telefone = models.CharField("Telefone", max_length=20, blank=True)
+    cpf = models.CharField("CPF", max_length=14, blank=True, unique=True, null=True)
+    endereco = models.TextField("Endereço", blank=True)
     limite_credito = models.DecimalField(
-        'Limite de Crédito',
+        "Limite de Crédito",
         max_digits=10,
         decimal_places=2,
         default=0,
-        validators=[MinValueValidator(Decimal('0.00'), message='Limite de crédito não pode ser negativo')]
+        validators=[
+            MinValueValidator(
+                Decimal("0.00"), message="Limite de crédito não pode ser negativo"
+            )
+        ],
     )
-    ativo = models.BooleanField('Ativo', default=True)
-    created_at = models.DateTimeField('Criado em', auto_now_add=True)
-    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+    ativo = models.BooleanField("Ativo", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ['nome']
-        verbose_name = 'Cliente'
-        verbose_name_plural = 'Clientes'
+        ordering = ["nome"]
+        verbose_name = "Cliente"
+        verbose_name_plural = "Clientes"
         indexes = [
-            models.Index(fields=['ativo']),
-            models.Index(fields=['nome']),
+            models.Index(fields=["ativo"]),
+            models.Index(fields=["nome"]),
         ]
 
     def __str__(self):
@@ -37,9 +43,9 @@ class Cliente(models.Model):
 
     def saldo_devedor(self):
         """Retorna o total de vendas pendentes (fiado)"""
-        return self.vendas.filter(status_pagamento='PENDENTE').aggregate(
-            total=models.Sum('total')
-        )['total'] or Decimal('0.00')
+        return self.vendas.filter(status_pagamento="PENDENTE").aggregate(
+            total=models.Sum("total")
+        )["total"] or Decimal("0.00")
 
     def pode_comprar_fiado(self, valor):
         """Verifica se cliente pode comprar fiado baseado no limite"""
@@ -51,24 +57,25 @@ class Cliente(models.Model):
 
 class Fornecedor(models.Model):
     """Fornecedor - para controle de compras"""
-    nome = models.CharField('Nome/Razão Social', max_length=200)
-    nome_fantasia = models.CharField('Nome Fantasia', max_length=200, blank=True)
-    cnpj = models.CharField('CNPJ', max_length=18, blank=True, unique=True, null=True)
-    telefone = models.CharField('Telefone', max_length=20, blank=True)
-    email = models.EmailField('Email', blank=True)
-    endereco = models.TextField('Endereço', blank=True)
-    observacoes = models.TextField('Observações', blank=True)
-    ativo = models.BooleanField('Ativo', default=True)
-    created_at = models.DateTimeField('Criado em', auto_now_add=True)
-    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+
+    nome = models.CharField("Nome/Razão Social", max_length=200)
+    nome_fantasia = models.CharField("Nome Fantasia", max_length=200, blank=True)
+    cnpj = models.CharField("CNPJ", max_length=18, blank=True, unique=True, null=True)
+    telefone = models.CharField("Telefone", max_length=20, blank=True)
+    email = models.EmailField("Email", blank=True)
+    endereco = models.TextField("Endereço", blank=True)
+    observacoes = models.TextField("Observações", blank=True)
+    ativo = models.BooleanField("Ativo", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ['nome']
-        verbose_name = 'Fornecedor'
-        verbose_name_plural = 'Fornecedores'
+        ordering = ["nome"]
+        verbose_name = "Fornecedor"
+        verbose_name_plural = "Fornecedores"
         indexes = [
-            models.Index(fields=['ativo']),
-            models.Index(fields=['nome']),
+            models.Index(fields=["ativo"]),
+            models.Index(fields=["nome"]),
         ]
 
     def __str__(self):
@@ -77,8 +84,8 @@ class Fornecedor(models.Model):
     def total_compras(self):
         """Retorna o total de lotes comprados deste fornecedor"""
         return self.lotes.filter(ativo=True).aggregate(
-            total=models.Sum(models.F('quantidade') * models.F('preco_custo_lote'))
-        )['total'] or Decimal('0.00')
+            total=models.Sum(models.F("quantidade") * models.F("preco_custo_lote"))
+        )["total"] or Decimal("0.00")
 
     def total_lotes(self):
         """Retorna quantidade de lotes ativos deste fornecedor"""
@@ -87,15 +94,16 @@ class Fornecedor(models.Model):
 
 class Categoria(models.Model):
     """Categorias de produtos"""
-    nome = models.CharField('Nome', max_length=100, unique=True)
-    ativo = models.BooleanField('Ativo', default=True)
-    created_at = models.DateTimeField('Criado em', auto_now_add=True)
-    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+
+    nome = models.CharField("Nome", max_length=100, unique=True)
+    ativo = models.BooleanField("Ativo", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ['nome']
-        verbose_name = 'Categoria'
-        verbose_name_plural = 'Categorias'
+        ordering = ["nome"]
+        verbose_name = "Categoria"
+        verbose_name_plural = "Categorias"
 
     def __str__(self):
         return self.nome
@@ -103,43 +111,64 @@ class Categoria(models.Model):
 
 class Produto(models.Model):
     """Produto - campos essenciais"""
-    nome = models.CharField('Nome', max_length=200)
+
+    nome = models.CharField("Nome", max_length=200)
     preco = models.DecimalField(
-        'Preço',
+        "Preço",
         max_digits=10,
         decimal_places=2,
-        validators=[MinValueValidator(Decimal('0.01'), message='Preço deve ser maior que zero')]
+        validators=[
+            MinValueValidator(Decimal("0.01"), message="Preço deve ser maior que zero")
+        ],
     )
     preco_custo = models.DecimalField(
-        'Preço de Custo',
+        "Preço de Custo",
         max_digits=10,
         decimal_places=2,
         default=0,
-        validators=[MinValueValidator(Decimal('0.00'), message='Preço de custo não pode ser negativo')]
+        validators=[
+            MinValueValidator(
+                Decimal("0.00"), message="Preço de custo não pode ser negativo"
+            )
+        ],
     )
     estoque = models.DecimalField(
-        'Estoque',
+        "Estoque",
         max_digits=10,
         decimal_places=2,
         default=0,
-        validators=[MinValueValidator(Decimal('0.00'), message='Estoque não pode ser negativo')]
+        validators=[
+            MinValueValidator(Decimal("0.00"), message="Estoque não pode ser negativo")
+        ],
     )
-    codigo_barras = models.CharField('Código de Barras', max_length=50, blank=True)
-    data_validade = models.DateField('Data de Validade', null=True, blank=True, help_text='Deixe em branco para produtos sem validade')
-    categoria = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='produtos', verbose_name='Categoria')
-    ativo = models.BooleanField('Ativo', default=True)
-    created_at = models.DateTimeField('Criado em', auto_now_add=True)
-    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+    codigo_barras = models.CharField("Código de Barras", max_length=50, blank=True)
+    data_validade = models.DateField(
+        "Data de Validade",
+        null=True,
+        blank=True,
+        help_text="Deixe em branco para produtos sem validade",
+    )
+    categoria = models.ForeignKey(
+        Categoria,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="produtos",
+        verbose_name="Categoria",
+    )
+    ativo = models.BooleanField("Ativo", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ['nome']
-        verbose_name = 'Produto'
-        verbose_name_plural = 'Produtos'
+        ordering = ["nome"]
+        verbose_name = "Produto"
+        verbose_name_plural = "Produtos"
         indexes = [
-            models.Index(fields=['ativo']),
-            models.Index(fields=['codigo_barras']),
-            models.Index(fields=['estoque']),
-            models.Index(fields=['nome']),
+            models.Index(fields=["ativo"]),
+            models.Index(fields=["codigo_barras"]),
+            models.Index(fields=["estoque"]),
+            models.Index(fields=["nome"]),
         ]
 
     def __str__(self):
@@ -154,7 +183,7 @@ class Produto(models.Model):
         """Calcula a margem de lucro do produto"""
         if self.preco_custo > 0:
             return ((self.preco - self.preco_custo) / self.preco_custo) * 100
-        return Decimal('0.00')
+        return Decimal("0.00")
 
     @property
     def esta_vencido(self):
@@ -162,6 +191,7 @@ class Produto(models.Model):
         if not self.data_validade:
             return False
         from django.utils import timezone
+
         return self.data_validade < timezone.now().date()
 
     @property
@@ -170,6 +200,7 @@ class Produto(models.Model):
         if not self.data_validade:
             return None
         from django.utils import timezone
+
         delta = self.data_validade - timezone.now().date()
         return delta.days
 
@@ -184,57 +215,79 @@ class Produto(models.Model):
 
 class Venda(models.Model):
     """Venda realizada"""
+
     STATUS_CHOICES = [
-        ('ABERTA', 'Aberta'),
-        ('FINALIZADA', 'Finalizada'),
-        ('CANCELADA', 'Cancelada'),
+        ("ABERTA", "Aberta"),
+        ("FINALIZADA", "Finalizada"),
+        ("CANCELADA", "Cancelada"),
     ]
 
     FORMA_PAGAMENTO_CHOICES = [
-        ('DINHEIRO', 'Dinheiro'),
-        ('DEBITO', 'Débito'),
-        ('CREDITO', 'Crédito'),
-        ('PIX', 'PIX'),
-        ('FIADO', 'Fiado'),
+        ("DINHEIRO", "Dinheiro"),
+        ("DEBITO", "Débito"),
+        ("CREDITO", "Crédito"),
+        ("PIX", "PIX"),
+        ("FIADO", "Fiado"),
     ]
 
     STATUS_PAGAMENTO_CHOICES = [
-        ('PAGO', 'Pago'),
-        ('PENDENTE', 'Pendente'),
+        ("PAGO", "Pago"),
+        ("PENDENTE", "Pendente"),
     ]
 
-    numero = models.CharField('Número', max_length=20, unique=True, blank=True)
-    cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, null=True, blank=True, related_name='vendas', verbose_name='Cliente')
-    status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='ABERTA')
-    forma_pagamento = models.CharField('Forma de Pagamento', max_length=20, choices=FORMA_PAGAMENTO_CHOICES, blank=True)
-    status_pagamento = models.CharField('Status Pagamento', max_length=20, choices=STATUS_PAGAMENTO_CHOICES, default='PAGO')
-    total = models.DecimalField('Total', max_digits=10, decimal_places=2, default=0)
-    desconto = models.DecimalField('Desconto', max_digits=10, decimal_places=2, default=0)
-    observacoes = models.TextField('Observações', blank=True)
-    data_vencimento = models.DateField('Data Vencimento', null=True, blank=True, help_text='Para vendas fiado')
-    created_at = models.DateTimeField('Data', auto_now_add=True)
-    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+    numero = models.CharField("Número", max_length=20, unique=True, blank=True)
+    cliente = models.ForeignKey(
+        Cliente,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="vendas",
+        verbose_name="Cliente",
+    )
+    status = models.CharField(
+        "Status", max_length=20, choices=STATUS_CHOICES, default="ABERTA"
+    )
+    forma_pagamento = models.CharField(
+        "Forma de Pagamento", max_length=20, choices=FORMA_PAGAMENTO_CHOICES, blank=True
+    )
+    status_pagamento = models.CharField(
+        "Status Pagamento",
+        max_length=20,
+        choices=STATUS_PAGAMENTO_CHOICES,
+        default="PAGO",
+    )
+    total = models.DecimalField("Total", max_digits=10, decimal_places=2, default=0)
+    desconto = models.DecimalField(
+        "Desconto", max_digits=10, decimal_places=2, default=0
+    )
+    observacoes = models.TextField("Observações", blank=True)
+    data_vencimento = models.DateField(
+        "Data Vencimento", null=True, blank=True, help_text="Para vendas fiado"
+    )
+    created_at = models.DateTimeField("Data", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Venda'
-        verbose_name_plural = 'Vendas'
+        ordering = ["-created_at"]
+        verbose_name = "Venda"
+        verbose_name_plural = "Vendas"
         indexes = [
-            models.Index(fields=['status']),
-            models.Index(fields=['status_pagamento']),
-            models.Index(fields=['forma_pagamento']),
-            models.Index(fields=['-created_at']),
-            models.Index(fields=['data_vencimento']),
-            models.Index(fields=['status', 'status_pagamento']),
+            models.Index(fields=["status"]),
+            models.Index(fields=["status_pagamento"]),
+            models.Index(fields=["forma_pagamento"]),
+            models.Index(fields=["-created_at"]),
+            models.Index(fields=["data_vencimento"]),
+            models.Index(fields=["status", "status_pagamento"]),
         ]
 
     def __str__(self):
-        return f'Venda {self.numero} - R$ {self.total}'
+        return f"Venda {self.numero} - R$ {self.total}"
 
     def save(self, *args, **kwargs):
         # Gera número automático se não existir
         if not self.numero:
             from django.utils import timezone
+
             hoje = timezone.now()
             self.numero = f'V{hoje.strftime("%Y%m%d%H%M%S")}'
         super().save(*args, **kwargs)
@@ -247,22 +300,22 @@ class Venda(models.Model):
 
     def finalizar(self, forma_pagamento, cliente_id=None, data_vencimento=None):
         """Finaliza a venda e baixa o estoque"""
-        if self.status != 'ABERTA':
-            raise ValueError('Venda já foi finalizada ou cancelada')
+        if self.status != "ABERTA":
+            raise ValueError("Venda já foi finalizada ou cancelada")
 
         self.forma_pagamento = forma_pagamento
 
         # Se for fiado, marca como pendente
-        if forma_pagamento == 'FIADO':
+        if forma_pagamento == "FIADO":
             if not cliente_id:
-                raise ValueError('Cliente é obrigatório para vendas fiado')
+                raise ValueError("Cliente é obrigatório para vendas fiado")
             self.cliente_id = cliente_id
-            self.status_pagamento = 'PENDENTE'
+            self.status_pagamento = "PENDENTE"
             self.data_vencimento = data_vencimento
         else:
-            self.status_pagamento = 'PAGO'
+            self.status_pagamento = "PAGO"
 
-        self.status = 'FINALIZADA'
+        self.status = "FINALIZADA"
         self.save()
 
         # Baixa estoque usando FEFO (First Expired, First Out)
@@ -275,14 +328,19 @@ class Venda(models.Model):
             if LoteService.produto_usa_lotes(produto):
                 # Usa FEFO para baixar dos lotes
                 try:
-                    lotes_afetados = LoteService.baixar_estoque_fefo(produto, item.quantidade)
+                    lotes_afetados = LoteService.baixar_estoque_fefo(
+                        produto, item.quantidade
+                    )
                     # Log para debug
                     import logging
+
                     logger = logging.getLogger(__name__)
-                    logger.info(f'Venda {self.numero}: FEFO aplicado em {produto.nome}. Lotes: {lotes_afetados}')
+                    logger.info(
+                        f"Venda {self.numero}: FEFO aplicado em {produto.nome}. Lotes: {lotes_afetados}"
+                    )
                 except ValueError as e:
                     # Se falhar, reverte a venda
-                    self.status = 'ABERTA'
+                    self.status = "ABERTA"
                     self.save()
                     raise e
             else:
@@ -292,26 +350,31 @@ class Venda(models.Model):
 
     def receber_pagamento(self):
         """Marca a venda como paga"""
-        if self.status_pagamento == 'PAGO':
-            raise ValueError('Venda já está paga')
-        self.status_pagamento = 'PAGO'
+        if self.status_pagamento == "PAGO":
+            raise ValueError("Venda já está paga")
+        self.status_pagamento = "PAGO"
         self.save()
 
 
 class ItemVenda(models.Model):
     """Item de uma venda"""
-    venda = models.ForeignKey(Venda, on_delete=models.CASCADE, related_name='itens')
+
+    venda = models.ForeignKey(Venda, on_delete=models.CASCADE, related_name="itens")
     produto = models.ForeignKey(Produto, on_delete=models.PROTECT)
-    quantidade = models.DecimalField('Quantidade', max_digits=10, decimal_places=2)
-    preco_unitario = models.DecimalField('Preço Unitário', max_digits=10, decimal_places=2)
-    subtotal = models.DecimalField('Subtotal', max_digits=10, decimal_places=2, default=0)
+    quantidade = models.DecimalField("Quantidade", max_digits=10, decimal_places=2)
+    preco_unitario = models.DecimalField(
+        "Preço Unitário", max_digits=10, decimal_places=2
+    )
+    subtotal = models.DecimalField(
+        "Subtotal", max_digits=10, decimal_places=2, default=0
+    )
 
     class Meta:
-        verbose_name = 'Item da Venda'
-        verbose_name_plural = 'Itens da Venda'
+        verbose_name = "Item da Venda"
+        verbose_name_plural = "Itens da Venda"
 
     def __str__(self):
-        return f'{self.quantidade}x {self.produto.nome}'
+        return f"{self.quantidade}x {self.produto.nome}"
 
     def save(self, *args, **kwargs):
         # Calcula subtotal automaticamente
@@ -321,26 +384,41 @@ class ItemVenda(models.Model):
 
 class Caixa(models.Model):
     """Registra a abertura e fechamento do caixa"""
+
     STATUS_CHOICES = [
-        ('ABERTO', 'Aberto'),
-        ('FECHADO', 'Fechado'),
+        ("ABERTO", "Aberto"),
+        ("FECHADO", "Fechado"),
     ]
 
-    data_abertura = models.DateTimeField('Data de Abertura', auto_now_add=True)
-    data_fechamento = models.DateTimeField('Data de Fechamento', null=True, blank=True)
-    valor_inicial = models.DecimalField('Valor Inicial', max_digits=10, decimal_places=2)
-    valor_final_sistema = models.DecimalField('Valor Final (Sistema)', max_digits=10, decimal_places=2, null=True, blank=True)
-    valor_final_informado = models.DecimalField('Valor Final (Informado)', max_digits=10, decimal_places=2, null=True, blank=True)
-    diferenca = models.DecimalField('Diferença', max_digits=10, decimal_places=2, null=True, blank=True)
-    status = models.CharField('Status', max_length=10, choices=STATUS_CHOICES, default='ABERTO')
-    observacoes = models.TextField('Observações', blank=True)
+    data_abertura = models.DateTimeField("Data de Abertura", auto_now_add=True)
+    data_fechamento = models.DateTimeField("Data de Fechamento", null=True, blank=True)
+    valor_inicial = models.DecimalField(
+        "Valor Inicial", max_digits=10, decimal_places=2
+    )
+    valor_final_sistema = models.DecimalField(
+        "Valor Final (Sistema)", max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    valor_final_informado = models.DecimalField(
+        "Valor Final (Informado)",
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    diferenca = models.DecimalField(
+        "Diferença", max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    status = models.CharField(
+        "Status", max_length=10, choices=STATUS_CHOICES, default="ABERTO"
+    )
+    observacoes = models.TextField("Observações", blank=True)
 
     class Meta:
-        ordering = ['-data_abertura']
-        verbose_name = 'Caixa'
-        verbose_name_plural = 'Caixas'
+        ordering = ["-data_abertura"]
+        verbose_name = "Caixa"
+        verbose_name_plural = "Caixas"
         indexes = [
-            models.Index(fields=['status']),
+            models.Index(fields=["status"]),
         ]
 
     def __str__(self):
@@ -349,159 +427,187 @@ class Caixa(models.Model):
 
 class MovimentacaoCaixa(models.Model):
     """Registra sangrias e suprimentos do caixa"""
+
     TIPO_CHOICES = [
-        ('SANGRIA', 'Sangria'),
-        ('SUPRIMENTO', 'Suprimento'),
+        ("SANGRIA", "Sangria"),
+        ("SUPRIMENTO", "Suprimento"),
     ]
 
-    caixa = models.ForeignKey(Caixa, on_delete=models.CASCADE, related_name='movimentacoes')
-    tipo = models.CharField('Tipo', max_length=10, choices=TIPO_CHOICES)
-    valor = models.DecimalField('Valor', max_digits=10, decimal_places=2)
-    descricao = models.CharField('Descrição', max_length=255)
+    caixa = models.ForeignKey(
+        Caixa, on_delete=models.CASCADE, related_name="movimentacoes"
+    )
+    tipo = models.CharField("Tipo", max_length=10, choices=TIPO_CHOICES)
+    valor = models.DecimalField("Valor", max_digits=10, decimal_places=2)
+    descricao = models.CharField("Descrição", max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Movimentação de Caixa'
-        verbose_name_plural = 'Movimentações de Caixa'
+        ordering = ["-created_at"]
+        verbose_name = "Movimentação de Caixa"
+        verbose_name_plural = "Movimentações de Caixa"
 
     def __str__(self):
-        return f'{self.get_tipo_display()} - R$ {self.valor}'
+        return f"{self.get_tipo_display()} - R$ {self.valor}"
 
 
 class Alerta(models.Model):
     """Alertas e notificações do sistema"""
+
     TIPO_CHOICES = [
-        ('LIMITE_CREDITO', 'Limite de Crédito'),
-        ('PRODUTO_VENCENDO', 'Produto Vencendo'),
-        ('PRODUTO_VENCIDO', 'Produto Vencido'),
-        ('ESTOQUE_BAIXO', 'Estoque Baixo'),
-        ('ESTOQUE_ZERADO', 'Estoque Zerado'),
-        ('CONTA_VENCIDA', 'Conta Vencida'),
-        ('DIFERENCA_CAIXA', 'Diferença de Caixa'),
+        ("LIMITE_CREDITO", "Limite de Crédito"),
+        ("PRODUTO_VENCENDO", "Produto Vencendo"),
+        ("PRODUTO_VENCIDO", "Produto Vencido"),
+        ("ESTOQUE_BAIXO", "Estoque Baixo"),
+        ("ESTOQUE_ZERADO", "Estoque Zerado"),
+        ("CONTA_VENCIDA", "Conta Vencida"),
+        ("DIFERENCA_CAIXA", "Diferença de Caixa"),
     ]
 
     PRIORIDADE_CHOICES = [
-        ('BAIXA', 'Baixa'),
-        ('MEDIA', 'Média'),
-        ('ALTA', 'Alta'),
-        ('CRITICA', 'Crítica'),
+        ("BAIXA", "Baixa"),
+        ("MEDIA", "Média"),
+        ("ALTA", "Alta"),
+        ("CRITICA", "Crítica"),
     ]
 
-    tipo = models.CharField('Tipo', max_length=20, choices=TIPO_CHOICES)
-    prioridade = models.CharField('Prioridade', max_length=10, choices=PRIORIDADE_CHOICES, default='MEDIA')
-    titulo = models.CharField('Título', max_length=200)
-    mensagem = models.TextField('Mensagem')
+    tipo = models.CharField("Tipo", max_length=20, choices=TIPO_CHOICES)
+    prioridade = models.CharField(
+        "Prioridade", max_length=10, choices=PRIORIDADE_CHOICES, default="MEDIA"
+    )
+    titulo = models.CharField("Título", max_length=200)
+    mensagem = models.TextField("Mensagem")
 
     # Relacionamentos opcionais (para rastreabilidade)
-    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, null=True, blank=True, related_name='alertas')
-    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, null=True, blank=True, related_name='alertas')
-    venda = models.ForeignKey(Venda, on_delete=models.CASCADE, null=True, blank=True, related_name='alertas')
-    caixa = models.ForeignKey(Caixa, on_delete=models.CASCADE, null=True, blank=True, related_name='alertas')
-    lote = models.ForeignKey('Lote', on_delete=models.CASCADE, null=True, blank=True, related_name='alertas', verbose_name='Lote')
+    cliente = models.ForeignKey(
+        Cliente, on_delete=models.CASCADE, null=True, blank=True, related_name="alertas"
+    )
+    produto = models.ForeignKey(
+        Produto, on_delete=models.CASCADE, null=True, blank=True, related_name="alertas"
+    )
+    venda = models.ForeignKey(
+        Venda, on_delete=models.CASCADE, null=True, blank=True, related_name="alertas"
+    )
+    caixa = models.ForeignKey(
+        Caixa, on_delete=models.CASCADE, null=True, blank=True, related_name="alertas"
+    )
+    lote = models.ForeignKey(
+        "Lote",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="alertas",
+        verbose_name="Lote",
+    )
 
     # Controle
-    lido = models.BooleanField('Lido', default=False)
-    resolvido = models.BooleanField('Resolvido', default=False)
-    notificado = models.BooleanField('Notificado', default=False)  # Via WhatsApp/Email
+    lido = models.BooleanField("Lido", default=False)
+    resolvido = models.BooleanField("Resolvido", default=False)
+    notificado = models.BooleanField("Notificado", default=False)  # Via WhatsApp/Email
 
-    created_at = models.DateTimeField('Criado em', auto_now_add=True)
-    resolvido_em = models.DateTimeField('Resolvido em', null=True, blank=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    resolvido_em = models.DateTimeField("Resolvido em", null=True, blank=True)
 
     class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Alerta'
-        verbose_name_plural = 'Alertas'
+        ordering = ["-created_at"]
+        verbose_name = "Alerta"
+        verbose_name_plural = "Alertas"
         indexes = [
-            models.Index(fields=['tipo', 'resolvido']),
-            models.Index(fields=['lido']),
-            models.Index(fields=['prioridade', '-created_at']),
+            models.Index(fields=["tipo", "resolvido"]),
+            models.Index(fields=["lido"]),
+            models.Index(fields=["prioridade", "-created_at"]),
         ]
 
     def __str__(self):
-        return f'[{self.get_prioridade_display()}] {self.titulo}'
+        return f"[{self.get_prioridade_display()}] {self.titulo}"
 
     def marcar_como_lido(self):
         """Marca o alerta como lido"""
         self.lido = True
-        self.save(update_fields=['lido'])
+        self.save(update_fields=["lido"])
 
     def resolver(self):
         """Marca o alerta como resolvido"""
         from django.utils import timezone
+
         self.resolvido = True
         self.resolvido_em = timezone.now()
-        self.save(update_fields=['resolvido', 'resolvido_em'])
+        self.save(update_fields=["resolvido", "resolvido_em"])
 
 
 class Lote(models.Model):
     """Lote de produtos - controle de validade por lote"""
+
     produto = models.ForeignKey(
-        Produto,
-        on_delete=models.CASCADE,
-        related_name='lotes',
-        verbose_name='Produto'
+        Produto, on_delete=models.CASCADE, related_name="lotes", verbose_name="Produto"
     )
     numero_lote = models.CharField(
-        'Número do Lote',
+        "Número do Lote",
         max_length=100,
         blank=True,
-        help_text='Código do lote (opcional)'
+        help_text="Código do lote (opcional)",
     )
     quantidade = models.DecimalField(
-        'Quantidade',
+        "Quantidade",
         max_digits=10,
         decimal_places=2,
-        validators=[MinValueValidator(Decimal('0.00'), message='Quantidade não pode ser negativa')]
+        validators=[
+            MinValueValidator(
+                Decimal("0.00"), message="Quantidade não pode ser negativa"
+            )
+        ],
     )
     data_validade = models.DateField(
-        'Data de Validade',
+        "Data de Validade",
         null=True,
         blank=True,
-        help_text='Data de vencimento do lote'
+        help_text="Data de vencimento do lote",
     )
     data_entrada = models.DateField(
-        'Data de Entrada',
-        auto_now_add=True,
-        help_text='Data de cadastro do lote'
+        "Data de Entrada", auto_now_add=True, help_text="Data de cadastro do lote"
     )
     fornecedor = models.ForeignKey(
-        'Fornecedor',
+        "Fornecedor",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='lotes',
-        verbose_name='Fornecedor',
-        help_text='Fornecedor deste lote'
+        related_name="lotes",
+        verbose_name="Fornecedor",
+        help_text="Fornecedor deste lote",
     )
     preco_custo_lote = models.DecimalField(
-        'Preço de Custo do Lote',
+        "Preço de Custo do Lote",
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        help_text='Preço de custo específico deste lote (opcional)',
-        validators=[MinValueValidator(Decimal('0.00'), message='Preço não pode ser negativo')]
+        help_text="Preço de custo específico deste lote (opcional)",
+        validators=[
+            MinValueValidator(Decimal("0.00"), message="Preço não pode ser negativo")
+        ],
     )
-    observacoes = models.TextField('Observações', blank=True)
-    ativo = models.BooleanField('Ativo', default=True)
-    created_at = models.DateTimeField('Criado em', auto_now_add=True)
-    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+    observacoes = models.TextField("Observações", blank=True)
+    ativo = models.BooleanField("Ativo", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ['data_validade', 'data_entrada']  # FEFO: First Expired, First Out
-        verbose_name = 'Lote'
-        verbose_name_plural = 'Lotes'
+        ordering = ["data_validade", "data_entrada"]  # FEFO: First Expired, First Out
+        verbose_name = "Lote"
+        verbose_name_plural = "Lotes"
         indexes = [
-            models.Index(fields=['produto', 'ativo']),
-            models.Index(fields=['data_validade']),
-            models.Index(fields=['numero_lote']),
-            models.Index(fields=['produto', 'data_validade', 'ativo']),
+            models.Index(fields=["produto", "ativo"]),
+            models.Index(fields=["data_validade"]),
+            models.Index(fields=["numero_lote"]),
+            models.Index(fields=["produto", "data_validade", "ativo"]),
         ]
 
     def __str__(self):
         lote_info = f" - Lote {self.numero_lote}" if self.numero_lote else ""
-        validade_info = f" - Vence {self.data_validade.strftime('%d/%m/%Y')}" if self.data_validade else ""
+        validade_info = (
+            f" - Vence {self.data_validade.strftime('%d/%m/%Y')}"
+            if self.data_validade
+            else ""
+        )
         return f"{self.produto.nome}{lote_info}{validade_info} ({self.quantidade} un)"
 
     @property
@@ -510,6 +616,7 @@ class Lote(models.Model):
         if not self.data_validade:
             return False
         from django.utils import timezone
+
         return self.data_validade < timezone.now().date()
 
     @property
@@ -518,6 +625,7 @@ class Lote(models.Model):
         if not self.data_validade:
             return None
         from django.utils import timezone
+
         delta = self.data_validade - timezone.now().date()
         return delta.days
 
@@ -536,12 +644,14 @@ class Lote(models.Model):
     def baixar_estoque(self, quantidade_vendida):
         """Reduz o estoque do lote"""
         if not self.tem_estoque(quantidade_vendida):
-            raise ValueError(f'Estoque insuficiente no lote. Disponível: {self.quantidade}')
+            raise ValueError(
+                f"Estoque insuficiente no lote. Disponível: {self.quantidade}"
+            )
 
         self.quantidade -= quantidade_vendida
-        self.save(update_fields=['quantidade', 'updated_at'])
+        self.save(update_fields=["quantidade", "updated_at"])
 
         # Desativa o lote se quantidade zerou
         if self.quantidade == 0:
             self.ativo = False
-            self.save(update_fields=['ativo', 'updated_at'])
+            self.save(update_fields=["ativo", "updated_at"])

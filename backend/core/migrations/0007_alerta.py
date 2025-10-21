@@ -7,33 +7,128 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0006_produto_data_validade_alter_cliente_limite_credito_and_more'),
+        ("core", "0006_produto_data_validade_alter_cliente_limite_credito_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Alerta',
+            name="Alerta",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('tipo', models.CharField(choices=[('LIMITE_CREDITO', 'Limite de Crédito'), ('PRODUTO_VENCENDO', 'Produto Vencendo'), ('PRODUTO_VENCIDO', 'Produto Vencido'), ('ESTOQUE_BAIXO', 'Estoque Baixo'), ('ESTOQUE_ZERADO', 'Estoque Zerado'), ('CONTA_VENCIDA', 'Conta Vencida'), ('DIFERENCA_CAIXA', 'Diferença de Caixa')], max_length=20, verbose_name='Tipo')),
-                ('prioridade', models.CharField(choices=[('BAIXA', 'Baixa'), ('MEDIA', 'Média'), ('ALTA', 'Alta'), ('CRITICA', 'Crítica')], default='MEDIA', max_length=10, verbose_name='Prioridade')),
-                ('titulo', models.CharField(max_length=200, verbose_name='Título')),
-                ('mensagem', models.TextField(verbose_name='Mensagem')),
-                ('lido', models.BooleanField(default=False, verbose_name='Lido')),
-                ('resolvido', models.BooleanField(default=False, verbose_name='Resolvido')),
-                ('notificado', models.BooleanField(default=False, verbose_name='Notificado')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Criado em')),
-                ('resolvido_em', models.DateTimeField(blank=True, null=True, verbose_name='Resolvido em')),
-                ('caixa', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='alertas', to='core.caixa')),
-                ('cliente', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='alertas', to='core.cliente')),
-                ('produto', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='alertas', to='core.produto')),
-                ('venda', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='alertas', to='core.venda')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "tipo",
+                    models.CharField(
+                        choices=[
+                            ("LIMITE_CREDITO", "Limite de Crédito"),
+                            ("PRODUTO_VENCENDO", "Produto Vencendo"),
+                            ("PRODUTO_VENCIDO", "Produto Vencido"),
+                            ("ESTOQUE_BAIXO", "Estoque Baixo"),
+                            ("ESTOQUE_ZERADO", "Estoque Zerado"),
+                            ("CONTA_VENCIDA", "Conta Vencida"),
+                            ("DIFERENCA_CAIXA", "Diferença de Caixa"),
+                        ],
+                        max_length=20,
+                        verbose_name="Tipo",
+                    ),
+                ),
+                (
+                    "prioridade",
+                    models.CharField(
+                        choices=[
+                            ("BAIXA", "Baixa"),
+                            ("MEDIA", "Média"),
+                            ("ALTA", "Alta"),
+                            ("CRITICA", "Crítica"),
+                        ],
+                        default="MEDIA",
+                        max_length=10,
+                        verbose_name="Prioridade",
+                    ),
+                ),
+                ("titulo", models.CharField(max_length=200, verbose_name="Título")),
+                ("mensagem", models.TextField(verbose_name="Mensagem")),
+                ("lido", models.BooleanField(default=False, verbose_name="Lido")),
+                (
+                    "resolvido",
+                    models.BooleanField(default=False, verbose_name="Resolvido"),
+                ),
+                (
+                    "notificado",
+                    models.BooleanField(default=False, verbose_name="Notificado"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Criado em"),
+                ),
+                (
+                    "resolvido_em",
+                    models.DateTimeField(
+                        blank=True, null=True, verbose_name="Resolvido em"
+                    ),
+                ),
+                (
+                    "caixa",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="alertas",
+                        to="core.caixa",
+                    ),
+                ),
+                (
+                    "cliente",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="alertas",
+                        to="core.cliente",
+                    ),
+                ),
+                (
+                    "produto",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="alertas",
+                        to="core.produto",
+                    ),
+                ),
+                (
+                    "venda",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="alertas",
+                        to="core.venda",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Alerta',
-                'verbose_name_plural': 'Alertas',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['tipo', 'resolvido'], name='core_alerta_tipo_42a8ed_idx'), models.Index(fields=['lido'], name='core_alerta_lido_0c9be8_idx'), models.Index(fields=['prioridade', '-created_at'], name='core_alerta_priorid_bad3f8_idx')],
+                "verbose_name": "Alerta",
+                "verbose_name_plural": "Alertas",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["tipo", "resolvido"], name="core_alerta_tipo_42a8ed_idx"
+                    ),
+                    models.Index(fields=["lido"], name="core_alerta_lido_0c9be8_idx"),
+                    models.Index(
+                        fields=["prioridade", "-created_at"],
+                        name="core_alerta_priorid_bad3f8_idx",
+                    ),
+                ],
             },
         ),
     ]

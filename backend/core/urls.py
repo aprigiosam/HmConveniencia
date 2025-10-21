@@ -1,6 +1,7 @@
 """
 URLs da API - HMConveniencia
 """
+
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
@@ -16,24 +17,24 @@ from .views import (
     login,
     logout,
     me,
-    health_check
+    health_check,
 )
 
 router = DefaultRouter()
-router.register('clientes', ClienteViewSet, basename='cliente')
-router.register('fornecedores', FornecedorViewSet, basename='fornecedor')
-router.register('produtos', ProdutoViewSet, basename='produto')
-router.register('vendas', VendaViewSet, basename='venda')
-router.register('caixa', CaixaViewSet, basename='caixa')
-router.register('backup', BackupViewSet, basename='backup')
-router.register('categorias', CategoriaViewSet, basename='categoria')
-router.register('alertas', AlertaViewSet, basename='alerta')
-router.register('lotes', LoteViewSet, basename='lote')
+router.register("clientes", ClienteViewSet, basename="cliente")
+router.register("fornecedores", FornecedorViewSet, basename="fornecedor")
+router.register("produtos", ProdutoViewSet, basename="produto")
+router.register("vendas", VendaViewSet, basename="venda")
+router.register("caixa", CaixaViewSet, basename="caixa")
+router.register("backup", BackupViewSet, basename="backup")
+router.register("categorias", CategoriaViewSet, basename="categoria")
+router.register("alertas", AlertaViewSet, basename="alerta")
+router.register("lotes", LoteViewSet, basename="lote")
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('auth/login/', login, name='login'),
-    path('auth/logout/', logout, name='logout'),
-    path('auth/me/', me, name='me'),
-    path('health/', health_check, name='health_check'),
+    path("", include(router.urls)),
+    path("auth/login/", login, name="login"),
+    path("auth/logout/", logout, name="logout"),
+    path("auth/me/", me, name="me"),
+    path("health/", health_check, name="health_check"),
 ]

@@ -7,28 +7,52 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0004_produto_preco_custo'),
+        ("core", "0004_produto_preco_custo"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Categoria',
+            name="Categoria",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('nome', models.CharField(max_length=100, unique=True, verbose_name='Nome')),
-                ('ativo', models.BooleanField(default=True, verbose_name='Ativo')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Criado em')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Atualizado em')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "nome",
+                    models.CharField(max_length=100, unique=True, verbose_name="Nome"),
+                ),
+                ("ativo", models.BooleanField(default=True, verbose_name="Ativo")),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Criado em"),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(auto_now=True, verbose_name="Atualizado em"),
+                ),
             ],
             options={
-                'verbose_name': 'Categoria',
-                'verbose_name_plural': 'Categorias',
-                'ordering': ['nome'],
+                "verbose_name": "Categoria",
+                "verbose_name_plural": "Categorias",
+                "ordering": ["nome"],
             },
         ),
         migrations.AddField(
-            model_name='produto',
-            name='categoria',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='produtos', to='core.categoria', verbose_name='Categoria'),
+            model_name="produto",
+            name="categoria",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="produtos",
+                to="core.categoria",
+                verbose_name="Categoria",
+            ),
         ),
     ]

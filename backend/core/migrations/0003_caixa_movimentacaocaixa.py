@@ -7,43 +7,134 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0002_cliente_venda_data_vencimento_venda_status_pagamento_and_more'),
+        ("core", "0002_cliente_venda_data_vencimento_venda_status_pagamento_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Caixa',
+            name="Caixa",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('data_abertura', models.DateTimeField(auto_now_add=True, verbose_name='Data de Abertura')),
-                ('data_fechamento', models.DateTimeField(blank=True, null=True, verbose_name='Data de Fechamento')),
-                ('valor_inicial', models.DecimalField(decimal_places=2, max_digits=10, verbose_name='Valor Inicial')),
-                ('valor_final_sistema', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Valor Final (Sistema)')),
-                ('valor_final_informado', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Valor Final (Informado)')),
-                ('diferenca', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Diferença')),
-                ('status', models.CharField(choices=[('ABERTO', 'Aberto'), ('FECHADO', 'Fechado')], default='ABERTO', max_length=10, verbose_name='Status')),
-                ('observacoes', models.TextField(blank=True, verbose_name='Observações')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "data_abertura",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Data de Abertura"
+                    ),
+                ),
+                (
+                    "data_fechamento",
+                    models.DateTimeField(
+                        blank=True, null=True, verbose_name="Data de Fechamento"
+                    ),
+                ),
+                (
+                    "valor_inicial",
+                    models.DecimalField(
+                        decimal_places=2, max_digits=10, verbose_name="Valor Inicial"
+                    ),
+                ),
+                (
+                    "valor_final_sistema",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=2,
+                        max_digits=10,
+                        null=True,
+                        verbose_name="Valor Final (Sistema)",
+                    ),
+                ),
+                (
+                    "valor_final_informado",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=2,
+                        max_digits=10,
+                        null=True,
+                        verbose_name="Valor Final (Informado)",
+                    ),
+                ),
+                (
+                    "diferenca",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=2,
+                        max_digits=10,
+                        null=True,
+                        verbose_name="Diferença",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[("ABERTO", "Aberto"), ("FECHADO", "Fechado")],
+                        default="ABERTO",
+                        max_length=10,
+                        verbose_name="Status",
+                    ),
+                ),
+                (
+                    "observacoes",
+                    models.TextField(blank=True, verbose_name="Observações"),
+                ),
             ],
             options={
-                'verbose_name': 'Caixa',
-                'verbose_name_plural': 'Caixas',
-                'ordering': ['-data_abertura'],
+                "verbose_name": "Caixa",
+                "verbose_name_plural": "Caixas",
+                "ordering": ["-data_abertura"],
             },
         ),
         migrations.CreateModel(
-            name='MovimentacaoCaixa',
+            name="MovimentacaoCaixa",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('tipo', models.CharField(choices=[('SANGRIA', 'Sangria'), ('SUPRIMENTO', 'Suprimento')], max_length=10, verbose_name='Tipo')),
-                ('valor', models.DecimalField(decimal_places=2, max_digits=10, verbose_name='Valor')),
-                ('descricao', models.CharField(max_length=255, verbose_name='Descrição')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('caixa', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='movimentacoes', to='core.caixa')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "tipo",
+                    models.CharField(
+                        choices=[("SANGRIA", "Sangria"), ("SUPRIMENTO", "Suprimento")],
+                        max_length=10,
+                        verbose_name="Tipo",
+                    ),
+                ),
+                (
+                    "valor",
+                    models.DecimalField(
+                        decimal_places=2, max_digits=10, verbose_name="Valor"
+                    ),
+                ),
+                (
+                    "descricao",
+                    models.CharField(max_length=255, verbose_name="Descrição"),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "caixa",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="movimentacoes",
+                        to="core.caixa",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Movimentação de Caixa',
-                'verbose_name_plural': 'Movimentações de Caixa',
-                'ordering': ['-created_at'],
+                "verbose_name": "Movimentação de Caixa",
+                "verbose_name_plural": "Movimentações de Caixa",
+                "ordering": ["-created_at"],
             },
         ),
     ]

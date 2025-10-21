@@ -8,60 +8,189 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Produto',
+            name="Produto",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('nome', models.CharField(max_length=200, verbose_name='Nome')),
-                ('preco', models.DecimalField(decimal_places=2, max_digits=10, verbose_name='Preço')),
-                ('estoque', models.DecimalField(decimal_places=2, default=0, max_digits=10, verbose_name='Estoque')),
-                ('codigo_barras', models.CharField(blank=True, max_length=50, verbose_name='Código de Barras')),
-                ('ativo', models.BooleanField(default=True, verbose_name='Ativo')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Criado em')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Atualizado em')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("nome", models.CharField(max_length=200, verbose_name="Nome")),
+                (
+                    "preco",
+                    models.DecimalField(
+                        decimal_places=2, max_digits=10, verbose_name="Preço"
+                    ),
+                ),
+                (
+                    "estoque",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        max_digits=10,
+                        verbose_name="Estoque",
+                    ),
+                ),
+                (
+                    "codigo_barras",
+                    models.CharField(
+                        blank=True, max_length=50, verbose_name="Código de Barras"
+                    ),
+                ),
+                ("ativo", models.BooleanField(default=True, verbose_name="Ativo")),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Criado em"),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(auto_now=True, verbose_name="Atualizado em"),
+                ),
             ],
             options={
-                'verbose_name': 'Produto',
-                'verbose_name_plural': 'Produtos',
-                'ordering': ['nome'],
+                "verbose_name": "Produto",
+                "verbose_name_plural": "Produtos",
+                "ordering": ["nome"],
             },
         ),
         migrations.CreateModel(
-            name='Venda',
+            name="Venda",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('numero', models.CharField(blank=True, max_length=20, unique=True, verbose_name='Número')),
-                ('status', models.CharField(choices=[('ABERTA', 'Aberta'), ('FINALIZADA', 'Finalizada'), ('CANCELADA', 'Cancelada')], default='ABERTA', max_length=20, verbose_name='Status')),
-                ('forma_pagamento', models.CharField(blank=True, choices=[('DINHEIRO', 'Dinheiro'), ('DEBITO', 'Débito'), ('CREDITO', 'Crédito'), ('PIX', 'PIX')], max_length=20, verbose_name='Forma de Pagamento')),
-                ('total', models.DecimalField(decimal_places=2, default=0, max_digits=10, verbose_name='Total')),
-                ('desconto', models.DecimalField(decimal_places=2, default=0, max_digits=10, verbose_name='Desconto')),
-                ('observacoes', models.TextField(blank=True, verbose_name='Observações')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Data')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Atualizado em')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "numero",
+                    models.CharField(
+                        blank=True, max_length=20, unique=True, verbose_name="Número"
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("ABERTA", "Aberta"),
+                            ("FINALIZADA", "Finalizada"),
+                            ("CANCELADA", "Cancelada"),
+                        ],
+                        default="ABERTA",
+                        max_length=20,
+                        verbose_name="Status",
+                    ),
+                ),
+                (
+                    "forma_pagamento",
+                    models.CharField(
+                        blank=True,
+                        choices=[
+                            ("DINHEIRO", "Dinheiro"),
+                            ("DEBITO", "Débito"),
+                            ("CREDITO", "Crédito"),
+                            ("PIX", "PIX"),
+                        ],
+                        max_length=20,
+                        verbose_name="Forma de Pagamento",
+                    ),
+                ),
+                (
+                    "total",
+                    models.DecimalField(
+                        decimal_places=2, default=0, max_digits=10, verbose_name="Total"
+                    ),
+                ),
+                (
+                    "desconto",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        max_digits=10,
+                        verbose_name="Desconto",
+                    ),
+                ),
+                (
+                    "observacoes",
+                    models.TextField(blank=True, verbose_name="Observações"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Data"),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(auto_now=True, verbose_name="Atualizado em"),
+                ),
             ],
             options={
-                'verbose_name': 'Venda',
-                'verbose_name_plural': 'Vendas',
-                'ordering': ['-created_at'],
+                "verbose_name": "Venda",
+                "verbose_name_plural": "Vendas",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='ItemVenda',
+            name="ItemVenda",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('quantidade', models.DecimalField(decimal_places=2, max_digits=10, verbose_name='Quantidade')),
-                ('preco_unitario', models.DecimalField(decimal_places=2, max_digits=10, verbose_name='Preço Unitário')),
-                ('subtotal', models.DecimalField(decimal_places=2, default=0, max_digits=10, verbose_name='Subtotal')),
-                ('produto', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='core.produto')),
-                ('venda', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='itens', to='core.venda')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "quantidade",
+                    models.DecimalField(
+                        decimal_places=2, max_digits=10, verbose_name="Quantidade"
+                    ),
+                ),
+                (
+                    "preco_unitario",
+                    models.DecimalField(
+                        decimal_places=2, max_digits=10, verbose_name="Preço Unitário"
+                    ),
+                ),
+                (
+                    "subtotal",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        max_digits=10,
+                        verbose_name="Subtotal",
+                    ),
+                ),
+                (
+                    "produto",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, to="core.produto"
+                    ),
+                ),
+                (
+                    "venda",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="itens",
+                        to="core.venda",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Item da Venda',
-                'verbose_name_plural': 'Itens da Venda',
+                "verbose_name": "Item da Venda",
+                "verbose_name_plural": "Itens da Venda",
             },
         ),
     ]

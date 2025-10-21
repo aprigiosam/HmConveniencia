@@ -11,3 +11,7 @@ whitenoise==6.6.0
 # Cache com Redis
 django-redis==5.4.0
 redis==5.0.1
+
+# Ferramentas de Qualidade de Código
+flake8==7.1.0
+black==24.4.2

@@ -8,85 +8,145 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0005_categoria_produto_categoria'),
+        ("core", "0005_categoria_produto_categoria"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='produto',
-            name='data_validade',
-            field=models.DateField(blank=True, help_text='Deixe em branco para produtos sem validade', null=True, verbose_name='Data de Validade'),
+            model_name="produto",
+            name="data_validade",
+            field=models.DateField(
+                blank=True,
+                help_text="Deixe em branco para produtos sem validade",
+                null=True,
+                verbose_name="Data de Validade",
+            ),
         ),
         migrations.AlterField(
-            model_name='cliente',
-            name='limite_credito',
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=10, validators=[django.core.validators.MinValueValidator(Decimal('0.00'), message='Limite de crédito não pode ser negativo')], verbose_name='Limite de Crédito'),
+            model_name="cliente",
+            name="limite_credito",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=0,
+                max_digits=10,
+                validators=[
+                    django.core.validators.MinValueValidator(
+                        Decimal("0.00"),
+                        message="Limite de crédito não pode ser negativo",
+                    )
+                ],
+                verbose_name="Limite de Crédito",
+            ),
         ),
         migrations.AlterField(
-            model_name='produto',
-            name='estoque',
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=10, validators=[django.core.validators.MinValueValidator(Decimal('0.00'), message='Estoque não pode ser negativo')], verbose_name='Estoque'),
+            model_name="produto",
+            name="estoque",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=0,
+                max_digits=10,
+                validators=[
+                    django.core.validators.MinValueValidator(
+                        Decimal("0.00"), message="Estoque não pode ser negativo"
+                    )
+                ],
+                verbose_name="Estoque",
+            ),
         ),
         migrations.AlterField(
-            model_name='produto',
-            name='preco',
-            field=models.DecimalField(decimal_places=2, max_digits=10, validators=[django.core.validators.MinValueValidator(Decimal('0.01'), message='Preço deve ser maior que zero')], verbose_name='Preço'),
+            model_name="produto",
+            name="preco",
+            field=models.DecimalField(
+                decimal_places=2,
+                max_digits=10,
+                validators=[
+                    django.core.validators.MinValueValidator(
+                        Decimal("0.01"), message="Preço deve ser maior que zero"
+                    )
+                ],
+                verbose_name="Preço",
+            ),
         ),
         migrations.AlterField(
-            model_name='produto',
-            name='preco_custo',
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=10, validators=[django.core.validators.MinValueValidator(Decimal('0.00'), message='Preço de custo não pode ser negativo')], verbose_name='Preço de Custo'),
+            model_name="produto",
+            name="preco_custo",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=0,
+                max_digits=10,
+                validators=[
+                    django.core.validators.MinValueValidator(
+                        Decimal("0.00"), message="Preço de custo não pode ser negativo"
+                    )
+                ],
+                verbose_name="Preço de Custo",
+            ),
         ),
         migrations.AddIndex(
-            model_name='caixa',
-            index=models.Index(fields=['status'], name='core_caixa_status_57b92f_idx'),
+            model_name="caixa",
+            index=models.Index(fields=["status"], name="core_caixa_status_57b92f_idx"),
         ),
         migrations.AddIndex(
-            model_name='cliente',
-            index=models.Index(fields=['ativo'], name='core_client_ativo_7d0832_idx'),
+            model_name="cliente",
+            index=models.Index(fields=["ativo"], name="core_client_ativo_7d0832_idx"),
         ),
         migrations.AddIndex(
-            model_name='cliente',
-            index=models.Index(fields=['nome'], name='core_client_nome_bfa2bf_idx'),
+            model_name="cliente",
+            index=models.Index(fields=["nome"], name="core_client_nome_bfa2bf_idx"),
         ),
         migrations.AddIndex(
-            model_name='produto',
-            index=models.Index(fields=['ativo'], name='core_produt_ativo_81d19a_idx'),
+            model_name="produto",
+            index=models.Index(fields=["ativo"], name="core_produt_ativo_81d19a_idx"),
         ),
         migrations.AddIndex(
-            model_name='produto',
-            index=models.Index(fields=['codigo_barras'], name='core_produt_codigo__a4741d_idx'),
+            model_name="produto",
+            index=models.Index(
+                fields=["codigo_barras"], name="core_produt_codigo__a4741d_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='produto',
-            index=models.Index(fields=['estoque'], name='core_produt_estoque_5ab946_idx'),
+            model_name="produto",
+            index=models.Index(
+                fields=["estoque"], name="core_produt_estoque_5ab946_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='produto',
-            index=models.Index(fields=['nome'], name='core_produt_nome_25aec1_idx'),
+            model_name="produto",
+            index=models.Index(fields=["nome"], name="core_produt_nome_25aec1_idx"),
         ),
         migrations.AddIndex(
-            model_name='venda',
-            index=models.Index(fields=['status'], name='core_venda_status_483fb8_idx'),
+            model_name="venda",
+            index=models.Index(fields=["status"], name="core_venda_status_483fb8_idx"),
         ),
         migrations.AddIndex(
-            model_name='venda',
-            index=models.Index(fields=['status_pagamento'], name='core_venda_status__14fc2a_idx'),
+            model_name="venda",
+            index=models.Index(
+                fields=["status_pagamento"], name="core_venda_status__14fc2a_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='venda',
-            index=models.Index(fields=['forma_pagamento'], name='core_venda_forma_p_e271a7_idx'),
+            model_name="venda",
+            index=models.Index(
+                fields=["forma_pagamento"], name="core_venda_forma_p_e271a7_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='venda',
-            index=models.Index(fields=['-created_at'], name='core_venda_created_9dfae7_idx'),
+            model_name="venda",
+            index=models.Index(
+                fields=["-created_at"], name="core_venda_created_9dfae7_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='venda',
-            index=models.Index(fields=['data_vencimento'], name='core_venda_data_ve_94066b_idx'),
+            model_name="venda",
+            index=models.Index(
+                fields=["data_vencimento"], name="core_venda_data_ve_94066b_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='venda',
-            index=models.Index(fields=['status', 'status_pagamento'], name='core_venda_status_38d4c3_idx'),
+            model_name="venda",
+            index=models.Index(
+                fields=["status", "status_pagamento"],
+                name="core_venda_status_38d4c3_idx",
+            ),
         ),
     ]

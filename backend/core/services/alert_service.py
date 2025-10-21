@@ -1,9 +1,8 @@
 """
 Serviço de Detecção e Criação de Alertas
 """
-from decimal import Decimal
+
 from datetime import date, timedelta
-from django.db.models import Q
 from django.utils import timezone
 from core.models import Alerta, Cliente, Produto, Venda, Caixa
 
@@ -20,23 +19,19 @@ class AlertService:
         # Evita duplicação: verifica se já existe alerta similar não resolvido nas últimas 24h
         ultimas_24h = timezone.now() - timedelta(hours=24)
 
-        filtro = {
-            'tipo': tipo,
-            'resolvido': False,
-            'created_at__gte': ultimas_24h
-        }
+        filtro = {"tipo": tipo, "resolvido": False, "created_at__gte": ultimas_24h}
 
         # Adiciona filtros específicos se fornecidos
-        if kwargs.get('cliente'):
-            filtro['cliente'] = kwargs['cliente']
-        if kwargs.get('produto'):
-            filtro['produto'] = kwargs['produto']
-        if kwargs.get('venda'):
-            filtro['venda'] = kwargs['venda']
-        if kwargs.get('caixa'):
-            filtro['caixa'] = kwargs['caixa']
-        if kwargs.get('lote'):
-            filtro['lote'] = kwargs['lote']
+        if kwargs.get("cliente"):
+            filtro["cliente"] = kwargs["cliente"]
+        if kwargs.get("produto"):
+            filtro["produto"] = kwargs["produto"]
+        if kwargs.get("venda"):
+            filtro["venda"] = kwargs["venda"]
+        if kwargs.get("caixa"):
+            filtro["caixa"] = kwargs["caixa"]
+        if kwargs.get("lote"):
+            filtro["lote"] = kwargs["lote"]
 
         alerta_existente = Alerta.objects.filter(**filtro).first()
 
@@ -49,11 +44,11 @@ class AlertService:
             prioridade=prioridade,
             titulo=titulo,
             mensagem=mensagem,
-            cliente=kwargs.get('cliente'),
-            produto=kwargs.get('produto'),
-            venda=kwargs.get('venda'),
-            caixa=kwargs.get('caixa'),
-            lote=kwargs.get('lote')
+            cliente=kwargs.get("cliente"),
+            produto=kwargs.get("produto"),
+            venda=kwargs.get("venda"),
+            caixa=kwargs.get("caixa"),
+            lote=kwargs.get("lote"),
         )
 
         return alerta, True
@@ -87,11 +82,11 @@ class AlertService:
                     f"Disponível: R$ {(limite - saldo):.2f}"
                 )
                 alerta, created = cls.criar_alerta(
-                    tipo='LIMITE_CREDITO',
-                    prioridade='CRITICA',
+                    tipo="LIMITE_CREDITO",
+                    prioridade="CRITICA",
                     titulo=titulo,
                     mensagem=mensagem,
-                    cliente=cliente
+                    cliente=cliente,
                 )
                 if created:
                     alertas_criados.append(alerta)
@@ -106,11 +101,11 @@ class AlertService:
                     f"Disponível: R$ {(limite - saldo):.2f}"
                 )
                 alerta, created = cls.criar_alerta(
-                    tipo='LIMITE_CREDITO',
-                    prioridade='ALTA',
+                    tipo="LIMITE_CREDITO",
+                    prioridade="ALTA",
                     titulo=titulo,
                     mensagem=mensagem,
-                    cliente=cliente
+                    cliente=cliente,
                 )
                 if created:
                     alertas_criados.append(alerta)
@@ -124,6 +119,7 @@ class AlertService:
         Retorna: lista de alertas criados
         """
         from ..models import Lote
+
         alertas_criados = []
 
         hoje = date.today()
@@ -134,14 +130,16 @@ class AlertService:
             ativo=True,
             data_validade__isnull=False,
             data_validade__lte=daqui_3_dias,
-            data_validade__gt=hoje
-        ).select_related('produto')
+            data_validade__gt=hoje,
+        ).select_related("produto")
 
         for lote in lotes:
             dias = (lote.data_validade - hoje).days
             produto = lote.produto
 
-            lote_info = f"Lote {lote.numero_lote}" if lote.numero_lote else f"Lote #{lote.id}"
+            lote_info = (
+                f"Lote {lote.numero_lote}" if lote.numero_lote else f"Lote #{lote.id}"
+            )
 
             titulo = f"📅 {produto.nome} - {lote_info} vence em {dias} dia(s)"
             mensagem = (
@@ -152,15 +150,15 @@ class AlertService:
                 f"Categoria: {produto.categoria.nome if produto.categoria else 'Sem categoria'}"
             )
 
-            prioridade = 'CRITICA' if dias <= 1 else 'ALTA'
+            prioridade = "CRITICA" if dias <= 1 else "ALTA"
 
             alerta, created = cls.criar_alerta(
-                tipo='PRODUTO_VENCENDO',
+                tipo="PRODUTO_VENCENDO",
                 prioridade=prioridade,
                 titulo=titulo,
                 mensagem=mensagem,
                 produto=produto,
-                lote=lote
+                lote=lote,
             )
             if created:
                 alertas_criados.append(alerta)
@@ -174,22 +172,23 @@ class AlertService:
         Retorna: lista de alertas criados
         """
         from ..models import Lote
+
         alertas_criados = []
 
         hoje = date.today()
 
         # Busca lotes ativos que já venceram
         lotes = Lote.objects.filter(
-            ativo=True,
-            data_validade__isnull=False,
-            data_validade__lt=hoje
-        ).select_related('produto')
+            ativo=True, data_validade__isnull=False, data_validade__lt=hoje
+        ).select_related("produto")
 
         for lote in lotes:
             dias_vencido = (hoje - lote.data_validade).days
             produto = lote.produto
 
-            lote_info = f"Lote {lote.numero_lote}" if lote.numero_lote else f"Lote #{lote.id}"
+            lote_info = (
+                f"Lote {lote.numero_lote}" if lote.numero_lote else f"Lote #{lote.id}"
+            )
 
             titulo = f"❌ {produto.nome} - {lote_info} VENCIDO há {dias_vencido} dia(s)"
             mensagem = (
@@ -201,12 +200,12 @@ class AlertService:
             )
 
             alerta, created = cls.criar_alerta(
-                tipo='PRODUTO_VENCIDO',
-                prioridade='CRITICA',
+                tipo="PRODUTO_VENCIDO",
+                prioridade="CRITICA",
                 titulo=titulo,
                 mensagem=mensagem,
                 produto=produto,
-                lote=lote
+                lote=lote,
             )
             if created:
                 alertas_criados.append(alerta)
@@ -221,11 +220,7 @@ class AlertService:
         """
         alertas_criados = []
 
-        produtos = Produto.objects.filter(
-            ativo=True,
-            estoque__lt=10,
-            estoque__gt=0
-        )
+        produtos = Produto.objects.filter(ativo=True, estoque__lt=10, estoque__gt=0)
 
         for produto in produtos:
             titulo = f"📦 {produto.nome} - Estoque Baixo ({produto.estoque})"
@@ -235,14 +230,14 @@ class AlertService:
                 f"Categoria: {produto.categoria.nome if produto.categoria else 'Sem categoria'}"
             )
 
-            prioridade = 'ALTA' if produto.estoque <= 3 else 'MEDIA'
+            prioridade = "ALTA" if produto.estoque <= 3 else "MEDIA"
 
             alerta, created = cls.criar_alerta(
-                tipo='ESTOQUE_BAIXO',
+                tipo="ESTOQUE_BAIXO",
                 prioridade=prioridade,
                 titulo=titulo,
                 mensagem=mensagem,
-                produto=produto
+                produto=produto,
             )
             if created:
                 alertas_criados.append(alerta)
@@ -257,10 +252,7 @@ class AlertService:
         """
         alertas_criados = []
 
-        produtos = Produto.objects.filter(
-            ativo=True,
-            estoque=0
-        )
+        produtos = Produto.objects.filter(ativo=True, estoque=0)
 
         for produto in produtos:
             titulo = f"🚫 {produto.nome} - SEM ESTOQUE"
@@ -271,11 +263,11 @@ class AlertService:
             )
 
             alerta, created = cls.criar_alerta(
-                tipo='ESTOQUE_ZERADO',
-                prioridade='ALTA',
+                tipo="ESTOQUE_ZERADO",
+                prioridade="ALTA",
                 titulo=titulo,
                 mensagem=mensagem,
-                produto=produto
+                produto=produto,
             )
             if created:
                 alertas_criados.append(alerta)
@@ -294,12 +286,12 @@ class AlertService:
         limite = hoje - timedelta(days=7)
 
         vendas = Venda.objects.filter(
-            status='FINALIZADA',
-            status_pagamento='PENDENTE',
-            forma_pagamento='FIADO',
+            status="FINALIZADA",
+            status_pagamento="PENDENTE",
+            forma_pagamento="FIADO",
             data_vencimento__isnull=False,
-            data_vencimento__lt=limite
-        ).select_related('cliente')
+            data_vencimento__lt=limite,
+        ).select_related("cliente")
 
         for venda in vendas:
             dias_atraso = (hoje - venda.data_vencimento).days
@@ -316,19 +308,19 @@ class AlertService:
 
             # Quanto mais atrasado, maior a prioridade
             if dias_atraso > 30:
-                prioridade = 'CRITICA'
+                prioridade = "CRITICA"
             elif dias_atraso > 15:
-                prioridade = 'ALTA'
+                prioridade = "ALTA"
             else:
-                prioridade = 'MEDIA'
+                prioridade = "MEDIA"
 
             alerta, created = cls.criar_alerta(
-                tipo='CONTA_VENCIDA',
+                tipo="CONTA_VENCIDA",
                 prioridade=prioridade,
                 titulo=titulo,
                 mensagem=mensagem,
                 venda=venda,
-                cliente=venda.cliente
+                cliente=venda.cliente,
             )
             if created:
                 alertas_criados.append(alerta)
@@ -347,9 +339,7 @@ class AlertService:
         limite_data = timezone.now() - timedelta(days=7)
 
         caixas = Caixa.objects.filter(
-            status='FECHADO',
-            data_fechamento__gte=limite_data,
-            diferenca__isnull=False
+            status="FECHADO", data_fechamento__gte=limite_data, diferenca__isnull=False
         )
 
         for caixa in caixas:
@@ -367,14 +357,14 @@ class AlertService:
                 )
 
                 # Diferença grande = prioridade alta
-                prioridade = 'CRITICA' if diferenca_abs > 100 else 'ALTA'
+                prioridade = "CRITICA" if diferenca_abs > 100 else "ALTA"
 
                 alerta, created = cls.criar_alerta(
-                    tipo='DIFERENCA_CAIXA',
+                    tipo="DIFERENCA_CAIXA",
                     prioridade=prioridade,
                     titulo=titulo,
                     mensagem=mensagem,
-                    caixa=caixa
+                    caixa=caixa,
                 )
                 if created:
                     alertas_criados.append(alerta)
@@ -388,21 +378,18 @@ class AlertService:
         Retorna: dict com estatísticas
         """
         resultado = {
-            'limite_credito': cls.verificar_limite_credito(),
-            'produtos_vencendo': cls.verificar_produtos_vencendo(),
-            'produtos_vencidos': cls.verificar_produtos_vencidos(),
-            'estoque_baixo': cls.verificar_estoque_baixo(),
-            'estoque_zerado': cls.verificar_estoque_zerado(),
-            'contas_vencidas': cls.verificar_contas_vencidas(),
-            'diferenca_caixa': cls.verificar_diferenca_caixa(),
+            "limite_credito": cls.verificar_limite_credito(),
+            "produtos_vencendo": cls.verificar_produtos_vencendo(),
+            "produtos_vencidos": cls.verificar_produtos_vencidos(),
+            "estoque_baixo": cls.verificar_estoque_baixo(),
+            "estoque_zerado": cls.verificar_estoque_zerado(),
+            "contas_vencidas": cls.verificar_contas_vencidas(),
+            "diferenca_caixa": cls.verificar_diferenca_caixa(),
         }
 
         total_criados = sum(len(alertas) for alertas in resultado.values())
 
-        return {
-            'total_criados': total_criados,
-            'detalhes': resultado
-        }
+        return {"total_criados": total_criados, "detalhes": resultado}
 
     @staticmethod
     def obter_resumo():
@@ -412,10 +399,10 @@ class AlertService:
         alertas_pendentes = Alerta.objects.filter(resolvido=False)
 
         return {
-            'total_pendentes': alertas_pendentes.count(),
-            'nao_lidos': alertas_pendentes.filter(lido=False).count(),
-            'criticos': alertas_pendentes.filter(prioridade='CRITICA').count(),
-            'altos': alertas_pendentes.filter(prioridade='ALTA').count(),
-            'medios': alertas_pendentes.filter(prioridade='MEDIA').count(),
-            'baixos': alertas_pendentes.filter(prioridade='BAIXA').count(),
+            "total_pendentes": alertas_pendentes.count(),
+            "nao_lidos": alertas_pendentes.filter(lido=False).count(),
+            "criticos": alertas_pendentes.filter(prioridade="CRITICA").count(),
+            "altos": alertas_pendentes.filter(prioridade="ALTA").count(),
+            "medios": alertas_pendentes.filter(prioridade="MEDIA").count(),
+            "baixos": alertas_pendentes.filter(prioridade="BAIXA").count(),
         }

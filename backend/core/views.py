@@ -1,6 +1,7 @@
 """
 Views da API - HMConveniencia
 """
+
 import logging
 from django.core.management import call_command
 from django.contrib.auth import authenticate
@@ -16,9 +17,17 @@ from datetime import timedelta
 from decimal import Decimal
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
 from django.core.cache import cache
-from .models import Cliente, Fornecedor, Produto, Venda, Caixa, MovimentacaoCaixa, Categoria, Alerta, Lote
+from .models import (
+    Cliente,
+    Fornecedor,
+    Produto,
+    Venda,
+    Caixa,
+    Categoria,
+    Alerta,
+    Lote,
+)
 from .serializers import (
     ClienteSerializer,
     FornecedorSerializer,
@@ -29,7 +38,7 @@ from .serializers import (
     MovimentacaoCaixaSerializer,
     CategoriaSerializer,
     AlertaSerializer,
-    LoteSerializer
+    LoteSerializer,
 )
 from .services.alert_service import AlertService
 
@@ -39,36 +48,41 @@ logger = logging.getLogger(__name__)
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     """ViewSet para Categorias de Produtos"""
+
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
 
     def get_queryset(self):
         queryset = super().get_queryset()
         # Filtro por ativos
-        ativo = self.request.query_params.get('ativo', None)
+        ativo = self.request.query_params.get("ativo", None)
         if ativo is not None:
-            queryset = queryset.filter(ativo=ativo.lower() == 'true')
+            queryset = queryset.filter(ativo=ativo.lower() == "true")
         return queryset
 
 
 class BackupViewSet(viewsets.ViewSet):
     """ViewSet para acionar backups do banco de dados"""
 
-    @action(detail=False, methods=['post'])
-    @method_decorator(ratelimit(key='user', rate='1/m', method='POST', block=True))
+    @action(detail=False, methods=["post"])
+    @method_decorator(ratelimit(key="user", rate="1/m", method="POST", block=True))
     def trigger_backup(self, request):
         """Aciona o comando de backup do banco de dados - Rate limited: 1 backup por minuto"""
         try:
-            call_command('backup_db')
-            return Response({'message': 'Backup iniciado com sucesso!'},
-                            status=status.HTTP_200_OK)
+            call_command("backup_db")
+            return Response(
+                {"message": "Backup iniciado com sucesso!"}, status=status.HTTP_200_OK
+            )
         except Exception as e:
-            return Response({'error': f'Erro ao iniciar backup: {e}'},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"Erro ao iniciar backup: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class ClienteViewSet(viewsets.ModelViewSet):
     """ViewSet para Clientes"""
+
     queryset = Cliente.objects.all()
     serializer_class = ClienteSerializer
 
@@ -76,35 +90,39 @@ class ClienteViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
 
         # Filtro por ativos
-        ativo = self.request.query_params.get('ativo', None)
+        ativo = self.request.query_params.get("ativo", None)
         if ativo is not None:
-            queryset = queryset.filter(ativo=ativo.lower() == 'true')
+            queryset = queryset.filter(ativo=ativo.lower() == "true")
 
         # Busca por nome
-        search = self.request.query_params.get('search', None)
+        search = self.request.query_params.get("search", None)
         if search:
             queryset = queryset.filter(nome__icontains=search)
 
         return queryset
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def com_dividas(self, request):
         """Retorna clientes com vendas pendentes - Cache 5 minutos"""
-        cache_key = 'clientes_com_dividas'
+        cache_key = "clientes_com_dividas"
         cached_data = cache.get(cache_key)
 
         if cached_data:
             return Response(cached_data)
 
         # Otimizado: usa annotate em vez de N+1 queries
-        clientes = Cliente.objects.filter(
-            vendas__status_pagamento='PENDENTE',
-            vendas__status='FINALIZADA',
-            ativo=True
-        ).annotate(
-            total_divida=Sum('vendas__total'),
-            qtd_vendas_pendentes=Count('vendas')
-        ).distinct().order_by('nome')
+        clientes = (
+            Cliente.objects.filter(
+                vendas__status_pagamento="PENDENTE",
+                vendas__status="FINALIZADA",
+                ativo=True,
+            )
+            .annotate(
+                total_divida=Sum("vendas__total"), qtd_vendas_pendentes=Count("vendas")
+            )
+            .distinct()
+            .order_by("nome")
+        )
 
         serializer = ClienteSerializer(clientes, many=True)
         data = serializer.data
@@ -117,6 +135,7 @@ class ClienteViewSet(viewsets.ModelViewSet):
 
 class FornecedorViewSet(viewsets.ModelViewSet):
     """ViewSet para Fornecedores"""
+
     queryset = Fornecedor.objects.all()
     serializer_class = FornecedorSerializer
 
@@ -124,30 +143,30 @@ class FornecedorViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
 
         # Filtro por ativos
-        ativo = self.request.query_params.get('ativo', None)
+        ativo = self.request.query_params.get("ativo", None)
         if ativo is not None:
-            queryset = queryset.filter(ativo=ativo.lower() == 'true')
+            queryset = queryset.filter(ativo=ativo.lower() == "true")
 
         # Busca por nome
-        search = self.request.query_params.get('search', None)
+        search = self.request.query_params.get("search", None)
         if search:
             queryset = queryset.filter(
-                Q(nome__icontains=search) |
-                Q(nome_fantasia__icontains=search) |
-                Q(cnpj__icontains=search)
+                Q(nome__icontains=search)
+                | Q(nome_fantasia__icontains=search)
+                | Q(cnpj__icontains=search)
             )
 
-        return queryset.order_by('nome')
+        return queryset.order_by("nome")
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=["get"])
     def lotes(self, request, pk=None):
         """Retorna todos os lotes de um fornecedor"""
         fornecedor = self.get_object()
-        lotes = fornecedor.lotes.filter(ativo=True).select_related('produto')
+        lotes = fornecedor.lotes.filter(ativo=True).select_related("produto")
         serializer = LoteSerializer(lotes, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=["get"])
     def estatisticas(self, request, pk=None):
         """Retorna estatísticas de compras do fornecedor"""
         fornecedor = self.get_object()
@@ -155,36 +174,37 @@ class FornecedorViewSet(viewsets.ModelViewSet):
         lotes = fornecedor.lotes.filter(ativo=True)
 
         stats = {
-            'total_lotes': lotes.count(),
-            'total_compras': float(fornecedor.total_compras()),
-            'total_produtos_diferentes': lotes.values('produto').distinct().count(),
-            'quantidade_total': float(lotes.aggregate(
-                total=Sum('quantidade')
-            )['total'] or 0),
-            'ticket_medio': 0,
+            "total_lotes": lotes.count(),
+            "total_compras": float(fornecedor.total_compras()),
+            "total_produtos_diferentes": lotes.values("produto").distinct().count(),
+            "quantidade_total": float(
+                lotes.aggregate(total=Sum("quantidade"))["total"] or 0
+            ),
+            "ticket_medio": 0,
         }
 
-        if stats['total_lotes'] > 0:
-            stats['ticket_medio'] = stats['total_compras'] / stats['total_lotes']
+        if stats["total_lotes"] > 0:
+            stats["ticket_medio"] = stats["total_compras"] / stats["total_lotes"]
 
         return Response(stats)
 
 
 class ProdutoViewSet(viewsets.ModelViewSet):
     """ViewSet para Produtos"""
-    queryset = Produto.objects.select_related('categoria').all()
+
+    queryset = Produto.objects.select_related("categoria").all()
     serializer_class = ProdutoSerializer
 
     def get_queryset(self):
         queryset = super().get_queryset()
 
         # Filtro por ativos
-        ativo = self.request.query_params.get('ativo', None)
+        ativo = self.request.query_params.get("ativo", None)
         if ativo is not None:
-            queryset = queryset.filter(ativo=ativo.lower() == 'true')
+            queryset = queryset.filter(ativo=ativo.lower() == "true")
 
         # Busca por nome ou código (otimizada com Q)
-        search = self.request.query_params.get('search', None)
+        search = self.request.query_params.get("search", None)
         if search:
             queryset = queryset.filter(
                 Q(nome__icontains=search) | Q(codigo_barras__icontains=search)
@@ -192,10 +212,10 @@ class ProdutoViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def baixo_estoque(self, request):
         """Retorna produtos com estoque baixo (< 10) - Cache 5 minutos"""
-        cache_key = 'produtos_baixo_estoque'
+        cache_key = "produtos_baixo_estoque"
         cached_data = cache.get(cache_key)
 
         if cached_data:
@@ -210,42 +230,51 @@ class ProdutoViewSet(viewsets.ModelViewSet):
 
         return Response(data)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def mais_lucrativos(self, request):
         """Retorna os produtos mais lucrativos - Cache 15 minutos"""
         from django.db.models import F
         from core.models import ItemVenda
 
         # Cache key
-        cache_key = 'produtos_mais_lucrativos'
+        cache_key = "produtos_mais_lucrativos"
         cached_data = cache.get(cache_key)
 
         if cached_data:
             return Response(cached_data)
 
         # Agrega os dados de vendas por produto
-        produtos_lucro = ItemVenda.objects.filter(
-            venda__status='FINALIZADA',
-            produto__preco_custo__gt=0  # Considera apenas produtos com custo definido
-        ).values('produto__nome', 'produto__preco', 'produto__preco_custo').annotate(
-            total_vendido=Sum('quantidade'),
-            receita_total=Sum(F('quantidade') * F('preco_unitario')),
-            custo_total=Sum(F('quantidade') * F('produto__preco_custo')),
-            lucro_total=Sum(F('quantidade') * (F('preco_unitario') - F('produto__preco_custo')))
-        ).order_by('-lucro_total')
+        produtos_lucro = (
+            ItemVenda.objects.filter(
+                venda__status="FINALIZADA",
+                produto__preco_custo__gt=0,  # Considera apenas produtos com custo definido
+            )
+            .values("produto__nome", "produto__preco", "produto__preco_custo")
+            .annotate(
+                total_vendido=Sum("quantidade"),
+                receita_total=Sum(F("quantidade") * F("preco_unitario")),
+                custo_total=Sum(F("quantidade") * F("produto__preco_custo")),
+                lucro_total=Sum(
+                    F("quantidade") * (F("preco_unitario") - F("produto__preco_custo"))
+                ),
+            )
+            .order_by("-lucro_total")
+        )
 
         # Formata a saída
         results = []
         for item in produtos_lucro:
-            results.append({
-                'nome_produto': item['produto__nome'],
-                'preco_venda': float(item['produto__preco']),
-                'preco_custo': float(item['produto__preco_custo']),
-                'total_vendido': float(item['total_vendido']),
-                'receita_total': float(item['receita_total']),
-                'custo_total': float(item['custo_total']),
-                'lucro_total': float(item['lucro_total']),
-            })
+            results.append(
+                {
+                    "nome_produto": item["produto__nome"],
+                    "preco_venda": float(item["produto__preco"]),
+                    "preco_custo": float(item["produto__preco_custo"]),
+                    "total_vendido": float(item["total_vendido"]),
+                    "receita_total": float(item["receita_total"]),
+                    "custo_total": float(item["custo_total"]),
+                    "lucro_total": float(item["lucro_total"]),
+                }
+            )
 
         # Salva no cache por 15 minutos (900 segundos)
         cache.set(cache_key, results, 900)
@@ -255,14 +284,17 @@ class ProdutoViewSet(viewsets.ModelViewSet):
 
 class VendaViewSet(viewsets.ModelViewSet):
     """ViewSet para Vendas"""
-    queryset = Venda.objects.select_related('cliente').prefetch_related('itens__produto').all()
+
+    queryset = (
+        Venda.objects.select_related("cliente").prefetch_related("itens__produto").all()
+    )
 
     def get_serializer_class(self):
-        if self.action == 'create':
+        if self.action == "create":
             return VendaCreateSerializer
         return VendaSerializer
 
-    @method_decorator(ratelimit(key='user', rate='30/m', block=True))
+    @method_decorator(ratelimit(key="user", rate="30/m", block=True))
     def create(self, request, *args, **kwargs):
         """Cria nova venda - Rate limited: 30 vendas por minuto por usuário"""
         create_serializer = self.get_serializer(data=request.data)
@@ -279,10 +311,10 @@ class VendaViewSet(viewsets.ModelViewSet):
         """Invalida todos os caches relacionados a vendas"""
         hoje = timezone.now().date()
         cache_keys = [
-            f'dashboard_{hoje.isoformat()}',
-            'produtos_mais_lucrativos',
-            'clientes_com_dividas',
-            'produtos_baixo_estoque',
+            f"dashboard_{hoje.isoformat()}",
+            "produtos_mais_lucrativos",
+            "clientes_com_dividas",
+            "produtos_baixo_estoque",
         ]
         cache.delete_many(cache_keys)
 
@@ -290,19 +322,19 @@ class VendaViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
 
         # Filtro por status
-        status_filter = self.request.query_params.get('status', None)
+        status_filter = self.request.query_params.get("status", None)
         if status_filter:
             queryset = queryset.filter(status=status_filter)
 
         # Filtro por data (hoje, esta semana, este mês)
-        periodo = self.request.query_params.get('periodo', None)
-        if periodo == 'hoje':
+        periodo = self.request.query_params.get("periodo", None)
+        if periodo == "hoje":
             hoje = timezone.now().date()
             queryset = queryset.filter(created_at__date=hoje)
-        elif periodo == 'semana':
+        elif periodo == "semana":
             inicio_semana = timezone.now() - timedelta(days=7)
             queryset = queryset.filter(created_at__gte=inicio_semana)
-        elif periodo == 'mes':
+        elif periodo == "mes":
             inicio_mes = timezone.now() - timedelta(days=30)
             queryset = queryset.filter(created_at__gte=inicio_mes)
 
@@ -313,15 +345,11 @@ class VendaViewSet(viewsets.ModelViewSet):
     def _calcular_vendas_hoje(self, hoje):
         """Calcula total e quantidade de vendas do dia"""
         vendas = Venda.objects.filter(
-            created_at__date=hoje,
-            status='FINALIZADA'
-        ).aggregate(
-            total=Sum('total'),
-            quantidade=Count('id')
-        )
+            created_at__date=hoje, status="FINALIZADA"
+        ).aggregate(total=Sum("total"), quantidade=Count("id"))
         return {
-            'total': float(vendas['total'] or 0),
-            'quantidade': vendas['quantidade']
+            "total": float(vendas["total"] or 0),
+            "quantidade": vendas["quantidade"],
         }
 
     def _calcular_lucro_hoje(self, hoje):
@@ -331,117 +359,130 @@ class VendaViewSet(viewsets.ModelViewSet):
 
         lucro = ItemVenda.objects.filter(
             venda__created_at__date=hoje,
-            venda__status='FINALIZADA',
-            produto__preco_custo__gt=0
+            venda__status="FINALIZADA",
+            produto__preco_custo__gt=0,
         ).aggregate(
-            lucro=Sum(F('quantidade') * (F('preco_unitario') - F('produto__preco_custo')))
-        )['lucro'] or Decimal('0')
+            lucro=Sum(
+                F("quantidade") * (F("preco_unitario") - F("produto__preco_custo"))
+            )
+        )[
+            "lucro"
+        ] or Decimal(
+            "0"
+        )
 
         return float(lucro)
 
     def _calcular_vendas_por_pagamento(self, hoje):
         """Retorna vendas agrupadas por forma de pagamento"""
-        vendas = Venda.objects.filter(
-            created_at__date=hoje,
-            status='FINALIZADA'
-        ).values('forma_pagamento').annotate(
-            total=Sum('total'),
-            quantidade=Count('id')
+        vendas = (
+            Venda.objects.filter(created_at__date=hoje, status="FINALIZADA")
+            .values("forma_pagamento")
+            .annotate(total=Sum("total"), quantidade=Count("id"))
         )
         return list(vendas)
 
     def _calcular_estoque(self):
         """Retorna contadores de produtos por status de estoque"""
-        return {
-            'baixo': Produto.objects.filter(estoque__lt=10, ativo=True).count()
-        }
+        return {"baixo": Produto.objects.filter(estoque__lt=10, ativo=True).count()}
 
     def _calcular_produtos_validade(self, hoje):
         """Retorna contadores de LOTES vencidos e vencendo"""
         data_limite = hoje + timedelta(days=7)
 
         # Conta lotes distintos (evita contar o mesmo produto múltiplas vezes)
-        lotes_vencidos = Lote.objects.filter(
-            data_validade__lt=hoje,
-            ativo=True,
-            data_validade__isnull=False
-        ).values('produto').distinct().count()
+        lotes_vencidos = (
+            Lote.objects.filter(
+                data_validade__lt=hoje, ativo=True, data_validade__isnull=False
+            )
+            .values("produto")
+            .distinct()
+            .count()
+        )
 
-        lotes_vencendo = Lote.objects.filter(
-            data_validade__gte=hoje,
-            data_validade__lte=data_limite,
-            ativo=True,
-            data_validade__isnull=False
-        ).values('produto').distinct().count()
+        lotes_vencendo = (
+            Lote.objects.filter(
+                data_validade__gte=hoje,
+                data_validade__lte=data_limite,
+                ativo=True,
+                data_validade__isnull=False,
+            )
+            .values("produto")
+            .distinct()
+            .count()
+        )
 
-        return {
-            'vencidos': lotes_vencidos,
-            'vencendo': lotes_vencendo
-        }
+        return {"vencidos": lotes_vencidos, "vencendo": lotes_vencendo}
 
     def _calcular_contas_receber(self, hoje):
         """Calcula informações de contas a receber"""
         contas_pendentes = Venda.objects.filter(
-            status='FINALIZADA',
-            status_pagamento='PENDENTE'
+            status="FINALIZADA", status_pagamento="PENDENTE"
         )
 
         contas_vencidas = contas_pendentes.filter(data_vencimento__lt=hoje)
         contas_vencendo_hoje = contas_pendentes.filter(data_vencimento=hoje)
 
         return {
-            'total': float(contas_pendentes.aggregate(total=Sum('total'))['total'] or Decimal('0')),
-            'quantidade': contas_pendentes.count(),
-            'vencidas': {
-                'total': float(contas_vencidas.aggregate(total=Sum('total'))['total'] or Decimal('0')),
-                'quantidade': contas_vencidas.count()
+            "total": float(
+                contas_pendentes.aggregate(total=Sum("total"))["total"] or Decimal("0")
+            ),
+            "quantidade": contas_pendentes.count(),
+            "vencidas": {
+                "total": float(
+                    contas_vencidas.aggregate(total=Sum("total"))["total"]
+                    or Decimal("0")
+                ),
+                "quantidade": contas_vencidas.count(),
             },
-            'vencendo_hoje': {
-                'quantidade': contas_vencendo_hoje.count()
-            }
+            "vencendo_hoje": {"quantidade": contas_vencendo_hoje.count()},
         }
 
     def _calcular_info_caixa(self):
         """Retorna informações do caixa aberto (se houver)"""
-        caixa_aberto = Caixa.objects.filter(status='ABERTO').first()
+        caixa_aberto = Caixa.objects.filter(status="ABERTO").first()
         if not caixa_aberto:
             return None
 
         # Calcula vendas em dinheiro desde abertura
         vendas_dinheiro = Venda.objects.filter(
             created_at__gte=caixa_aberto.data_abertura,
-            forma_pagamento='DINHEIRO',
-            status='FINALIZADA'
-        ).aggregate(total=Sum('total'))['total'] or Decimal('0')
+            forma_pagamento="DINHEIRO",
+            status="FINALIZADA",
+        ).aggregate(total=Sum("total"))["total"] or Decimal("0")
 
         # Movimentações
         movimentacoes = caixa_aberto.movimentacoes.aggregate(
-            sangrias=Sum('valor', filter=Q(tipo='SANGRIA')),
-            suprimentos=Sum('valor', filter=Q(tipo='SUPRIMENTO'))
+            sangrias=Sum("valor", filter=Q(tipo="SANGRIA")),
+            suprimentos=Sum("valor", filter=Q(tipo="SUPRIMENTO")),
         )
-        total_sangrias = movimentacoes['sangrias'] or Decimal('0')
-        total_suprimentos = movimentacoes['suprimentos'] or Decimal('0')
+        total_sangrias = movimentacoes["sangrias"] or Decimal("0")
+        total_suprimentos = movimentacoes["suprimentos"] or Decimal("0")
 
-        valor_atual = (caixa_aberto.valor_inicial + vendas_dinheiro
-                      + total_suprimentos - total_sangrias)
+        valor_atual = (
+            caixa_aberto.valor_inicial
+            + vendas_dinheiro
+            + total_suprimentos
+            - total_sangrias
+        )
 
         return {
-            'id': caixa_aberto.id,
-            'aberto_desde': caixa_aberto.data_abertura,
-            'valor_inicial': float(caixa_aberto.valor_inicial),
-            'valor_atual': float(valor_atual),
-            'vendas_dinheiro': float(vendas_dinheiro)
+            "id": caixa_aberto.id,
+            "aberto_desde": caixa_aberto.data_abertura,
+            "valor_inicial": float(caixa_aberto.valor_inicial),
+            "valor_atual": float(valor_atual),
+            "vendas_dinheiro": float(vendas_dinheiro),
         }
 
     # ========== ENDPOINT DASHBOARD ==========
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def dashboard(self, request):
         """Retorna estatísticas para o dashboard - Cache 2 minutos"""
         hoje = timezone.now().date()
 
         # Cache key única por dia
-        cache_key = f'dashboard_{hoje.isoformat()}'
+        cache_key = f"dashboard_{hoje.isoformat()}"
         cached_data = cache.get(cache_key)
 
         if cached_data:
@@ -452,16 +493,16 @@ class VendaViewSet(viewsets.ModelViewSet):
         validade = self._calcular_produtos_validade(hoje)
 
         dashboard_data = {
-            'vendas_hoje': self._calcular_vendas_hoje(hoje),
-            'lucro_hoje': self._calcular_lucro_hoje(hoje),
-            'estoque_baixo': estoque['baixo'],
-            'produtos_vencidos': validade['vencidos'],
-            'produtos_vencendo': validade['vencendo'],
-            'vendas_por_pagamento': self._calcular_vendas_por_pagamento(hoje),
-            'contas_receber': self._calcular_contas_receber(hoje),
-            'caixa': self._calcular_info_caixa(),
-            'data': hoje.isoformat(),
-            'cached': False
+            "vendas_hoje": self._calcular_vendas_hoje(hoje),
+            "lucro_hoje": self._calcular_lucro_hoje(hoje),
+            "estoque_baixo": estoque["baixo"],
+            "produtos_vencidos": validade["vencidos"],
+            "produtos_vencendo": validade["vencendo"],
+            "vendas_por_pagamento": self._calcular_vendas_por_pagamento(hoje),
+            "contas_receber": self._calcular_contas_receber(hoje),
+            "caixa": self._calcular_info_caixa(),
+            "data": hoje.isoformat(),
+            "cached": False,
         }
 
         # Salva no cache por 2 minutos (120 segundos)
@@ -469,29 +510,28 @@ class VendaViewSet(viewsets.ModelViewSet):
 
         return Response(dashboard_data)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     @transaction.atomic
     def cancelar(self, request, pk=None):
         """Cancela uma venda e devolve estoque atomicamente"""
         venda = self.get_object()
 
-        if venda.status == 'CANCELADA':
+        if venda.status == "CANCELADA":
             return Response(
-                {'error': 'Venda já está cancelada'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Venda já está cancelada"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        if venda.status == 'FINALIZADA':
+        if venda.status == "FINALIZADA":
             # Devolve o estoque usando bulk_update para melhor performance
             produtos_atualizar = []
-            for item in venda.itens.select_related('produto'):
+            for item in venda.itens.select_related("produto"):
                 item.produto.estoque += item.quantidade
                 produtos_atualizar.append(item.produto)
 
             if produtos_atualizar:
-                Produto.objects.bulk_update(produtos_atualizar, ['estoque'])
+                Produto.objects.bulk_update(produtos_atualizar, ["estoque"])
 
-        venda.status = 'CANCELADA'
+        venda.status = "CANCELADA"
         venda.save()
 
         # Log de auditoria
@@ -506,23 +546,24 @@ class VendaViewSet(viewsets.ModelViewSet):
         serializer = VendaSerializer(venda)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def contas_receber(self, request):
         """Retorna vendas fiado pendentes (contas a receber)"""
-        vendas = self.queryset.filter(
-            status='FINALIZADA',
-            status_pagamento='PENDENTE'
-        ).select_related('cliente').order_by('data_vencimento', 'created_at')
+        vendas = (
+            self.queryset.filter(status="FINALIZADA", status_pagamento="PENDENTE")
+            .select_related("cliente")
+            .order_by("data_vencimento", "created_at")
+        )
 
         # Filtro opcional por cliente
-        cliente_id = request.query_params.get('cliente_id', None)
+        cliente_id = request.query_params.get("cliente_id", None)
         if cliente_id:
             vendas = vendas.filter(cliente_id=cliente_id)
 
         serializer = VendaSerializer(vendas, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def receber(self, request, pk=None):
         """Marca uma venda fiado como paga"""
         venda = self.get_object()
@@ -547,46 +588,42 @@ class VendaViewSet(viewsets.ModelViewSet):
                 f"Erro ao receber pagamento - Venda ID: {venda.id}, Erro: {str(e)}, "
                 f"Usuário: {request.user.username}"
             )
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CaixaViewSet(viewsets.ViewSet):
     """ViewSet para controle de Caixa"""
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def status(self, request):
         """Retorna o caixa aberto atual ou informa que não há caixa aberto"""
-        caixa_aberto = Caixa.objects.filter(status='ABERTO').first()
+        caixa_aberto = Caixa.objects.filter(status="ABERTO").first()
         if not caixa_aberto:
-            return Response({'status': 'FECHADO', 'message': 'Nenhum caixa aberto'})
+            return Response({"status": "FECHADO", "message": "Nenhum caixa aberto"})
 
         serializer = CaixaSerializer(caixa_aberto)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=["post"])
     def abrir(self, request):
         """Abre um novo caixa com validação de entrada"""
-        if Caixa.objects.filter(status='ABERTO').exists():
+        if Caixa.objects.filter(status="ABERTO").exists():
             return Response(
-                {'error': 'Já existe um caixa aberto'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Já existe um caixa aberto"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Validação de input
         try:
-            valor_inicial = Decimal(str(request.data.get('valor_inicial', 0)))
+            valor_inicial = Decimal(str(request.data.get("valor_inicial", 0)))
             if valor_inicial < 0:
                 return Response(
-                    {'error': 'Valor inicial não pode ser negativo'},
-                    status=status.HTTP_400_BAD_REQUEST
+                    {"error": "Valor inicial não pode ser negativo"},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
         except (ValueError, TypeError, Exception):
             return Response(
-                {'error': 'Valor inicial inválido'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Valor inicial inválido"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         caixa = Caixa.objects.create(valor_inicial=valor_inicial)
@@ -600,59 +637,62 @@ class CaixaViewSet(viewsets.ViewSet):
         serializer = CaixaSerializer(caixa)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     @transaction.atomic
     def fechar(self, request, pk=None):
         """Fecha o caixa atomicamente, calculando totais e diferenças"""
         try:
             # select_for_update previne race condition (dois usuários fechando simultaneamente)
-            caixa = Caixa.objects.select_for_update().get(pk=pk, status='ABERTO')
+            caixa = Caixa.objects.select_for_update().get(pk=pk, status="ABERTO")
         except Caixa.DoesNotExist:
             return Response(
-                {'error': 'Caixa não encontrado ou já está fechado'},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Caixa não encontrado ou já está fechado"},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         # Validação de input
         try:
-            valor_final_informado = Decimal(str(request.data.get('valor_final_informado', 0)))
+            valor_final_informado = Decimal(
+                str(request.data.get("valor_final_informado", 0))
+            )
             if valor_final_informado < 0:
                 return Response(
-                    {'error': 'Valor final informado não pode ser negativo'},
-                    status=status.HTTP_400_BAD_REQUEST
+                    {"error": "Valor final informado não pode ser negativo"},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
         except (ValueError, TypeError, Exception):
             return Response(
-                {'error': 'Valor final informado inválido'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Valor final informado inválido"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Calcula vendas em dinheiro desde a abertura
         vendas_dinheiro = Venda.objects.filter(
             created_at__gte=caixa.data_abertura,
-            forma_pagamento='DINHEIRO',
-            status='FINALIZADA'
-        ).aggregate(total=Sum('total'))['total'] or Decimal(0)
+            forma_pagamento="DINHEIRO",
+            status="FINALIZADA",
+        ).aggregate(total=Sum("total"))["total"] or Decimal(0)
 
         # Calcula movimentações
         movimentacoes = caixa.movimentacoes.aggregate(
-            sangrias=Sum('valor', filter=Q(tipo='SANGRIA')),
-            suprimentos=Sum('valor', filter=Q(tipo='SUPRIMENTO'))
+            sangrias=Sum("valor", filter=Q(tipo="SANGRIA")),
+            suprimentos=Sum("valor", filter=Q(tipo="SUPRIMENTO")),
         )
-        total_sangrias = movimentacoes['sangrias'] or Decimal(0)
-        total_suprimentos = movimentacoes['suprimentos'] or Decimal(0)
+        total_sangrias = movimentacoes["sangrias"] or Decimal(0)
+        total_suprimentos = movimentacoes["suprimentos"] or Decimal(0)
 
         # Calcula valor final do sistema
-        valor_final_sistema = (caixa.valor_inicial + vendas_dinheiro 
-                               + total_suprimentos - total_sangrias)
+        valor_final_sistema = (
+            caixa.valor_inicial + vendas_dinheiro + total_suprimentos - total_sangrias
+        )
 
         # Atualiza o caixa
         caixa.data_fechamento = timezone.now()
         caixa.valor_final_sistema = valor_final_sistema
         caixa.valor_final_informado = valor_final_informado
         caixa.diferenca = valor_final_informado - valor_final_sistema
-        caixa.status = 'FECHADO'
-        caixa.observacoes = request.data.get('observacoes', '')
+        caixa.status = "FECHADO"
+        caixa.observacoes = request.data.get("observacoes", "")
         caixa.save()
 
         # Log de auditoria
@@ -665,15 +705,15 @@ class CaixaViewSet(viewsets.ViewSet):
         serializer = CaixaSerializer(caixa)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def movimentar(self, request, pk=None):
         """Adiciona uma movimentação (sangria/suprimento) ao caixa"""
         try:
-            caixa = Caixa.objects.get(pk=pk, status='ABERTO')
+            caixa = Caixa.objects.get(pk=pk, status="ABERTO")
         except Caixa.DoesNotExist:
             return Response(
-                {'error': 'Caixa não encontrado ou está fechado'},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Caixa não encontrado ou está fechado"},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         serializer = MovimentacaoCaixaSerializer(data=request.data)
@@ -682,79 +722,80 @@ class CaixaViewSet(viewsets.ViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def historico(self, request):
         """Retorna o histórico de caixas fechados"""
-        caixas = Caixa.objects.filter(status='FECHADO')
+        caixas = Caixa.objects.filter(status="FECHADO")
         serializer = CaixaSerializer(caixas, many=True)
         return Response(serializer.data)
 
 
 # ========== AUTENTICAÇÃO ==========
 
-@api_view(['POST'])
+
+@api_view(["POST"])
 @permission_classes([AllowAny])
-@ratelimit(key='ip', rate='5/m', method='POST', block=True)
+@ratelimit(key="ip", rate="5/m", method="POST", block=True)
 def login(request):
     """Autentica usuário e retorna token - Rate limited: 5 tentativas por minuto por IP"""
-    username = request.data.get('username')
-    password = request.data.get('password')
+    username = request.data.get("username")
+    password = request.data.get("password")
 
     if not username or not password:
         return Response(
-            {'error': 'Username e password são obrigatórios'},
-            status=status.HTTP_400_BAD_REQUEST
+            {"error": "Username e password são obrigatórios"},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     user = authenticate(username=username, password=password)
 
     if user is None:
         return Response(
-            {'error': 'Credenciais inválidas'},
-            status=status.HTTP_401_UNAUTHORIZED
+            {"error": "Credenciais inválidas"}, status=status.HTTP_401_UNAUTHORIZED
         )
 
     # Cria ou recupera o token
     token, created = Token.objects.get_or_create(user=user)
 
-    return Response({
-        'token': token.key,
-        'user': {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
+    return Response(
+        {
+            "token": token.key,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+            },
         }
-    })
+    )
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 def logout(request):
     """Remove o token do usuário"""
     try:
         request.user.auth_token.delete()
-        return Response({'message': 'Logout realizado com sucesso'})
+        return Response({"message": "Logout realizado com sucesso"})
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 def me(request):
     """Retorna informações do usuário autenticado"""
-    return Response({
-        'id': request.user.id,
-        'username': request.user.username,
-        'email': request.user.email,
-        'first_name': request.user.first_name,
-        'last_name': request.user.last_name,
-    })
+    return Response(
+        {
+            "id": request.user.id,
+            "username": request.user.username,
+            "email": request.user.email,
+            "first_name": request.user.first_name,
+            "last_name": request.user.last_name,
+        }
+    )
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([AllowAny])
 def health_check(request):
     """Health check endpoint para monitoramento"""
@@ -762,9 +803,9 @@ def health_check(request):
     from django.conf import settings
 
     health_status = {
-        'status': 'healthy',
-        'timestamp': timezone.now().isoformat(),
-        'version': '1.0.0',
+        "status": "healthy",
+        "timestamp": timezone.now().isoformat(),
+        "version": "1.0.0",
     }
 
     # Testa conexão com banco de dados
@@ -772,15 +813,15 @@ def health_check(request):
         connection.ensure_connection()
         # Query simples para testar performance
         Cliente.objects.count()
-        health_status['database'] = 'connected'
+        health_status["database"] = "connected"
     except Exception as e:
-        health_status['database'] = f'error: {str(e)}'
-        health_status['status'] = 'unhealthy'
+        health_status["database"] = f"error: {str(e)}"
+        health_status["status"] = "unhealthy"
 
     # Testa cache (Redis ou LocMem)
     try:
-        cache_key = 'health_check_test'
-        cache_value = f'ok_{timezone.now().timestamp()}'
+        cache_key = "health_check_test"
+        cache_value = f"ok_{timezone.now().timestamp()}"
 
         # Tenta setar e recuperar
         cache.set(cache_key, cache_value, 30)
@@ -788,48 +829,45 @@ def health_check(request):
 
         # Converte para string se vier como bytes (Redis)
         if isinstance(cached, bytes):
-            cached = cached.decode('utf-8')
+            cached = cached.decode("utf-8")
 
         if cached == cache_value:
             # Detecta o tipo de cache
-            cache_backend = settings.CACHES['default']['BACKEND']
-            if 'redis' in cache_backend.lower():
-                cache_type = 'redis'
-            elif 'locmem' in cache_backend.lower():
-                cache_type = 'locmem'
+            cache_backend = settings.CACHES["default"]["BACKEND"]
+            if "redis" in cache_backend.lower():
+                cache_type = "redis"
+            elif "locmem" in cache_backend.lower():
+                cache_type = "locmem"
             else:
-                cache_type = 'unknown'
+                cache_type = "unknown"
 
-            health_status['cache'] = {
-                'status': 'working',
-                'backend': cache_type
-            }
+            health_status["cache"] = {"status": "working", "backend": cache_type}
         else:
-            health_status['cache'] = {
-                'status': 'error',
-                'message': 'cache value mismatch'
+            health_status["cache"] = {
+                "status": "error",
+                "message": "cache value mismatch",
             }
     except Exception as e:
-        health_status['cache'] = {
-            'status': 'error',
-            'message': str(e)
-        }
+        health_status["cache"] = {"status": "error", "message": str(e)}
         # Cache não é crítico, não muda status geral
 
     # Verifica caixa aberto
     try:
-        caixa_aberto = Caixa.objects.filter(status='ABERTO').exists()
-        health_status['caixa_aberto'] = caixa_aberto
-    except:
+        caixa_aberto = Caixa.objects.filter(status="ABERTO").exists()
+        health_status["caixa_aberto"] = caixa_aberto
+    except Exception:
         pass
 
-    status_code = 200 if health_status['status'] == 'healthy' else 503
+    status_code = 200 if health_status["status"] == "healthy" else 503
     return Response(health_status, status=status_code)
 
 
 class AlertaViewSet(viewsets.ModelViewSet):
     """ViewSet para Alertas do Sistema"""
-    queryset = Alerta.objects.select_related('cliente', 'produto', 'venda', 'caixa', 'lote').all()
+
+    queryset = Alerta.objects.select_related(
+        "cliente", "produto", "venda", "caixa", "lote"
+    ).all()
     serializer_class = AlertaSerializer
 
     def get_queryset(self):
@@ -837,42 +875,44 @@ class AlertaViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
 
         # Filtro por status
-        resolvido = self.request.query_params.get('resolvido', None)
+        resolvido = self.request.query_params.get("resolvido", None)
         if resolvido is not None:
-            queryset = queryset.filter(resolvido=resolvido.lower() == 'true')
+            queryset = queryset.filter(resolvido=resolvido.lower() == "true")
 
-        lido = self.request.query_params.get('lido', None)
+        lido = self.request.query_params.get("lido", None)
         if lido is not None:
-            queryset = queryset.filter(lido=lido.lower() == 'true')
+            queryset = queryset.filter(lido=lido.lower() == "true")
 
         # Filtro por tipo
-        tipo = self.request.query_params.get('tipo', None)
+        tipo = self.request.query_params.get("tipo", None)
         if tipo:
             queryset = queryset.filter(tipo=tipo)
 
         # Filtro por prioridade
-        prioridade = self.request.query_params.get('prioridade', None)
+        prioridade = self.request.query_params.get("prioridade", None)
         if prioridade:
             queryset = queryset.filter(prioridade=prioridade)
 
-        return queryset.select_related('cliente', 'produto', 'venda', 'caixa')
+        return queryset.select_related("cliente", "produto", "venda", "caixa")
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def resumo(self, request):
         """Retorna resumo de alertas"""
         resumo = AlertService.obter_resumo()
         return Response(resumo)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=["post"])
     def verificar(self, request):
         """Executa verificação manual de alertas"""
         resultado = AlertService.verificar_todos()
-        return Response({
-            'total_criados': resultado['total_criados'],
-            'resumo': AlertService.obter_resumo()
-        })
+        return Response(
+            {
+                "total_criados": resultado["total_criados"],
+                "resumo": AlertService.obter_resumo(),
+            }
+        )
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def marcar_lido(self, request, pk=None):
         """Marca um alerta como lido"""
         alerta = self.get_object()
@@ -880,7 +920,7 @@ class AlertaViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(alerta)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def resolver(self, request, pk=None):
         """Marca um alerta como resolvido"""
         alerta = self.get_object()
@@ -888,27 +928,32 @@ class AlertaViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(alerta)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=["post"])
     def marcar_todos_lidos(self, request):
         """Marca todos os alertas pendentes como lidos"""
         alertas = Alerta.objects.filter(lido=False, resolvido=False)
         count = alertas.count()
         alertas.update(lido=True)
-        return Response({
-            'message': f'{count} alerta(s) marcado(s) como lido(s)',
-            'count': count
-        })
+        return Response(
+            {"message": f"{count} alerta(s) marcado(s) como lido(s)", "count": count}
+        )
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def por_prioridade(self, request):
         """Retorna alertas agrupados por prioridade"""
         alertas = Alerta.objects.filter(resolvido=False)
 
         resultado = {
-            'CRITICA': AlertaSerializer(alertas.filter(prioridade='CRITICA'), many=True).data,
-            'ALTA': AlertaSerializer(alertas.filter(prioridade='ALTA'), many=True).data,
-            'MEDIA': AlertaSerializer(alertas.filter(prioridade='MEDIA'), many=True).data,
-            'BAIXA': AlertaSerializer(alertas.filter(prioridade='BAIXA'), many=True).data,
+            "CRITICA": AlertaSerializer(
+                alertas.filter(prioridade="CRITICA"), many=True
+            ).data,
+            "ALTA": AlertaSerializer(alertas.filter(prioridade="ALTA"), many=True).data,
+            "MEDIA": AlertaSerializer(
+                alertas.filter(prioridade="MEDIA"), many=True
+            ).data,
+            "BAIXA": AlertaSerializer(
+                alertas.filter(prioridade="BAIXA"), many=True
+            ).data,
         }
 
         return Response(resultado)
@@ -916,6 +961,7 @@ class AlertaViewSet(viewsets.ModelViewSet):
 
 class LoteViewSet(viewsets.ModelViewSet):
     """ViewSet para Lotes de Produtos"""
+
     queryset = Lote.objects.all()
     serializer_class = LoteSerializer
 
@@ -923,77 +969,77 @@ class LoteViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
 
         # Filtro por produto
-        produto_id = self.request.query_params.get('produto_id', None)
+        produto_id = self.request.query_params.get("produto_id", None)
         if produto_id:
             queryset = queryset.filter(produto_id=produto_id)
 
         # Filtro por ativos
-        ativo = self.request.query_params.get('ativo', None)
+        ativo = self.request.query_params.get("ativo", None)
         if ativo is not None:
-            queryset = queryset.filter(ativo=ativo.lower() == 'true')
+            queryset = queryset.filter(ativo=ativo.lower() == "true")
 
         # Filtro por vencidos
-        vencidos = self.request.query_params.get('vencidos', None)
-        if vencidos == 'true':
+        vencidos = self.request.query_params.get("vencidos", None)
+        if vencidos == "true":
             queryset = queryset.filter(data_validade__lt=timezone.now().date())
 
         # Filtro por próximos ao vencimento (7 dias)
-        proximos_vencimento = self.request.query_params.get('proximos_vencimento', None)
-        if proximos_vencimento == 'true':
+        proximos_vencimento = self.request.query_params.get("proximos_vencimento", None)
+        if proximos_vencimento == "true":
             hoje = timezone.now().date()
             data_limite = hoje + timedelta(days=7)
             queryset = queryset.filter(
-                data_validade__gte=hoje,
-                data_validade__lte=data_limite
+                data_validade__gte=hoje, data_validade__lte=data_limite
             )
 
         return queryset
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=["post"])
     def entrada_estoque(self, request):
         """
         Adiciona um novo lote ao estoque (entrada de mercadoria).
         Atualiza também o estoque total do produto.
         """
-        produto_id = request.data.get('produto_id')
-        quantidade = Decimal(str(request.data.get('quantidade', 0)))
-        data_validade = request.data.get('data_validade')
-        numero_lote = request.data.get('numero_lote', '')
-        fornecedor_id = request.data.get('fornecedor_id')
-        preco_custo_lote = request.data.get('preco_custo_lote')
-        observacoes = request.data.get('observacoes', '')
+        produto_id = request.data.get("produto_id")
+        quantidade = Decimal(str(request.data.get("quantidade", 0)))
+        data_validade = request.data.get("data_validade")
+        numero_lote = request.data.get("numero_lote", "")
+        fornecedor_id = request.data.get("fornecedor_id")
+        preco_custo_lote = request.data.get("preco_custo_lote")
+        observacoes = request.data.get("observacoes", "")
 
         # Log para debug - mostra TODOS os dados recebidos
-        logger.info(f'=== ENTRADA DE ESTOQUE ===')
-        logger.info(f'Todos os dados: {request.data}')
-        logger.info(f'data_validade recebida: {data_validade} (tipo: {type(data_validade).__name__})')
+        logger.info("=== ENTRADA DE ESTOQUE ===")
+        logger.info(f"Todos os dados: {request.data}")
+        logger.info(
+            f"data_validade recebida: {data_validade} (tipo: {type(data_validade).__name__})"
+        )
 
         # Trata string vazia como None
-        if data_validade == '' or data_validade == 'null':
-            logger.info(f'data_validade tratada como None (era string vazia ou "null")')
+        if data_validade == "" or data_validade == "null":
+            logger.info('data_validade tratada como None (era string vazia ou "null")')
             data_validade = None
 
-        logger.info(f'data_validade após tratamento: {data_validade}')
+        logger.info(f"data_validade após tratamento: {data_validade}")
 
         # Validações
         if not produto_id:
             return Response(
-                {'error': 'produto_id é obrigatório'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "produto_id é obrigatório"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         if quantidade <= 0:
             return Response(
-                {'error': 'Quantidade deve ser maior que zero'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Quantidade deve ser maior que zero"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
             produto = Produto.objects.get(id=produto_id)
         except Produto.DoesNotExist:
             return Response(
-                {'error': 'Produto não encontrado'},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Produto não encontrado"}, status=status.HTTP_404_NOT_FOUND
             )
 
         # Valida fornecedor se fornecido
@@ -1003,8 +1049,8 @@ class LoteViewSet(viewsets.ModelViewSet):
                 fornecedor_obj = Fornecedor.objects.get(id=fornecedor_id)
             except Fornecedor.DoesNotExist:
                 return Response(
-                    {'error': 'Fornecedor não encontrado'},
-                    status=status.HTTP_404_NOT_FOUND
+                    {"error": "Fornecedor não encontrado"},
+                    status=status.HTTP_404_NOT_FOUND,
                 )
 
         with transaction.atomic():
@@ -1015,104 +1061,109 @@ class LoteViewSet(viewsets.ModelViewSet):
                 quantidade=quantidade,
                 data_validade=data_validade if data_validade else None,
                 fornecedor=fornecedor_obj,
-                preco_custo_lote=Decimal(str(preco_custo_lote)) if preco_custo_lote else None,
+                preco_custo_lote=(
+                    Decimal(str(preco_custo_lote)) if preco_custo_lote else None
+                ),
                 observacoes=observacoes,
-                ativo=True
+                ativo=True,
             )
 
             # Atualiza o estoque total do produto
             produto.estoque += quantidade
-            produto.save(update_fields=['estoque'])
+            produto.save(update_fields=["estoque"])
 
-            logger.info(f'Entrada de estoque: Lote {lote.id} criado para produto {produto.nome} (+{quantidade} un)')
+            logger.info(
+                f"Entrada de estoque: Lote {lote.id} criado para produto {produto.nome} (+{quantidade} un)"
+            )
 
         # Recarrega o lote com produto para evitar erro no serializer
-        lote = Lote.objects.select_related('produto').get(pk=lote.pk)
+        lote = Lote.objects.select_related("produto").get(pk=lote.pk)
         serializer = self.get_serializer(lote)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def baixar_estoque(self, request, pk=None):
         """
         Baixa estoque de um lote específico (ajuste manual).
         Atualiza também o estoque total do produto.
         """
         lote = self.get_object()
-        quantidade = Decimal(str(request.data.get('quantidade', 0)))
+        quantidade = Decimal(str(request.data.get("quantidade", 0)))
 
         if quantidade <= 0:
             return Response(
-                {'error': 'Quantidade deve ser maior que zero'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Quantidade deve ser maior que zero"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         if quantidade > lote.quantidade:
             return Response(
-                {'error': f'Quantidade insuficiente no lote. Disponível: {lote.quantidade}'},
-                status=status.HTTP_400_BAD_REQUEST
+                {
+                    "error": f"Quantidade insuficiente no lote. Disponível: {lote.quantidade}"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         with transaction.atomic():
             # Baixa do lote
             lote.quantidade -= quantidade
-            lote.save(update_fields=['quantidade'])
+            lote.save(update_fields=["quantidade"])
 
             # Desativa se zerou
             if lote.quantidade == 0:
                 lote.ativo = False
-                lote.save(update_fields=['ativo'])
+                lote.save(update_fields=["ativo"])
 
             # Atualiza estoque do produto
             produto = lote.produto
             produto.estoque -= quantidade
-            produto.save(update_fields=['estoque'])
+            produto.save(update_fields=["estoque"])
 
-            logger.info(f'Baixa de estoque: Lote {lote.id} -{quantidade} un')
+            logger.info(f"Baixa de estoque: Lote {lote.id} -{quantidade} un")
 
         serializer = self.get_serializer(lote)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def vencidos(self, request):
         """Retorna lotes vencidos"""
         lotes_vencidos = self.get_queryset().filter(
-            data_validade__lt=timezone.now().date(),
-            ativo=True
+            data_validade__lt=timezone.now().date(), ativo=True
         )
         serializer = self.get_serializer(lotes_vencidos, many=True)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def proximos_vencimento(self, request):
         """Retorna lotes próximos ao vencimento (7 dias)"""
         hoje = timezone.now().date()
         data_limite = hoje + timedelta(days=7)
 
         lotes_proximos = self.get_queryset().filter(
-            data_validade__gte=hoje,
-            data_validade__lte=data_limite,
-            ativo=True
+            data_validade__gte=hoje, data_validade__lte=data_limite, ativo=True
         )
         serializer = self.get_serializer(lotes_proximos, many=True)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def por_produto(self, request):
         """Retorna lotes agrupados por produto"""
-        produto_id = request.query_params.get('produto_id')
+        produto_id = request.query_params.get("produto_id")
 
         if not produto_id:
             return Response(
-                {'error': 'produto_id é obrigatório'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "produto_id é obrigatório"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         lotes = self.get_queryset().filter(produto_id=produto_id, ativo=True)
         serializer = self.get_serializer(lotes, many=True)
 
-        return Response({
-            'produto_id': produto_id,
-            'total_lotes': lotes.count(),
-            'estoque_total': sum(float(l.quantidade) for l in lotes),
-            'lotes': serializer.data
-        })
+        return Response(
+            {
+                "produto_id": produto_id,
+                "total_lotes": lotes.count(),
+                "estoque_total": sum(float(lote.quantidade) for lote in lotes),
+                "lotes": serializer.data,
+            }
+        )
