@@ -2,11 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { getProdutos, createVenda, getClientes } from '../services/api';
 import { localDB } from '../utils/db';
 import { syncManager } from '../utils/syncManager';
-import { AppShell, Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal } from '@mantine/core';
+import { AppShell, Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal, ScrollArea, Divider, Badge, Alert } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useHotkeys, useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaCreditCard, FaMoneyBillWave, FaQrcode, FaHandHoldingUsd, FaUniversity } from 'react-icons/fa';
+import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaKeyboard } from 'react-icons/fa';
 import Comprovante from '../components/Comprovante';
 import BarcodeScanner from '../components/BarcodeScanner';
 import './PDV.css';
@@ -19,7 +19,7 @@ function PDV() {
   const [formaPagamento, setFormaPagamento] = useState('DINHEIRO');
   const [clienteId, setClienteId] = useState(null);
   const [dataVencimento, setDataVencimento] = useState(null);
-  const [valorRecebido, setValorRecebido] = useState('');
+  const [valorRecebido, setValorRecebido] = useState(null);
   const [loading, setLoading] = useState(false);
   const [scannerAberto, setScannerAberto] = useState(false);
   const [comprovanteAberto, setComprovanteAberto] = useState(false);
@@ -37,7 +37,7 @@ function PDV() {
       setBusca('');
       setClienteId(null);
       setDataVencimento(null);
-      setValorRecebido('');
+      setValorRecebido(null);
     }],
   ]);
 
@@ -110,10 +110,15 @@ function PDV() {
   };
 
   const alterarQuantidade = (produtoId, novaQuantidade) => {
-    if (novaQuantidade <= 0) {
+    const quantidade = Number(novaQuantidade) || 0;
+    if (quantidade <= 0) {
       removerDoCarrinho(produtoId);
     } else {
-      setCarrinho(carrinho.map(item => item.produto.id === produtoId ? { ...item, quantidade: parseFloat(novaQuantidade) } : item));
+      setCarrinho(
+        carrinho.map((item) =>
+          item.produto.id === produtoId ? { ...item, quantidade } : item
+        )
+      );
     }
   };
 
@@ -124,9 +129,18 @@ function PDV() {
   const calcularTotal = () => carrinho.reduce((total, item) => total + (parseFloat(item.produto.preco) * item.quantidade), 0);
 
   const calcularTroco = () => {
-    if (formaPagamento !== 'DINHEIRO' || !valorRecebido) return 0;
-    const troco = parseFloat(valorRecebido) - calcularTotal();
+    if (formaPagamento !== 'DINHEIRO' || valorRecebido === null) return 0;
+    const troco = Number(valorRecebido) - calcularTotal();
     return troco > 0 ? troco : 0;
+  };
+
+  const limparCarrinho = () => {
+    setCarrinho([]);
+    setBusca('');
+    setClienteId(null);
+    setDataVencimento(null);
+    setValorRecebido(null);
+    buscaRef.current?.focus();
   };
 
   const abrirScanner = () => {
@@ -169,7 +183,7 @@ function PDV() {
     }
 
     if (formaPagamento === 'DINHEIRO') {
-      if (!valorRecebido || parseFloat(valorRecebido) < calcularTotal()) {
+      if (valorRecebido === null || Number(valorRecebido) < calcularTotal()) {
         notifications.show({
           title: 'Valor insuficiente',
           message: 'O valor recebido deve ser maior ou igual ao total da venda',
@@ -237,7 +251,7 @@ function PDV() {
         })),
         forma_pagamento: formaPagamento,
         valor_total: calcularTotal(),
-        valor_recebido: formaPagamento === 'DINHEIRO' ? valorRecebido : null,
+        valor_recebido: formaPagamento === 'DINHEIRO' ? Number(valorRecebido) : null,
         cliente: formaPagamento === 'FIADO' ? clientes.find(c => c.id === parseInt(clienteId)) : null,
         cliente_nome: formaPagamento === 'FIADO' ? clientes.find(c => c.id === parseInt(clienteId))?.nome : null,
         data_vencimento: dataVencimentoFormatada,
@@ -261,7 +275,7 @@ function PDV() {
       setBusca('');
       setClienteId(null);
       setDataVencimento(null);
-      setValorRecebido('');
+      setValorRecebido(null);
       loadInitialData();
     } catch (error) {
       // Diferencia entre erro de rede e erro de validação
@@ -297,7 +311,7 @@ function PDV() {
         setBusca('');
         setClienteId(null);
         setDataVencimento(null);
-        setValorRecebido('');
+        setValorRecebido(null);
         loadInitialData();
       } else {
         // Outro tipo de erro
@@ -313,198 +327,400 @@ function PDV() {
     }
   };
 
-  const renderCart = () => (
-    <Stack gap="sm">
-      {carrinho.map(item => (
-        <Paper withBorder p="sm" radius="xs" key={item.produto.id}>
-          <Group justify="space-between" align="flex-start" wrap="nowrap">
-            <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-              <Text size="sm" fw={500} truncate>{item.produto.nome}</Text>
-              <Text size="xs" c="dimmed">R$ {parseFloat(item.produto.preco).toFixed(2)}</Text>
-            </Stack>
-            <Group gap="xs" wrap="nowrap">
-              <NumberInput
-                value={item.quantidade}
-                onChange={(val) => alterarQuantidade(item.produto.id, val)}
-                w={70}
-                min={0}
-                size="sm"
-              />
-              <ActionIcon
+  const renderCart = () => {
+    const totalItens = carrinho.reduce((total, item) => total + item.quantidade, 0);
+    const troco = calcularTroco();
+
+    return (
+      <Card withBorder shadow="sm" radius="md" padding="md">
+        <Stack gap="md">
+          <Group justify="space-between" align="flex-start">
+            <div>
+              <Title order={4}>Carrinho</Title>
+              <Text size="sm" c="dimmed">
+                {totalItens === 0 ? 'Nenhum item selecionado' : `${totalItens} ${totalItens === 1 ? 'item' : 'itens'} no carrinho`}
+              </Text>
+            </div>
+            {carrinho.length > 0 && (
+              <Button
+                variant="light"
                 color="red"
-                size="lg"
-                onClick={() => removerDoCarrinho(item.produto.id)}
+                size="xs"
+                onClick={limparCarrinho}
               >
-                <FaTrash size={14} />
-              </ActionIcon>
-            </Group>
+                Limpar (Esc)
+              </Button>
+            )}
           </Group>
-        </Paper>
-      ))}
 
-      <Select
-        label="Forma de Pagamento"
-        value={formaPagamento}
-        onChange={(value) => {
-          setFormaPagamento(value);
-          setValorRecebido('');
-        }}
-        size="md"
-        data={[
-          { value: 'DINHEIRO', label: 'Dinheiro' },
-          { value: 'DEBITO', label: 'Débito' },
-          { value: 'CREDITO', label: 'Crédito' },
-          { value: 'PIX', label: 'PIX' },
-          { value: 'FIADO', label: 'Fiado' },
-        ]}
-      />
+          <ScrollArea h={isMobile ? 240 : 360} offsetScrollbars>
+            {carrinho.length > 0 ? (
+              <Stack gap="sm">
+                {carrinho.map((item) => (
+                  <Paper withBorder p="sm" radius="sm" key={item.produto.id}>
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                      <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                        <Text size="sm" fw={600} truncate>
+                          {item.produto.nome}
+                        </Text>
+                        <Group gap="xs">
+                          <Badge color="gray" variant="light" size="sm">
+                            R$ {parseFloat(item.produto.preco).toFixed(2)} un
+                          </Badge>
+                          <Badge color="blue" variant="light" size="sm">
+                            Estoque: {parseFloat(item.produto.estoque).toFixed(0)}
+                          </Badge>
+                        </Group>
+                      </Stack>
+                      <Group gap="xs" wrap="nowrap" align="center">
+                        <NumberInput
+                          value={item.quantidade}
+                          onChange={(val) =>
+                            alterarQuantidade(
+                              item.produto.id,
+                              val === '' || val === null ? 0 : Number(val)
+                            )
+                          }
+                          w={80}
+                          min={0}
+                          size="sm"
+                          thousandSeparator="."
+                          decimalSeparator=","
+                        />
+                        <Text fw={600} size="sm">
+                          R$ {(
+                            parseFloat(item.produto.preco) * item.quantidade
+                          ).toFixed(2)}
+                        </Text>
+                        <ActionIcon
+                          color="red"
+                          variant="subtle"
+                          size="lg"
+                          onClick={() => removerDoCarrinho(item.produto.id)}
+                        >
+                          <FaTrash size={14} />
+                        </ActionIcon>
+                      </Group>
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
+              <Center h={isMobile ? 220 : 340}>
+                <Stack align="center" gap="xs">
+                  <FaShoppingCart size={40} color="#adb5bd" />
+                  <Text c="dimmed" size="sm">
+                    Busque um produto e adicione ao carrinho.
+                  </Text>
+                </Stack>
+              </Center>
+            )}
+          </ScrollArea>
 
-      {formaPagamento === 'DINHEIRO' && (
-        <>
-          <NumberInput
-            label="Valor Recebido"
-            placeholder="0.00"
-            value={valorRecebido}
-            onChange={setValorRecebido}
-            precision={2}
-            min={0}
-            size="md"
-            leftSection="R$"
-            required
-          />
-          {valorRecebido && parseFloat(valorRecebido) >= calcularTotal() && (
-            <Paper p="md" withBorder style={{ backgroundColor: '#d3f9d8', borderColor: '#51cf66' }}>
-              <Group justify="space-between">
-                <Text fw={600} c="green.9">TROCO:</Text>
-                <Text size="xl" fw={700} c="green.9">R$ {calcularTroco().toFixed(2)}</Text>
-              </Group>
-            </Paper>
+          <Divider />
+
+          {carrinho.length > 0 ? (
+            <Stack gap="md">
+              <Select
+                label="Forma de Pagamento"
+                value={formaPagamento}
+                onChange={(value) => {
+                  setFormaPagamento(value);
+                  setValorRecebido(null);
+                }}
+                size="md"
+                data={[
+                  { value: 'DINHEIRO', label: 'Dinheiro' },
+                  { value: 'DEBITO', label: 'Débito' },
+                  { value: 'CREDITO', label: 'Crédito' },
+                  { value: 'PIX', label: 'PIX' },
+                  { value: 'FIADO', label: 'Fiado' },
+                ]}
+              />
+
+              {formaPagamento === 'DINHEIRO' && (
+                <>
+                  <NumberInput
+                    label="Valor Recebido"
+                    placeholder="0,00"
+                    value={valorRecebido}
+                    onChange={(val) => {
+                      if (val === '' || val === null) {
+                        setValorRecebido(null);
+                      } else {
+                        setValorRecebido(Number(val));
+                      }
+                    }}
+                    precision={2}
+                    min={0}
+                    size="md"
+                    leftSection="R$"
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    required
+                  />
+                  {troco > 0 && (
+                    <Paper
+                      p="md"
+                      withBorder
+                      radius="md"
+                      style={{ backgroundColor: '#d3f9d8', borderColor: '#51cf66' }}
+                    >
+                      <Group justify="space-between">
+                        <Text fw={600} c="green.9">
+                          Troco
+                        </Text>
+                        <Text size="lg" fw={700} c="green.9">
+                          R$ {troco.toFixed(2)}
+                        </Text>
+                      </Group>
+                    </Paper>
+                  )}
+                </>
+              )}
+
+              {formaPagamento === 'FIADO' && (
+                <Stack gap="md">
+                  <Select
+                    label="Cliente"
+                    placeholder="Selecione o cliente"
+                    value={clienteId}
+                    onChange={setClienteId}
+                    size="md"
+                    data={clientes.map((c) => ({
+                      value: c.id.toString(),
+                      label: c.nome,
+                    }))}
+                    searchable
+                    required
+                  />
+                  <DatePickerInput
+                    label="Data de Vencimento"
+                    placeholder="Selecione a data"
+                    value={dataVencimento}
+                    onChange={setDataVencimento}
+                    minDate={new Date()}
+                    size="md"
+                    required
+                  />
+                </Stack>
+              )}
+
+              <Paper withBorder radius="md" p="md">
+                <Stack gap={6}>
+                  <Group justify="space-between">
+                    <Text size="sm" c="dimmed">
+                      Forma de pagamento
+                    </Text>
+                    <Badge color="orange" variant="light">
+                      {formaPagamento}
+                    </Badge>
+                  </Group>
+                  <Group justify="space-between">
+                    <Text size="sm" c="dimmed">
+                      Total de itens
+                    </Text>
+                    <Text fw={600}>{totalItens}</Text>
+                  </Group>
+                  <Divider />
+                  <Group justify="space-between">
+                    <Text fw={700} size="sm">
+                      Total da venda
+                    </Text>
+                    <Title order={3} c="orange">
+                      R$ {calcularTotal().toFixed(2)}
+                    </Title>
+                  </Group>
+                  {formaPagamento === 'DINHEIRO' && valorRecebido !== null && (
+                    <Group justify="space-between">
+                      <Text size="sm" c="dimmed">
+                        Valor recebido
+                      </Text>
+                      <Text fw={600}>
+                        R$ {Number(valorRecebido).toFixed(2)}
+                      </Text>
+                    </Group>
+                  )}
+                  {troco > 0 && (
+                    <Group justify="space-between">
+                      <Text size="sm" c="dimmed">
+                        Troco
+                      </Text>
+                      <Text fw={600} c="green.8">
+                        R$ {troco.toFixed(2)}
+                      </Text>
+                    </Group>
+                  )}
+                </Stack>
+              </Paper>
+
+              <Button
+                onClick={finalizarVenda}
+                loading={loading}
+                size="lg"
+                fullWidth
+                disabled={carrinho.length === 0}
+              >
+                {isMobile ? 'Finalizar venda' : 'Finalizar venda (F9)'}
+              </Button>
+            </Stack>
+          ) : (
+            <Alert color="gray" variant="light" title="Carrinho vazio">
+              Use <strong>F2</strong> para buscar ou o botão acima para abrir a lista
+              de produtos.
+            </Alert>
           )}
-        </>
-      )}
-
-      {formaPagamento === 'FIADO' && (
-        <>
-          <Select
-            label="Cliente"
-            placeholder="Selecione o cliente"
-            value={clienteId}
-            onChange={setClienteId}
-            size="md"
-            data={clientes.map(c => ({ value: c.id.toString(), label: c.nome }))}
-            searchable
-            required
-          />
-          <DatePickerInput
-            label="Data de Vencimento"
-            placeholder="Selecione a data"
-            value={dataVencimento}
-            onChange={setDataVencimento}
-            minDate={new Date()}
-            size="md"
-            required
-          />
-        </>
-      )}
-    </Stack>
-  );
+        </Stack>
+      </Card>
+    );
+  };
 
   const renderProductSearch = () => (
-    <Stack gap="sm">
-      <Group gap="xs">
-        <TextInput
-          ref={buscaRef}
-          placeholder="Buscar produto (F2)"
-          leftSection={<FaSearch />}
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          size="md"
-          autoFocus
-          style={{ flex: 1 }}
-        />
-        <ActionIcon
-          size={42}
+    <Card withBorder shadow="sm" radius="md" padding="md">
+      <Stack gap="md">
+        <Group justify="space-between" align="center">
+          <div>
+            <Title order={4}>Produtos</Title>
+            <Text size="sm" c="dimmed">
+              {produtosFiltrados.length} encontrados
+            </Text>
+          </div>
+          <Badge color="orange" variant="light">
+            F4 para leitor
+          </Badge>
+        </Group>
+
+        <Group gap="xs" align="flex-end">
+          <TextInput
+            ref={buscaRef}
+            placeholder="Buscar produto (F2)"
+            leftSection={<FaSearch />}
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            size="md"
+            autoFocus={!isMobile}
+            style={{ flex: 1 }}
+          />
+          <ActionIcon
+            size={44}
+            color="orange"
+            variant="filled"
+            onClick={abrirScanner}
+            title="Ler código de barras (F4)"
+          >
+            <FaBarcode size={20} />
+          </ActionIcon>
+        </Group>
+
+        <ScrollArea h={isMobile ? 300 : 520} offsetScrollbars>
+          {produtosFiltrados.length > 0 ? (
+            <Stack gap="xs">
+              {produtosFiltrados.slice(0, 20).map((produto) => (
+                <Paper
+                  shadow="xs"
+                  p="sm"
+                  withBorder
+                  key={produto.id}
+                  onClick={() => {
+                    adicionarAoCarrinho(produto);
+                    if (isMobile) setSearchModalOpen(false);
+                  }}
+                  style={{ cursor: 'pointer', transition: 'transform 0.1s ease' }}
+                >
+                  <Group justify="space-between" align="center">
+                    <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+                      <Text size="sm" fw={600} truncate>
+                        {produto.nome}
+                      </Text>
+                      <Group gap="xs">
+                        <Badge color="green" variant="light" size="sm">
+                          R$ {parseFloat(produto.preco).toFixed(2)}
+                        </Badge>
+                        {produto.estoque !== undefined && (
+                          <Badge color="blue" variant="light" size="sm">
+                            Estoque: {parseFloat(produto.estoque).toFixed(0)}
+                          </Badge>
+                        )}
+                      </Group>
+                    </Stack>
+                    <Button variant="light" size="xs">
+                      Adicionar
+                    </Button>
+                  </Group>
+                </Paper>
+              ))}
+            </Stack>
+          ) : (
+            <Center h={isMobile ? 280 : 500}>
+              <Text c="dimmed">Nenhum produto encontrado.</Text>
+            </Center>
+          )}
+        </ScrollArea>
+
+        <Alert
           color="orange"
-          variant="filled"
-          onClick={abrirScanner}
-          title="Ler código de barras (F4)"
+          variant="light"
+          icon={<FaKeyboard size={16} />}
+          title="Atalhos rápidos"
         >
-          <FaBarcode size={20} />
-        </ActionIcon>
-      </Group>
-      <Stack gap="xs">
-        {produtosFiltrados.length > 0 ? (
-          produtosFiltrados.slice(0, 10).map(produto => (
-            <Paper
-              shadow="xs"
-              p="sm"
-              withBorder
-              key={produto.id}
-              onClick={() => { adicionarAoCarrinho(produto); if (isMobile) setSearchModalOpen(false); }}
-              style={{ cursor: 'pointer', minHeight: '60px' }}
-            >
-              <Group justify="space-between">
-                <Text size="sm" fw={500}>{produto.nome}</Text>
-                <Text size="sm" fw={600} c="orange">R$ {parseFloat(produto.preco).toFixed(2)}</Text>
-              </Group>
-            </Paper>
-          ))
-        ) : (
-          <Text ta="center" c="dimmed">Nenhum produto encontrado.</Text>
-        )}
+          F2: buscar produto • F4: leitor de código de barras • F9: finalizar venda
+        </Alert>
       </Stack>
-    </Stack>
+    </Card>
   );
 
   return (
-    <AppShell
-      header={{ height: 60 }}
-      footer={{ height: 80 }}
-      padding="md"
-    >
+    <AppShell header={{ height: 60 }} padding="md">
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
+        <Group
+          h="100%"
+          px={{ base: 'sm', sm: 'md' }}
+          justify="space-between"
+          align="center"
+        >
           <Title order={3}>PDV</Title>
-          {isMobile && (
-            <ActionIcon onClick={() => setSearchModalOpen(true)} size="lg" variant="filled" color="blue">
-              <FaSearch />
-            </ActionIcon>
-          )}
+          <Group gap="lg" align="center">
+            <Stack gap={2} align="flex-end">
+              <Text size="xs" c="dimmed">
+                Total atual
+              </Text>
+              <Title order={3} c="orange">
+                R$ {calcularTotal().toFixed(2)}
+              </Title>
+            </Stack>
+            {isMobile && (
+              <ActionIcon
+                onClick={() => setSearchModalOpen(true)}
+                size="lg"
+                variant="filled"
+                color="blue"
+              >
+                <FaSearch />
+              </ActionIcon>
+            )}
+          </Group>
         </Group>
       </AppShell.Header>
 
       <AppShell.Main>
         {isMobile ? (
-          carrinho.length === 0 ? (
-            <Center style={{ height: '100%' }}>
-              <Stack align="center">
-                <FaShoppingCart size={48} color="gray" />
-                <Text c="dimmed">Carrinho vazio</Text>
-                <Button onClick={() => setSearchModalOpen(true)}>Adicionar Produto</Button>
-              </Stack>
-            </Center>
-          ) : (
-            renderCart()
-          )
+          <Stack gap="md">
+            <Button
+              leftSection={<FaSearch size={14} />}
+              variant="light"
+              onClick={() => setSearchModalOpen(true)}
+            >
+              Buscar produtos
+            </Button>
+            {renderCart()}
+          </Stack>
         ) : (
-          <Grid>
-            <Grid.Col span={7}>{renderCart()}</Grid.Col>
-            <Grid.Col span={5}>{renderProductSearch()}</Grid.Col>
+          <Grid columns={12} gutter="xl">
+            <Grid.Col span={{ base: 12, lg: 7 }}>{renderProductSearch()}</Grid.Col>
+            <Grid.Col span={{ base: 12, lg: 5 }}>{renderCart()}</Grid.Col>
           </Grid>
         )}
       </AppShell.Main>
-
-      <AppShell.Footer p="md">
-        <Group justify="space-between">
-          <div>
-            <Text size="sm" c="dimmed">Total:</Text>
-            <Title order={2} c="orange">R$ {calcularTotal().toFixed(2)}</Title>
-          </div>
-          <Button onClick={finalizarVenda} loading={loading} size="lg" w={isMobile ? '60%' : 'auto'}>
-            FINALIZAR VENDA (F9)
-          </Button>
-        </Group>
-      </AppShell.Footer>
 
       <Modal
         opened={searchModalOpen}
