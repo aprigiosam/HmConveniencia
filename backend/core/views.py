@@ -907,12 +907,17 @@ class LoteViewSet(viewsets.ModelViewSet):
         preco_custo_lote = request.data.get('preco_custo_lote')
         observacoes = request.data.get('observacoes', '')
 
-        # Log para debug
-        logger.info(f'Entrada estoque - data_validade recebida: {data_validade} (tipo: {type(data_validade)})')
+        # Log para debug - mostra TODOS os dados recebidos
+        logger.info(f'=== ENTRADA DE ESTOQUE ===')
+        logger.info(f'Todos os dados: {request.data}')
+        logger.info(f'data_validade recebida: {data_validade} (tipo: {type(data_validade).__name__})')
 
         # Trata string vazia como None
         if data_validade == '' or data_validade == 'null':
+            logger.info(f'data_validade tratada como None (era string vazia ou "null")')
             data_validade = None
+
+        logger.info(f'data_validade após tratamento: {data_validade}')
 
         # Validações
         if not produto_id:
