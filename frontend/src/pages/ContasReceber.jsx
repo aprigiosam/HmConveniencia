@@ -12,8 +12,9 @@ function ContasReceber() {
   const [contas, setContas] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [produtos, setProdutos] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [opened, { open, close }] = useDisclosure(false);
+  const [receberModalOpened, { open: openReceberModal, close: closeReceberModal }] = useDisclosure(false);
+  const [recebendoVenda, setRecebendoVenda] = useState(null);
   const [formData, setFormData] = useState({
     cliente_id: '',
     descricao: '',
@@ -28,14 +29,11 @@ function ContasReceber() {
   }, []);
 
   const loadContas = async () => {
-    setLoading(true);
     try {
       const response = await getContasReceber();
       setContas(response.data.results || response.data);
     } catch (error) {
       console.error('Erro ao carregar contas a receber:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -57,16 +55,23 @@ function ContasReceber() {
     }
   };
 
-  const handleReceber = async (vendaId) => {
-    if (!confirm('Confirmar recebimento desta conta?')) return;
+  const handleOpenReceberModal = (venda) => {
+    setRecebendoVenda(venda);
+    openReceberModal();
+  };
+
+  const handleConfirmReceber = async () => {
+    if (!recebendoVenda) return;
     try {
-      await receberPagamento(vendaId);
+      await receberPagamento(recebendoVenda.id);
       notifications.show({
         title: 'Pagamento recebido!',
         message: 'Conta marcada como paga com sucesso',
         color: 'green',
         icon: <FaCheck />,
       });
+      closeReceberModal();
+      setRecebendoVenda(null);
       loadContas();
     } catch (error) {
       console.error('Erro ao receber pagamento:', error);
@@ -77,6 +82,11 @@ function ContasReceber() {
         icon: <FaTimes />,
       });
     }
+  };
+
+  const handleCancelReceber = () => {
+    closeReceberModal();
+    setRecebendoVenda(null);
   };
 
   const handleOpenModal = () => {
@@ -273,7 +283,7 @@ function ContasReceber() {
                 <FaBell />
               </ActionIcon>
             </Tooltip>
-            <Button size="xs" leftSection={<FaCheck />} onClick={() => handleReceber(venda.id)}>
+            <Button size="xs" leftSection={<FaCheck />} onClick={() => handleOpenReceberModal(venda)}>
               Receber
             </Button>
           </Group>
@@ -310,7 +320,7 @@ function ContasReceber() {
                 Cobrar
               </Button>
             </Group>
-            <Button size="sm" leftSection={<FaCheck />} onClick={() => handleReceber(venda.id)} fullWidth>
+            <Button size="sm" leftSection={<FaCheck />} onClick={() => handleOpenReceberModal(venda)} fullWidth>
               Receber
             </Button>
           </Stack>
@@ -426,6 +436,31 @@ function ContasReceber() {
             </Group>
           </Stack>
         </form>
+      </Modal>
+
+      <Modal
+        opened={receberModalOpened}
+        onClose={handleCancelReceber}
+        title="Confirmar Recebimento"
+        centered
+        size="sm"
+      >
+        <Stack gap="md">
+          <Text>
+            Tem certeza que deseja marcar a conta de <strong>{recebendoVenda?.cliente_nome}</strong> no valor de <strong>R$ {recebendoVenda?.total}</strong> como paga?
+          </Text>
+          <Text size="sm" c="dimmed">
+            Esta ação não pode ser desfeita.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={handleCancelReceber}>
+              Cancelar
+            </Button>
+            <Button color="green" onClick={handleConfirmReceber}>
+              Confirmar Recebimento
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </>
   );

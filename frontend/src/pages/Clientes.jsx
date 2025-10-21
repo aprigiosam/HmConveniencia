@@ -8,7 +8,6 @@ import './Clientes.css'; // Importa o CSS
 
 function Clientes() {
   const [clientes, setClientes] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [opened, { open, close }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [editingCliente, setEditingCliente] = useState(null);
@@ -23,7 +22,6 @@ function Clientes() {
     const cachedClientes = await localDB.getCachedClientes();
     if (cachedClientes.length > 0) {
       setClientes(cachedClientes);
-      setLoading(false);
     }
 
     try {
@@ -33,8 +31,6 @@ function Clientes() {
       await localDB.cacheClientes(clientesData);
     } catch (error) {
       console.error('Servidor offline, usando cache local');
-    } finally {
-      setLoading(false);
     }
   };
 

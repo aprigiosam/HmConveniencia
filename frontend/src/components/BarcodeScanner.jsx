@@ -11,6 +11,7 @@ function BarcodeScanner({ opened, onClose, onScan, title = "Scanner de Código d
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState(null);
   const [lastScanned, setLastScanned] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const scannerRef = useRef(null);
   const html5QrCodeRef = useRef(null);
 

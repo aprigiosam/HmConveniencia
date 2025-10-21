@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDashboard } from '../services/api';
-import { Card, Text, Grid, Title, Group, Center, Loader, Badge, Stack, Paper, Progress, Divider } from '@mantine/core';
+import { Card, Text, Grid, Title, Group, Center, Loader, Badge, Stack, Paper, Divider } from '@mantine/core';
 import {
   FaDollarSign,
   FaExclamationTriangle,

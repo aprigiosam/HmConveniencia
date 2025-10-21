@@ -18,7 +18,6 @@ import {
   Paper,
   ThemeIcon,
   Select,
-  TextInput,
   Divider,
 } from '@mantine/core';
 import {
@@ -29,14 +28,12 @@ import {
   FaExclamationCircle,
   FaExclamationTriangle,
   FaInfoCircle,
-  FaShoppingCart,
   FaCalendar,
   FaBoxOpen,
   FaCreditCard,
   FaMoneyBill,
   FaFilter,
   FaEye,
-  FaArrowRight,
 } from 'react-icons/fa';
 import { notifications } from '@mantine/notifications';
 import {
@@ -236,8 +233,7 @@ const Alertas = () => {
         padding="md"
         radius="md"
         withBorder
-        className={`alerta-card ${!alerta.lido ? 'nao-lido' : ''}`}
-      >
+        className={`alerta-card ${!alerta.lido ? 'nao-lido' : ''}`}>
         <Group justify="apart" mb="xs">
           <Group>
             <ThemeIcon color={getPrioridadeColor(alerta.prioridade)} size="lg" radius="md">
@@ -515,3 +511,4 @@ const Alertas = () => {
 };
 
 export default Alertas;
+

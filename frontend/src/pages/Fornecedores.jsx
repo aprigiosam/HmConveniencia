@@ -7,7 +7,6 @@ import './Fornecedores.css';
 
 function Fornecedores() {
   const [fornecedores, setFornecedores] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [opened, { open, close }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [editingFornecedor, setEditingFornecedor] = useState(null);
@@ -27,15 +26,12 @@ function Fornecedores() {
   }, []);
 
   const loadFornecedores = async () => {
-    setLoading(true);
     try {
       const response = await getFornecedores({ ativo: true });
       const fornecedoresData = response.data.results || response.data;
       setFornecedores(fornecedoresData);
     } catch (error) {
       console.error('Erro ao carregar fornecedores:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

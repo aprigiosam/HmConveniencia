@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { syncManager } from '../utils/syncManager'
-import { localDB } from '../utils/db'
 import './SyncStatus.css'
 
 function SyncStatus() {

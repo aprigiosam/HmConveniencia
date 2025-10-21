@@ -7,9 +7,10 @@ import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 
 function Categorias() {
   const [categorias, setCategorias] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [opened, { open, close }] = useDisclosure(false);
+  const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [deletingCategory, setDeletingCategory] = useState(null);
   const [formData, setFormData] = useState({ nome: '', ativo: true });
 
   useEffect(() => {
@@ -21,7 +22,6 @@ function Categorias() {
     const cachedCategorias = await localDB.getCachedCategorias();
     if (cachedCategorias.length > 0) {
       setCategorias(cachedCategorias);
-      setLoading(false);
     }
 
     // Tenta sincronizar com servidor em background
@@ -32,8 +32,6 @@ function Categorias() {
       await localDB.cacheCategorias(categoriasData);
     } catch (error) {
       console.error('Servidor offline, usando cache local');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -72,14 +70,26 @@ function Categorias() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
+  const handleOpenDeleteModal = (categoria) => {
+    setDeletingCategory(categoria);
+    openDeleteModal();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCategory) return;
     try {
-      await deleteCategoria(id);
+      await deleteCategoria(deletingCategory.id);
+      closeDeleteModal();
+      setDeletingCategory(null);
       loadCategorias();
     } catch (error) {
       console.error('Erro ao excluir categoria:', error);
     }
+  };
+
+  const handleCancelDelete = () => {
+    closeDeleteModal();
+    setDeletingCategory(null);
   };
 
   const rows = categorias.map((categoria) => (
@@ -95,7 +105,7 @@ function Categorias() {
           <ActionIcon color="blue" aria-label="Editar" onClick={() => handleOpenModal(categoria)} size="lg">
             <FaEdit size={16} />
           </ActionIcon>
-          <ActionIcon color="red" aria-label="Excluir" onClick={() => handleDelete(categoria.id)} size="lg">
+          <ActionIcon color="red" aria-label="Excluir" onClick={() => handleOpenDeleteModal(categoria)} size="lg">
             <FaTrash size={16} />
           </ActionIcon>
         </Group>
@@ -134,6 +144,31 @@ function Categorias() {
             </Group>
           </Stack>
         </form>
+      </Modal>
+
+      <Modal
+        opened={deleteModalOpened}
+        onClose={handleCancelDelete}
+        title="Confirmar Exclusão"
+        centered
+        size="sm"
+      >
+        <Stack gap="md">
+          <Text>
+            Tem certeza que deseja excluir a categoria <strong>{deletingCategory?.nome}</strong>?
+          </Text>
+          <Text size="sm" c="dimmed">
+            Esta ação não pode ser desfeita.
+          </Text>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={handleCancelDelete}>
+              Cancelar
+            </Button>
+            <Button color="red" onClick={handleConfirmDelete}>
+              Excluir
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
 
       <ScrollArea>

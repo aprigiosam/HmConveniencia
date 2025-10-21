@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react
 import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Center, Loader } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBell, FaTruck, FaBuilding } from 'react-icons/fa';
+import { localDB } from './utils/db';
+import { syncManager } from './utils/syncManager';
 
 // Lazy loading das páginas para reduzir bundle inicial
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -23,9 +25,6 @@ const RelatorioFornecedores = lazy(() => import('./pages/RelatorioFornecedores')
 const Login = lazy(() => import('./pages/Login'));
 const SyncStatus = lazy(() => import('./components/SyncStatus'));
 const OfflineIndicator = lazy(() => import('./components/OfflineIndicator'));
-
-import { localDB } from './utils/db';
-import { syncManager } from './utils/syncManager';
 
 // Loading component para Suspense
 const PageLoader = () => (
