@@ -5,6 +5,22 @@ Django settings for HMConveniencia PDV
 from pathlib import Path
 from decouple import config
 
+
+def _split_env_list(value):
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _host_to_origin(host):
+    host = host.strip()
+    if not host:
+        return ""
+    if host.startswith("http://") or host.startswith("https://"):
+        return host
+    return f"https://{host.lstrip('.')}"
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
@@ -12,7 +28,9 @@ SECRET_KEY = config(
     "SECRET_KEY", default="django-insecure-dev-key-change-in-production"
 )
 DEBUG = config("DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = _split_env_list(
+    config("ALLOWED_HOSTS", default="localhost,127.0.0.1")
+)
 
 # APPS
 INSTALLED_APPS = [
@@ -107,10 +125,6 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # CORS
-def _split_env_list(value):
-    return [item.strip() for item in value.split(",") if item.strip()]
-
-
 default_cors_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -123,6 +137,15 @@ if frontend_origin:
 
 CORS_ALLOWED_ORIGINS = list(dict.fromkeys(default_cors_origins + extra_cors_origins))
 CORS_ALLOW_CREDENTIALS = True
+
+csrf_trusted_origins = _split_env_list(config("CSRF_TRUSTED_ORIGINS", default=""))
+if not csrf_trusted_origins and not DEBUG:
+    csrf_trusted_origins = [
+        origin
+        for origin in (_host_to_origin(host) for host in ALLOWED_HOSTS)
+        if origin and not origin.endswith("localhost") and "127.0.0.1" not in origin
+    ]
+CSRF_TRUSTED_ORIGINS = csrf_trusted_origins
 
 # CACHE - Redis (Upstash) com fallback para LocMem
 REDIS_URL = config("REDIS_URL", default=None)
