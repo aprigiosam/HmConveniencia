@@ -3,7 +3,7 @@ Serializers para API - HMConveniencia
 """
 from decimal import Decimal
 from rest_framework import serializers
-from .models import Cliente, Produto, Venda, ItemVenda, Caixa, MovimentacaoCaixa, Categoria, Alerta
+from .models import Cliente, Produto, Venda, ItemVenda, Caixa, MovimentacaoCaixa, Categoria, Alerta, Lote
 
 
 class ClienteSerializer(serializers.ModelSerializer):
@@ -31,19 +31,51 @@ class CategoriaSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
 
 
+class LoteSerializer(serializers.ModelSerializer):
+    """Serializer para Lotes"""
+    produto_nome = serializers.CharField(source='produto.nome', read_only=True)
+    esta_vencido = serializers.SerializerMethodField()
+    dias_para_vencer = serializers.SerializerMethodField()
+    proximo_vencimento = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Lote
+        fields = [
+            'id', 'produto', 'produto_nome', 'numero_lote', 'quantidade',
+            'data_validade', 'data_entrada', 'fornecedor', 'preco_custo_lote',
+            'observacoes', 'ativo', 'created_at', 'updated_at',
+            'esta_vencido', 'dias_para_vencer', 'proximo_vencimento'
+        ]
+        read_only_fields = ['created_at', 'updated_at', 'esta_vencido', 'dias_para_vencer', 'proximo_vencimento']
+
+    def get_esta_vencido(self, obj):
+        return obj.esta_vencido
+
+    def get_dias_para_vencer(self, obj):
+        return obj.dias_para_vencer
+
+    def get_proximo_vencimento(self, obj):
+        return obj.proximo_vencimento
+
+
 class ProdutoSerializer(serializers.ModelSerializer):
     margem_lucro = serializers.SerializerMethodField()
     categoria_nome = serializers.CharField(source='categoria.nome', read_only=True)
     esta_vencido = serializers.SerializerMethodField()
     dias_para_vencer = serializers.SerializerMethodField()
     proximo_vencimento = serializers.SerializerMethodField()
+    lotes = LoteSerializer(many=True, read_only=True)
+    total_lotes = serializers.SerializerMethodField()
+    estoque_lotes = serializers.SerializerMethodField()
 
     class Meta:
         model = Produto
         fields = ['id', 'nome', 'preco', 'preco_custo', 'estoque', 'codigo_barras', 'data_validade',
                   'ativo', 'created_at', 'margem_lucro', 'categoria', 'categoria_nome',
-                  'esta_vencido', 'dias_para_vencer', 'proximo_vencimento']
-        read_only_fields = ['created_at', 'margem_lucro', 'esta_vencido', 'dias_para_vencer', 'proximo_vencimento']
+                  'esta_vencido', 'dias_para_vencer', 'proximo_vencimento',
+                  'lotes', 'total_lotes', 'estoque_lotes']
+        read_only_fields = ['created_at', 'margem_lucro', 'esta_vencido', 'dias_para_vencer',
+                            'proximo_vencimento', 'lotes', 'total_lotes', 'estoque_lotes']
 
     def get_margem_lucro(self, obj):
         return float(obj.margem_lucro)
@@ -56,6 +88,16 @@ class ProdutoSerializer(serializers.ModelSerializer):
 
     def get_proximo_vencimento(self, obj):
         return obj.proximo_vencimento
+
+    def get_total_lotes(self, obj):
+        """Retorna quantidade de lotes ativos do produto"""
+        return obj.lotes.filter(ativo=True).count()
+
+    def get_estoque_lotes(self, obj):
+        """Retorna estoque total somando todos os lotes ativos"""
+        from django.db.models import Sum
+        total = obj.lotes.filter(ativo=True).aggregate(total=Sum('quantidade'))['total']
+        return float(total) if total else 0.0
 
 
 class ItemVendaSerializer(serializers.ModelSerializer):

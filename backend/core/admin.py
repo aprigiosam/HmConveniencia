@@ -2,7 +2,7 @@
 Admin para HMConveniencia
 """
 from django.contrib import admin
-from .models import Cliente, Produto, Venda, ItemVenda, Categoria, Caixa, MovimentacaoCaixa, Alerta
+from .models import Cliente, Produto, Venda, ItemVenda, Categoria, Caixa, MovimentacaoCaixa, Alerta, Lote
 
 
 @admin.register(Cliente)
@@ -125,3 +125,55 @@ class AlertaAdmin(admin.ModelAdmin):
         count = queryset.update(resolvido=True, resolvido_em=timezone.now())
         self.message_user(request, f'{count} alerta(s) marcado(s) como resolvido(s).')
     marcar_como_resolvido.short_description = 'Marcar como resolvido'
+
+
+@admin.register(Lote)
+class LoteAdmin(admin.ModelAdmin):
+    list_display = ['id', 'produto', 'numero_lote', 'quantidade', 'data_validade', 'dias_para_vencer_display', 'fornecedor', 'ativo', 'data_entrada']
+    list_filter = ['ativo', 'data_validade', 'data_entrada', 'produto']
+    search_fields = ['numero_lote', 'produto__nome', 'fornecedor']
+    list_editable = ['ativo']
+    readonly_fields = ['created_at', 'updated_at', 'esta_vencido', 'dias_para_vencer', 'proximo_vencimento']
+
+    fieldsets = (
+        ('Informações do Lote', {
+            'fields': ('produto', 'numero_lote', 'quantidade', 'ativo')
+        }),
+        ('Validade', {
+            'fields': ('data_validade', 'esta_vencido', 'dias_para_vencer', 'proximo_vencimento')
+        }),
+        ('Fornecedor e Custo', {
+            'fields': ('fornecedor', 'preco_custo_lote', 'observacoes'),
+            'classes': ('collapse',)
+        }),
+        ('Datas', {
+            'fields': ('data_entrada', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def dias_para_vencer_display(self, obj):
+        """Exibe dias para vencer com cores"""
+        dias = obj.dias_para_vencer
+        if dias is None:
+            return '-'
+        if dias < 0:
+            return f'Vencido há {abs(dias)} dias'
+        if dias == 0:
+            return 'Vence hoje'
+        if dias <= 7:
+            return f'{dias} dias (⚠️)'
+        return f'{dias} dias'
+    dias_para_vencer_display.short_description = 'Dias p/ Vencer'
+
+    actions = ['desativar_lotes', 'ativar_lotes']
+
+    def desativar_lotes(self, request, queryset):
+        count = queryset.update(ativo=False)
+        self.message_user(request, f'{count} lote(s) desativado(s).')
+    desativar_lotes.short_description = 'Desativar lotes selecionados'
+
+    def ativar_lotes(self, request, queryset):
+        count = queryset.update(ativo=True)
+        self.message_user(request, f'{count} lote(s) ativado(s).')
+    ativar_lotes.short_description = 'Ativar lotes selecionados'

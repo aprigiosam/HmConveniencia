@@ -11,6 +11,7 @@ from .views import (
     BackupViewSet,
     CategoriaViewSet,
     AlertaViewSet,
+    LoteViewSet,
     login,
     logout,
     me,
@@ -25,6 +26,7 @@ router.register('caixa', CaixaViewSet, basename='caixa')
 router.register('backup', BackupViewSet, basename='backup')
 router.register('categorias', CategoriaViewSet, basename='categoria')
 router.register('alertas', AlertaViewSet, basename='alerta')
+router.register('lotes', LoteViewSet, basename='lote')
 
 urlpatterns = [
     path('', include(router.urls)),

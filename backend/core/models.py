@@ -375,3 +375,113 @@ class Alerta(models.Model):
         self.resolvido = True
         self.resolvido_em = timezone.now()
         self.save(update_fields=['resolvido', 'resolvido_em'])
+
+
+class Lote(models.Model):
+    """Lote de produtos - controle de validade por lote"""
+    produto = models.ForeignKey(
+        Produto,
+        on_delete=models.CASCADE,
+        related_name='lotes',
+        verbose_name='Produto'
+    )
+    numero_lote = models.CharField(
+        'Número do Lote',
+        max_length=100,
+        blank=True,
+        help_text='Código do lote (opcional)'
+    )
+    quantidade = models.DecimalField(
+        'Quantidade',
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'), message='Quantidade não pode ser negativa')]
+    )
+    data_validade = models.DateField(
+        'Data de Validade',
+        null=True,
+        blank=True,
+        help_text='Data de vencimento do lote'
+    )
+    data_entrada = models.DateField(
+        'Data de Entrada',
+        auto_now_add=True,
+        help_text='Data de cadastro do lote'
+    )
+    fornecedor = models.CharField(
+        'Fornecedor',
+        max_length=200,
+        blank=True,
+        help_text='Nome do fornecedor (opcional)'
+    )
+    preco_custo_lote = models.DecimalField(
+        'Preço de Custo do Lote',
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Preço de custo específico deste lote (opcional)',
+        validators=[MinValueValidator(Decimal('0.00'), message='Preço não pode ser negativo')]
+    )
+    observacoes = models.TextField('Observações', blank=True)
+    ativo = models.BooleanField('Ativo', default=True)
+    created_at = models.DateTimeField('Criado em', auto_now_add=True)
+    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+
+    class Meta:
+        ordering = ['data_validade', 'data_entrada']  # FEFO: First Expired, First Out
+        verbose_name = 'Lote'
+        verbose_name_plural = 'Lotes'
+        indexes = [
+            models.Index(fields=['produto', 'ativo']),
+            models.Index(fields=['data_validade']),
+            models.Index(fields=['numero_lote']),
+            models.Index(fields=['produto', 'data_validade', 'ativo']),
+        ]
+
+    def __str__(self):
+        lote_info = f" - Lote {self.numero_lote}" if self.numero_lote else ""
+        validade_info = f" - Vence {self.data_validade.strftime('%d/%m/%Y')}" if self.data_validade else ""
+        return f"{self.produto.nome}{lote_info}{validade_info} ({self.quantidade} un)"
+
+    @property
+    def esta_vencido(self):
+        """Verifica se o lote está vencido"""
+        if not self.data_validade:
+            return False
+        from django.utils import timezone
+        return self.data_validade < timezone.now().date()
+
+    @property
+    def dias_para_vencer(self):
+        """Retorna quantos dias faltam para vencer (negativo se vencido)"""
+        if not self.data_validade:
+            return None
+        from django.utils import timezone
+        delta = self.data_validade - timezone.now().date()
+        return delta.days
+
+    @property
+    def proximo_vencimento(self):
+        """Verifica se está próximo do vencimento (7 dias)"""
+        if not self.data_validade:
+            return False
+        dias = self.dias_para_vencer
+        return dias is not None and 0 <= dias <= 7
+
+    def tem_estoque(self, quantidade_solicitada):
+        """Verifica se o lote tem quantidade suficiente"""
+        return self.quantidade >= quantidade_solicitada and self.ativo
+
+    def baixar_estoque(self, quantidade_vendida):
+        """Reduz o estoque do lote"""
+        if not self.tem_estoque(quantidade_vendida):
+            raise ValueError(f'Estoque insuficiente no lote. Disponível: {self.quantidade}')
+
+        self.quantidade -= quantidade_vendida
+        self.save(update_fields=['quantidade', 'updated_at'])
+
+        # Desativa o lote se quantidade zerou
+        if self.quantidade == 0:
+            self.ativo = False
+            self.save(update_fields=['ativo', 'updated_at'])

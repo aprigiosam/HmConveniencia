@@ -18,7 +18,7 @@ from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.core.cache import cache
-from .models import Cliente, Produto, Venda, Caixa, MovimentacaoCaixa, Categoria, Alerta
+from .models import Cliente, Produto, Venda, Caixa, MovimentacaoCaixa, Categoria, Alerta, Lote
 from .serializers import (
     ClienteSerializer,
     ProdutoSerializer,
@@ -27,7 +27,8 @@ from .serializers import (
     CaixaSerializer,
     MovimentacaoCaixaSerializer,
     CategoriaSerializer,
-    AlertaSerializer
+    AlertaSerializer,
+    LoteSerializer
 )
 from .services.alert_service import AlertService
 
@@ -847,3 +848,182 @@ class AlertaViewSet(viewsets.ModelViewSet):
         }
 
         return Response(resultado)
+
+
+class LoteViewSet(viewsets.ModelViewSet):
+    """ViewSet para Lotes de Produtos"""
+    queryset = Lote.objects.all()
+    serializer_class = LoteSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filtro por produto
+        produto_id = self.request.query_params.get('produto_id', None)
+        if produto_id:
+            queryset = queryset.filter(produto_id=produto_id)
+
+        # Filtro por ativos
+        ativo = self.request.query_params.get('ativo', None)
+        if ativo is not None:
+            queryset = queryset.filter(ativo=ativo.lower() == 'true')
+
+        # Filtro por vencidos
+        vencidos = self.request.query_params.get('vencidos', None)
+        if vencidos == 'true':
+            queryset = queryset.filter(data_validade__lt=timezone.now().date())
+
+        # Filtro por próximos ao vencimento (7 dias)
+        proximos_vencimento = self.request.query_params.get('proximos_vencimento', None)
+        if proximos_vencimento == 'true':
+            hoje = timezone.now().date()
+            data_limite = hoje + timedelta(days=7)
+            queryset = queryset.filter(
+                data_validade__gte=hoje,
+                data_validade__lte=data_limite
+            )
+
+        return queryset
+
+    @action(detail=False, methods=['post'])
+    def entrada_estoque(self, request):
+        """
+        Adiciona um novo lote ao estoque (entrada de mercadoria).
+        Atualiza também o estoque total do produto.
+        """
+        produto_id = request.data.get('produto_id')
+        quantidade = Decimal(str(request.data.get('quantidade', 0)))
+        data_validade = request.data.get('data_validade')
+        numero_lote = request.data.get('numero_lote', '')
+        fornecedor = request.data.get('fornecedor', '')
+        preco_custo_lote = request.data.get('preco_custo_lote')
+        observacoes = request.data.get('observacoes', '')
+
+        # Validações
+        if not produto_id:
+            return Response(
+                {'error': 'produto_id é obrigatório'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if quantidade <= 0:
+            return Response(
+                {'error': 'Quantidade deve ser maior que zero'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            produto = Produto.objects.get(id=produto_id)
+        except Produto.DoesNotExist:
+            return Response(
+                {'error': 'Produto não encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        with transaction.atomic():
+            # Cria o lote
+            lote = Lote.objects.create(
+                produto=produto,
+                numero_lote=numero_lote,
+                quantidade=quantidade,
+                data_validade=data_validade if data_validade else None,
+                fornecedor=fornecedor,
+                preco_custo_lote=Decimal(str(preco_custo_lote)) if preco_custo_lote else None,
+                observacoes=observacoes,
+                ativo=True
+            )
+
+            # Atualiza o estoque total do produto
+            produto.estoque += quantidade
+            produto.save(update_fields=['estoque'])
+
+            logger.info(f'Entrada de estoque: Lote {lote.id} criado para produto {produto.nome} (+{quantidade} un)')
+
+        serializer = self.get_serializer(lote)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def baixar_estoque(self, request, pk=None):
+        """
+        Baixa estoque de um lote específico (ajuste manual).
+        Atualiza também o estoque total do produto.
+        """
+        lote = self.get_object()
+        quantidade = Decimal(str(request.data.get('quantidade', 0)))
+
+        if quantidade <= 0:
+            return Response(
+                {'error': 'Quantidade deve ser maior que zero'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if quantidade > lote.quantidade:
+            return Response(
+                {'error': f'Quantidade insuficiente no lote. Disponível: {lote.quantidade}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        with transaction.atomic():
+            # Baixa do lote
+            lote.quantidade -= quantidade
+            lote.save(update_fields=['quantidade'])
+
+            # Desativa se zerou
+            if lote.quantidade == 0:
+                lote.ativo = False
+                lote.save(update_fields=['ativo'])
+
+            # Atualiza estoque do produto
+            produto = lote.produto
+            produto.estoque -= quantidade
+            produto.save(update_fields=['estoque'])
+
+            logger.info(f'Baixa de estoque: Lote {lote.id} -{quantidade} un')
+
+        serializer = self.get_serializer(lote)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def vencidos(self, request):
+        """Retorna lotes vencidos"""
+        lotes_vencidos = self.get_queryset().filter(
+            data_validade__lt=timezone.now().date(),
+            ativo=True
+        )
+        serializer = self.get_serializer(lotes_vencidos, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def proximos_vencimento(self, request):
+        """Retorna lotes próximos ao vencimento (7 dias)"""
+        hoje = timezone.now().date()
+        data_limite = hoje + timedelta(days=7)
+
+        lotes_proximos = self.get_queryset().filter(
+            data_validade__gte=hoje,
+            data_validade__lte=data_limite,
+            ativo=True
+        )
+        serializer = self.get_serializer(lotes_proximos, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def por_produto(self, request):
+        """Retorna lotes agrupados por produto"""
+        produto_id = request.query_params.get('produto_id')
+
+        if not produto_id:
+            return Response(
+                {'error': 'produto_id é obrigatório'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        lotes = self.get_queryset().filter(produto_id=produto_id, ativo=True)
+        serializer = self.get_serializer(lotes, many=True)
+
+        return Response({
+            'produto_id': produto_id,
+            'total_lotes': lotes.count(),
+            'estoque_total': sum(float(l.quantidade) for l in lotes),
+            'lotes': serializer.data
+        })
