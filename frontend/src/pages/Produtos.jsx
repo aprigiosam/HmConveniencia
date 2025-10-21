@@ -6,7 +6,7 @@ import { DatePickerInput } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes, FaExclamationTriangle, FaSearch } from 'react-icons/fa';
-import { BrowserMultiFormatReader } from '@zxing/browser';
+import BarcodeScanner from '../components/BarcodeScanner';
 import './Produtos.css';
 
 function Produtos() {
@@ -20,8 +20,6 @@ function Produtos() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [deletingProduct, setDeletingProduct] = useState(null);
   const [formData, setFormData] = useState({ nome: '', preco: '', preco_custo: '', estoque: '', categoria: '', codigo_barras: '', data_validade: null });
-  const scannerRef = useRef(null);
-  const leituraEmAndamentoRef = useRef(false);
 
   useEffect(() => {
     loadInitialData();
@@ -173,35 +171,8 @@ function Produtos() {
     setDeletingProduct(null);
   };
 
-  const abrirScanner = () => {
-    leituraEmAndamentoRef.current = false;
-    setScannerAberto(true);
-  };
-
-  const fecharScanner = () => {
-    if (scannerRef.current) {
-      scannerRef.current.reset();
-      scannerRef.current = null;
-    }
-    setScannerAberto(false);
-  };
-
-  const processarCodigoBarras = (codigoBarras) => {
-    if (leituraEmAndamentoRef.current || !scannerRef.current) return;
-
-    leituraEmAndamentoRef.current = true;
-    const scanner = scannerRef.current;
-    scannerRef.current = null;
-
-    try {
-      scanner.reset();
-    } catch (error) {
-      console.log('Erro ao parar scanner (ignorado):', error);
-    }
-
-    setScannerAberto(false);
+  const handleScan = (codigoBarras) => {
     setFormData(prev => ({ ...prev, codigo_barras: codigoBarras }));
-
     notifications.show({
       title: 'Código capturado!',
       message: `Código ${codigoBarras} adicionado ao formulário`,
@@ -209,55 +180,8 @@ function Produtos() {
       icon: <FaCheck />,
       autoClose: 3000,
     });
-
-    setTimeout(() => {
-      leituraEmAndamentoRef.current = false;
-    }, 1000);
+    setScannerAberto(false);
   };
-
-  useEffect(() => {
-    if (scannerAberto && !scannerRef.current) {
-      const codeReader = new BrowserMultiFormatReader();
-
-      setTimeout(async () => {
-        const videoElement = document.getElementById('video-reader-produtos');
-        if (!videoElement) {
-          console.error('Elemento video não encontrado');
-          return;
-        }
-
-        try {
-          await codeReader.decodeFromVideoDevice(
-            undefined,
-            videoElement,
-            (result, error) => {
-              if (result) {
-                processarCodigoBarras(result.getText());
-              }
-            }
-          );
-
-          scannerRef.current = codeReader;
-        } catch (error) {
-          console.error('Erro ao inicializar scanner:', error);
-          notifications.show({
-            title: 'Erro ao abrir câmera',
-            message: error.message || 'Permita o acesso à câmera nas configurações do navegador.',
-            color: 'red',
-            icon: <FaTimes />,
-          });
-          setScannerAberto(false);
-        }
-      }, 100);
-    }
-
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.reset();
-        scannerRef.current = null;
-      }
-    };
-  }, [scannerAberto]);
 
   const getValidadeBadge = (produto) => {
     if (!produto.data_validade) return null;
@@ -425,7 +349,7 @@ function Produtos() {
                   size={36}
                   color="orange"
                   variant="filled"
-                  onClick={abrirScanner}
+                  onClick={() => setScannerAberto(true)}
                   title="Ler código com câmera"
                 >
                   <FaBarcode size={18} />
@@ -505,31 +429,12 @@ function Produtos() {
         </Stack>
       </Modal>
 
-      <Modal
+      <BarcodeScanner
         opened={scannerAberto}
-        onClose={fecharScanner}
-        title="Ler Código de Barras"
-        size="lg"
-        centered
-      >
-        <Stack gap="md">
-          <Text size="sm" c="dimmed">
-            Aponte a câmera para o código de barras do produto
-          </Text>
-          <video
-            id="video-reader-produtos"
-            style={{
-              width: '100%',
-              maxHeight: '400px',
-              borderRadius: '8px',
-              backgroundColor: '#000'
-            }}
-          />
-          <Button onClick={fecharScanner} variant="light" fullWidth>
-            Cancelar
-          </Button>
-        </Stack>
-      </Modal>
+        onClose={() => setScannerAberto(false)}
+        onScan={handleScan}
+        title="Ler Código de Barras do Produto"
+      />
 
       <div className="table-desktop">
         <ScrollArea>
