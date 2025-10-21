@@ -85,29 +85,18 @@ const EntradaEstoque = () => {
       setLoading(true);
 
       // Formata a data corretamente
-      console.log('=== DEBUG DATA VALIDADE ===');
-      console.log('dataValidade:', dataValidade);
-      console.log('tipo:', typeof dataValidade);
-      console.log('é Date?', dataValidade instanceof Date);
-      if (dataValidade instanceof Date) {
-        console.log('isNaN?', isNaN(dataValidade.getTime()));
-        console.log('getTime():', dataValidade.getTime());
-      }
-
       let dataValidadeFormatada = null;
       if (dataValidade) {
-        if (dataValidade instanceof Date && !isNaN(dataValidade.getTime())) {
-          // Ajusta para UTC para evitar problemas de timezone
+        if (typeof dataValidade === 'string') {
+          // Se já é string no formato YYYY-MM-DD, usa direto
+          dataValidadeFormatada = dataValidade;
+        } else if (dataValidade instanceof Date && !isNaN(dataValidade.getTime())) {
+          // Se é objeto Date válido, formata
           const year = dataValidade.getFullYear();
           const month = String(dataValidade.getMonth() + 1).padStart(2, '0');
           const day = String(dataValidade.getDate()).padStart(2, '0');
           dataValidadeFormatada = `${year}-${month}-${day}`;
-          console.log('Data formatada:', dataValidadeFormatada);
-        } else {
-          console.log('Data inválida - não passou na validação');
         }
-      } else {
-        console.log('dataValidade é falsy:', dataValidade);
       }
 
       const data = {
@@ -120,7 +109,7 @@ const EntradaEstoque = () => {
         observacoes: observacoes,
       };
 
-      console.log('Enviando lote:', data); // Debug
+      console.log('Enviando lote com data:', data.data_validade); // Debug
 
       await entradaEstoque(data);
 
