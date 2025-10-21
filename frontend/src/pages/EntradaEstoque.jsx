@@ -87,7 +87,9 @@ const EntradaEstoque = () => {
       const data = {
         produto_id: produtoId,
         quantidade: parseFloat(quantidade),
-        data_validade: dataValidade ? dataValidade.toISOString().split('T')[0] : null,
+        data_validade: dataValidade && dataValidade instanceof Date && !isNaN(dataValidade)
+          ? dataValidade.toISOString().split('T')[0]
+          : null,
         numero_lote: numeroLote,
         fornecedor: fornecedor,
         preco_custo_lote: precoCustoLote ? parseFloat(precoCustoLote) : null,
