@@ -301,18 +301,26 @@ class VendaViewSet(viewsets.ModelViewSet):
         }
 
     def _calcular_produtos_validade(self, hoje):
-        """Retorna contadores de produtos vencidos e vencendo"""
+        """Retorna contadores de LOTES vencidos e vencendo"""
         data_limite = hoje + timedelta(days=7)
+
+        # Conta lotes distintos (evita contar o mesmo produto múltiplas vezes)
+        lotes_vencidos = Lote.objects.filter(
+            data_validade__lt=hoje,
+            ativo=True,
+            data_validade__isnull=False
+        ).values('produto').distinct().count()
+
+        lotes_vencendo = Lote.objects.filter(
+            data_validade__gte=hoje,
+            data_validade__lte=data_limite,
+            ativo=True,
+            data_validade__isnull=False
+        ).values('produto').distinct().count()
+
         return {
-            'vencidos': Produto.objects.filter(
-                data_validade__lt=hoje,
-                ativo=True
-            ).count(),
-            'vencendo': Produto.objects.filter(
-                data_validade__gte=hoje,
-                data_validade__lte=data_limite,
-                ativo=True
-            ).count()
+            'vencidos': lotes_vencidos,
+            'vencendo': lotes_vencendo
         }
 
     def _calcular_contas_receber(self, hoje):
