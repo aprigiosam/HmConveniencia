@@ -907,6 +907,13 @@ class LoteViewSet(viewsets.ModelViewSet):
         preco_custo_lote = request.data.get('preco_custo_lote')
         observacoes = request.data.get('observacoes', '')
 
+        # Log para debug
+        logger.info(f'Entrada estoque - data_validade recebida: {data_validade} (tipo: {type(data_validade)})')
+
+        # Trata string vazia como None
+        if data_validade == '' or data_validade == 'null':
+            data_validade = None
+
         # Validações
         if not produto_id:
             return Response(
