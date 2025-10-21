@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { getProdutos, createVenda, getClientes } from '../services/api';
 import { localDB } from '../utils/db';
 import { syncManager } from '../utils/syncManager';
-import { Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal } from '@mantine/core';
+import { AppShell, Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode } from 'react-icons/fa';
+import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaCreditCard, FaMoneyBillWave, FaQrcode, FaHandHoldingUsd, FaUniversity } from 'react-icons/fa';
 import Comprovante from '../components/Comprovante';
 import BarcodeScanner from '../components/BarcodeScanner';
+import ProdutosGrid from '../components/ProdutosGrid';
+import './PDV.css';
 
 function PDV() {
   const [produtos, setProdutos] = useState([]);
@@ -22,6 +24,7 @@ function PDV() {
   const [scannerAberto, setScannerAberto] = useState(false);
   const [comprovanteAberto, setComprovanteAberto] = useState(false);
   const [dadosVenda, setDadosVenda] = useState(null);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
   const buscaRef = useRef(null);
 
   useEffect(() => {
@@ -297,8 +300,144 @@ function PDV() {
   };
 
   return (
-    <Grid gutter="md">
-      <Grid.Col span={12} md={5}>
+    <AppShell
+      header={{ height: 60 }}
+      footer={{ height: 80 }}
+      padding="md"
+    >
+      <AppShell.Header>
+        <Group h="100%" px="md" justify="space-between">
+          <Title order={3}>PDV</Title>
+          <ActionIcon onClick={() => setSearchModalOpen(true)} size="lg" variant="filled" color="blue">
+            <FaSearch />
+          </ActionIcon>
+        </Group>
+      </AppShell.Header>
+
+      <AppShell.Main>
+        {carrinho.length === 0 ? (
+          <Center style={{ height: '100%' }}>
+            <Stack align="center">
+              <FaShoppingCart size={48} color="gray" />
+              <Text c="dimmed">Carrinho vazio</Text>
+              <Button onClick={() => setSearchModalOpen(true)}>Adicionar Produto</Button>
+            </Stack>
+          </Center>
+        ) : (
+          <Stack gap="sm">
+            {carrinho.map(item => (
+              <Paper withBorder p="sm" radius="xs" key={item.produto.id}>
+                <Group justify="space-between" align="flex-start" wrap="nowrap">
+                  <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
+                    <Text size="sm" fw={500} truncate>{item.produto.nome}</Text>
+                    <Text size="xs" c="dimmed">R$ {parseFloat(item.produto.preco).toFixed(2)}</Text>
+                  </Stack>
+                  <Group gap="xs" wrap="nowrap">
+                    <NumberInput
+                      value={item.quantidade}
+                      onChange={(val) => alterarQuantidade(item.produto.id, val)}
+                      w={70}
+                      min={0}
+                      size="sm"
+                    />
+                    <ActionIcon
+                      color="red"
+                      size="lg"
+                      onClick={() => removerDoCarrinho(item.produto.id)}
+                    >
+                      <FaTrash size={14} />
+                    </ActionIcon>
+                  </Group>
+                </Group>
+              </Paper>
+            ))}
+
+            <Select
+              label="Forma de Pagamento"
+              value={formaPagamento}
+              onChange={(value) => {
+                setFormaPagamento(value);
+                setValorRecebido('');
+              }}
+              size="md"
+              data={[
+                { value: 'DINHEIRO', label: 'Dinheiro' },
+                { value: 'DEBITO', label: 'Débito' },
+                { value: 'CREDITO', label: 'Crédito' },
+                { value: 'PIX', label: 'PIX' },
+                { value: 'FIADO', label: 'Fiado' },
+              ]}
+            />
+
+            {formaPagamento === 'DINHEIRO' && (
+              <>
+                <NumberInput
+                  label="Valor Recebido"
+                  placeholder="0.00"
+                  value={valorRecebido}
+                  onChange={setValorRecebido}
+                  precision={2}
+                  min={0}
+                  size="md"
+                  leftSection="R$"
+                  required
+                />
+                {valorRecebido && parseFloat(valorRecebido) >= calcularTotal() && (
+                  <Paper p="md" withBorder style={{ backgroundColor: '#d3f9d8', borderColor: '#51cf66' }}>
+                    <Group justify="space-between">
+                      <Text fw={600} c="green.9">TROCO:</Text>
+                      <Text size="xl" fw={700} c="green.9">R$ {calcularTroco().toFixed(2)}</Text>
+                    </Group>
+                  </Paper>
+                )}
+              </>
+            )}
+
+            {formaPagamento === 'FIADO' && (
+              <>
+                <Select
+                  label="Cliente"
+                  placeholder="Selecione o cliente"
+                  value={clienteId}
+                  onChange={setClienteId}
+                  size="md"
+                  data={clientes.map(c => ({ value: c.id.toString(), label: c.nome }))}
+                  searchable
+                  required
+                />
+                <DatePickerInput
+                  label="Data de Vencimento"
+                  placeholder="Selecione a data"
+                  value={dataVencimento}
+                  onChange={setDataVencimento}
+                  minDate={new Date()}
+                  size="md"
+                  required
+                />
+              </>
+            )}
+          </Stack>
+        )}
+      </AppShell.Main>
+
+      <AppShell.Footer p="md">
+        <Group justify="space-between">
+          <div>
+            <Text size="sm" c="dimmed">Total:</Text>
+            <Title order={2} c="orange">R$ {calcularTotal().toFixed(2)}</Title>
+          </div>
+          <Button onClick={finalizarVenda} loading={loading} size="lg" w="60%">
+            FINALIZAR VENDA
+          </Button>
+        </Group>
+      </AppShell.Footer>
+
+      <Modal
+        opened={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+        title="Buscar Produto"
+        size="xl"
+      >
         <Stack gap="sm">
           <Group gap="xs">
             <TextInput
@@ -321,151 +460,30 @@ function PDV() {
               <FaBarcode size={20} />
             </ActionIcon>
           </Group>
-          {busca && (
-            <Stack gap="xs">
-              {produtosFiltrados.length > 0 ? (
-                produtosFiltrados.slice(0, 5).map(produto => (
-                  <Paper
-                    shadow="xs"
-                    p="sm"
-                    withBorder
-                    key={produto.id}
-                    onClick={() => adicionarAoCarrinho(produto)}
-                    style={{ cursor: 'pointer', minHeight: '60px' }}
-                  >
-                    <Group justify="space-between">
-                      <Text size="sm" fw={500}>{produto.nome}</Text>
-                      <Text size="sm" fw={600} c="orange">R$ {parseFloat(produto.preco).toFixed(2)}</Text>
-                    </Group>
-                  </Paper>
-                ))
-              ) : (
-                <Text ta="center" c="dimmed">Nenhum produto encontrado.</Text>
-              )}
-            </Stack>
-          )}
-        </Stack>
-      </Grid.Col>
-
-      <Grid.Col span={12} md={7}>
-        <Card withBorder radius="md" p="sm">
-          <Group justify="space-between" mb="md">
-            <Title order={3}>Carrinho</Title>
-            <FaShoppingCart size={20} />
-          </Group>
-
-          {carrinho.length === 0 ? (
-            <Center style={{ minHeight: '200px' }}>
-              <Text c="dimmed">Carrinho vazio.</Text>
-            </Center>
-          ) : (
-            <Stack gap="sm">
-              {carrinho.map(item => (
-                <Paper withBorder p="sm" radius="xs" key={item.produto.id}>
-                  <Group justify="space-between" align="flex-start" wrap="nowrap">
-                    <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                      <Text size="sm" fw={500} truncate>{item.produto.nome}</Text>
-                      <Text size="xs" c="dimmed">R$ {parseFloat(item.produto.preco).toFixed(2)}</Text>
-                    </Stack>
-                    <Group gap="xs" wrap="nowrap">
-                      <NumberInput
-                        value={item.quantidade}
-                        onChange={(val) => alterarQuantidade(item.produto.id, val)}
-                        w={70}
-                        min={0}
-                        size="sm"
-                      />
-                      <ActionIcon
-                        color="red"
-                        size="lg"
-                        onClick={() => removerDoCarrinho(item.produto.id)}
-                      >
-                        <FaTrash size={14} />
-                      </ActionIcon>
-                    </Group>
+          <Stack gap="xs">
+            {produtosFiltrados.length > 0 ? (
+              produtosFiltrados.slice(0, 10).map(produto => (
+                <Paper
+                  shadow="xs"
+                  p="sm"
+                  withBorder
+                  key={produto.id}
+                  onClick={() => { adicionarAoCarrinho(produto); setSearchModalOpen(false); }}
+                  style={{ cursor: 'pointer', minHeight: '60px' }}
+                >
+                  <Group justify="space-between">
+                    <Text size="sm" fw={500}>{produto.nome}</Text>
+                    <Text size="sm" fw={600} c="orange">R$ {parseFloat(produto.preco).toFixed(2)}</Text>
                   </Group>
                 </Paper>
-              ))}
+              ))
+            ) : (
+              <Text ta="center" c="dimmed">Nenhum produto encontrado.</Text>
+            )}
+          </Stack>
+        </Stack>
+      </Modal>
 
-              <Select
-                label="Forma de Pagamento"
-                value={formaPagamento}
-                onChange={(value) => {
-                  setFormaPagamento(value);
-                  setValorRecebido(''); // Limpa valor recebido ao trocar forma de pagamento
-                }}
-                size="md"
-                data={[
-                  { value: 'DINHEIRO', label: 'Dinheiro' },
-                  { value: 'DEBITO', label: 'Débito' },
-                  { value: 'CREDITO', label: 'Crédito' },
-                  { value: 'PIX', label: 'PIX' },
-                  { value: 'FIADO', label: 'Fiado' },
-                ]}
-              />
-
-              {formaPagamento === 'DINHEIRO' && (
-                <>
-                  <NumberInput
-                    label="Valor Recebido"
-                    placeholder="0.00"
-                    value={valorRecebido}
-                    onChange={setValorRecebido}
-                    precision={2}
-                    min={0}
-                    size="md"
-                    leftSection="R$"
-                    required
-                  />
-                  {valorRecebido && parseFloat(valorRecebido) >= calcularTotal() && (
-                    <Paper p="md" withBorder style={{ backgroundColor: '#d3f9d8', borderColor: '#51cf66' }}>
-                      <Group justify="space-between">
-                        <Text fw={600} c="green.9">TROCO:</Text>
-                        <Text size="xl" fw={700} c="green.9">R$ {calcularTroco().toFixed(2)}</Text>
-                      </Group>
-                    </Paper>
-                  )}
-                </>
-              )}
-
-              {formaPagamento === 'FIADO' && (
-                <>
-                  <Select
-                    label="Cliente"
-                    placeholder="Selecione o cliente"
-                    value={clienteId}
-                    onChange={setClienteId}
-                    size="md"
-                    data={clientes.map(c => ({ value: c.id.toString(), label: c.nome }))}
-                    searchable
-                    required
-                  />
-                  <DatePickerInput
-                    label="Data de Vencimento"
-                    placeholder="Selecione a data"
-                    value={dataVencimento}
-                    onChange={setDataVencimento}
-                    minDate={new Date()}
-                    size="md"
-                    required
-                  />
-                </>
-              )}
-
-              <Group justify="space-between" mt="md" p="sm" style={{ background: '#f8f9fa', borderRadius: '8px' }}>
-                <Text size="lg" fw={500}>Total:</Text>
-                <Title order={2} c="orange">R$ {calcularTotal().toFixed(2)}</Title>
-              </Group>
-
-              <Button onClick={finalizarVenda} loading={loading} size="lg" fullWidth>
-                FINALIZAR VENDA
-              </Button>
-            </Stack>
-          )}
-        </Card>
-      </Grid.Col>
-
-      {/* Modal do Scanner de Código de Barras */}
       <BarcodeScanner
         opened={scannerAberto}
         onClose={() => setScannerAberto(false)}
@@ -473,7 +491,6 @@ function PDV() {
         title="Ler Código de Barras do Produto"
       />
 
-      {/* Modal do Comprovante de Venda */}
       <Modal
         opened={comprovanteAberto}
         onClose={() => setComprovanteAberto(false)}
@@ -489,7 +506,7 @@ function PDV() {
           />
         )}
       </Modal>
-    </Grid>
+    </AppShell>
   );
 }
 
