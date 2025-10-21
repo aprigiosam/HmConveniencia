@@ -16,30 +16,37 @@ import {
   LoadingOverlay,
   Card,
   Stack,
+  ActionIcon,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { FaBoxOpen, FaPlus, FaCalendar, FaTruck } from 'react-icons/fa';
-import { getProdutos, entradaEstoque, getLotes, getFornecedores } from '../services/api';
+import { FaBoxOpen, FaPlus, FaCalendar, FaTruck, FaEdit, FaTimes } from 'react-icons/fa';
+import { getProdutos, entradaEstoque, getLotes, getFornecedores, updateLote } from '../services/api';
 
 const EntradaEstoque = () => {
   const [loading, setLoading] = useState(false);
   const [produtos, setProdutos] = useState([]);
   const [fornecedores, setFornecedores] = useState([]);
   const [lotesRecentes, setLotesRecentes] = useState([]);
+  const [editingLote, setEditingLote] = useState(null);
 
   // Form state
   const [produtoId, setProdutoId] = useState('');
-  const [quantidade, setQuantidade] = useState('');
+  const [quantidade, setQuantidade] = useState(null);
   const [dataValidade, setDataValidade] = useState(null);
   const [numeroLote, setNumeroLote] = useState('');
   const [fornecedor, setFornecedor] = useState('');
-  const [precoCustoLote, setPrecoCustoLote] = useState('');
+  const [precoCustoLote, setPrecoCustoLote] = useState(null);
   const [observacoes, setObservacoes] = useState('');
 
   useEffect(() => {
     carregarDados();
   }, []);
+
+  const parseOptionalNumber = (value) =>
+    value === null || value === '' || typeof value === 'undefined'
+      ? null
+      : Number(value);
 
   const carregarDados = async () => {
     try {
@@ -75,7 +82,9 @@ const EntradaEstoque = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!produtoId || !quantidade || quantidade <= 0) {
+    const quantidadeNumber = Number(quantidade);
+
+    if (!produtoId || Number.isNaN(quantidadeNumber) || quantidadeNumber <= 0) {
       notifications.show({
         title: 'Erro',
         message: 'Preencha o produto e quantidade corretamente',
@@ -102,36 +111,55 @@ const EntradaEstoque = () => {
         }
       }
 
-      const data = {
-        produto_id: produtoId,
-        quantidade: parseFloat(quantidade),
+      const fornecedorId = fornecedor ? parseInt(fornecedor, 10) : null;
+      const precoCustoNumber = parseOptionalNumber(precoCustoLote);
+      const produtoSelecionado = produtos.find(
+        (p) => p.id === parseInt(produtoId, 10)
+      );
+
+      const lotePayload = {
+        quantidade: quantidadeNumber,
         data_validade: dataValidadeFormatada,
-        numero_lote: numeroLote,
-        fornecedor_id: fornecedor ? parseInt(fornecedor) : null,
-        preco_custo_lote: precoCustoLote ? parseFloat(precoCustoLote) : null,
-        observacoes: observacoes,
+        numero_lote: numeroLote || null,
+        fornecedor: fornecedorId,
+        preco_custo_lote: precoCustoNumber,
+        observacoes,
+        ativo: true,
       };
 
-      console.log('Enviando lote com data:', data.data_validade); // Debug
+      if (editingLote) {
+        lotePayload.produto = parseInt(produtoId, 10);
 
-      await entradaEstoque(data);
+        await updateLote(editingLote.id, lotePayload);
 
-      const produtoSelecionado = produtos.find(p => p.id === parseInt(produtoId));
+        notifications.show({
+          title: 'Lote atualizado',
+          message: `Entrada ajustada para ${
+            produtoSelecionado?.nome || editingLote.produto_nome
+          }`,
+          color: 'green',
+        });
+      } else {
+        const data = {
+          produto_id: produtoId,
+          quantidade: quantidadeNumber,
+          data_validade: dataValidadeFormatada,
+          numero_lote: numeroLote,
+          fornecedor_id: fornecedorId,
+          preco_custo_lote: precoCustoNumber,
+          observacoes,
+        };
 
-      notifications.show({
-        title: 'Sucesso',
-        message: `Lote adicionado ao estoque de ${produtoSelecionado?.nome}`,
-        color: 'green',
-      });
+        await entradaEstoque(data);
 
-      // Limpa o formulário
-      setProdutoId('');
-      setQuantidade('');
-      setDataValidade(null);
-      setNumeroLote('');
-      setFornecedor('');
-      setPrecoCustoLote('');
-      setObservacoes('');
+        notifications.show({
+          title: 'Sucesso',
+          message: `Lote adicionado ao estoque de ${produtoSelecionado?.nome}`,
+          color: 'green',
+        });
+      }
+
+      resetForm();
 
       // Recarrega os dados
       await carregarDados();
@@ -139,12 +167,40 @@ const EntradaEstoque = () => {
       console.error('Erro ao adicionar lote:', error);
       notifications.show({
         title: 'Erro',
-        message: error.response?.data?.error || 'Não foi possível adicionar o lote',
+        message:
+          error.response?.data?.error ||
+          error.response?.data?.quantidade?.[0] ||
+          'Não foi possível salvar o lote',
         color: 'red',
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setProdutoId('');
+    setQuantidade(null);
+    setDataValidade(null);
+    setNumeroLote('');
+    setFornecedor('');
+    setPrecoCustoLote(null);
+    setObservacoes('');
+    setEditingLote(null);
+  };
+
+  const iniciarEdicao = (lote) => {
+    setEditingLote(lote);
+    setProdutoId(lote.produto.toString());
+    setQuantidade(parseFloat(lote.quantidade));
+    setNumeroLote(lote.numero_lote || '');
+    setObservacoes(lote.observacoes || '');
+    setFornecedor(lote.fornecedor ? lote.fornecedor.toString() : '');
+    setPrecoCustoLote(
+      lote.preco_custo_lote !== null ? parseFloat(lote.preco_custo_lote) : null
+    );
+    setDataValidade(lote.data_validade ? new Date(lote.data_validade) : null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const formatDate = (dateString) => {
@@ -206,6 +262,24 @@ const EntradaEstoque = () => {
 
         {/* Formulário de Entrada */}
         <Paper shadow="sm" p="md" withBorder>
+          <Group justify="space-between" align="center" mb="sm">
+            <Stack gap={2}>
+              <Title order={4}>
+                {editingLote ? 'Editar Entrada de Estoque' : 'Nova Entrada de Estoque'}
+              </Title>
+              <Text c="dimmed" size="sm">
+                {editingLote
+                  ? `Atualize as informações do lote ${editingLote.numero_lote || `#${editingLote.id}`}`
+                  : 'Preencha os dados para registrar um novo lote de entrada'}
+              </Text>
+            </Stack>
+            {editingLote && (
+              <Badge color="orange" variant="light">
+                Editando lote #{editingLote.id}
+              </Badge>
+            )}
+          </Group>
+
           <form onSubmit={handleSubmit}>
             <Stack gap="md">
               <Grid>
@@ -293,13 +367,25 @@ const EntradaEstoque = () => {
                 rows={3}
               />
 
-              <Group justify="flex-end">
+              <Group justify="space-between" align="center">
+                {editingLote ? (
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    leftSection={<FaTimes size={14} />}
+                    onClick={resetForm}
+                  >
+                    Cancelar edição
+                  </Button>
+                ) : (
+                  <div />
+                )}
                 <Button
                   type="submit"
                   leftSection={<FaPlus size={16} />}
                   loading={loading}
                 >
-                  Adicionar ao Estoque
+                  {editingLote ? 'Salvar alterações' : 'Adicionar ao Estoque'}
                 </Button>
               </Group>
             </Stack>
@@ -322,12 +408,13 @@ const EntradaEstoque = () => {
                   <Table.Th>Quantidade</Table.Th>
                   <Table.Th>Validade</Table.Th>
                   <Table.Th>Fornecedor</Table.Th>
+                  <Table.Th style={{ width: 80 }}>Ações</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {lotesRecentes.length === 0 ? (
                   <Table.Tr>
-                    <Table.Td colSpan={6} style={{ textAlign: 'center' }}>
+                    <Table.Td colSpan={7} style={{ textAlign: 'center' }}>
                       <Text c="dimmed">Nenhum lote cadastrado</Text>
                     </Table.Td>
                   </Table.Tr>
@@ -342,6 +429,16 @@ const EntradaEstoque = () => {
                         {getBadgeValidade(lote)}
                       </Table.Td>
                       <Table.Td>{lote.fornecedor_nome || '-'}</Table.Td>
+                      <Table.Td>
+                        <ActionIcon
+                          color="blue"
+                          variant="light"
+                          onClick={() => iniciarEdicao(lote)}
+                          title="Editar entrada"
+                        >
+                          <FaEdit size={16} />
+                        </ActionIcon>
+                      </Table.Td>
                     </Table.Tr>
                   ))
                 )}

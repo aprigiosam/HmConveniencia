@@ -3,6 +3,7 @@ Serializers para API - HMConveniencia
 """
 
 from decimal import Decimal
+from django.db import transaction
 from rest_framework import serializers
 from .models import (
     Cliente,
@@ -138,6 +139,20 @@ class LoteSerializer(serializers.ModelSerializer):
 
     def get_proximo_vencimento(self, obj):
         return obj.proximo_vencimento
+
+    def validate_quantidade(self, value):
+        if value is None or value <= 0:
+            raise serializers.ValidationError("Quantidade deve ser maior que zero")
+        return value
+
+    def update(self, instance, validated_data):
+        nova_quantidade = validated_data.get("quantidade", instance.quantidade)
+
+        if nova_quantidade is None or nova_quantidade <= 0:
+            raise serializers.ValidationError({"quantidade": "Quantidade deve ser maior que zero"})
+
+        with transaction.atomic():
+            return super().update(instance, validated_data)
 
 
 class ProdutoSerializer(serializers.ModelSerializer):

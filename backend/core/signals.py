@@ -37,17 +37,39 @@ def atualizar_estoque_ao_editar_lote(sender, instance, **kwargs):
     """
     if instance.pk:  # Se está editando (não é novo)
         try:
-            lote_antigo = Lote.objects.get(pk=instance.pk)
-            diferenca = instance.quantidade - lote_antigo.quantidade
+            lote_antigo = Lote.objects.select_related("produto").get(pk=instance.pk)
+            produto_original = lote_antigo.produto
+            produto_atual = instance.produto
 
-            if diferenca != 0:
-                produto = instance.produto
-                produto.estoque += diferenca
-                produto.save(update_fields=["estoque"])
+            if getattr(produto_atual, "id", None) is None:
+                return
+
+            if produto_original.id != produto_atual.id:
+                # Remove quantidade antiga do produto original
+                produto_original.estoque -= lote_antigo.quantidade
+                if produto_original.estoque < 0:
+                    produto_original.estoque = 0
+                produto_original.save(update_fields=["estoque"])
+
+                # Adiciona quantidade atual ao novo produto
+                produto_atual.estoque += instance.quantidade
+                produto_atual.save(update_fields=["estoque"])
 
                 logger.info(
-                    f"Lote {instance.id} editado. Estoque de {produto.nome} "
-                    f"ajustado em {diferenca:+.2f} un. Novo estoque: {produto.estoque}"
+                    "Lote %s transferido do produto '%s' para '%s'. Estoques atualizados.",
+                    instance.id,
+                    produto_original.nome,
+                    produto_atual.nome,
                 )
+            else:
+                diferenca = instance.quantidade - lote_antigo.quantidade
+                if diferenca != 0:
+                    produto_atual.estoque += diferenca
+                    produto_atual.save(update_fields=["estoque"])
+
+                    logger.info(
+                        f"Lote {instance.id} editado. Estoque de {produto_atual.nome} "
+                        f"ajustado em {diferenca:+.2f} un. Novo estoque: {produto_atual.estoque}"
+                    )
         except Lote.DoesNotExist:
             pass
