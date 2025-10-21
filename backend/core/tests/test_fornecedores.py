@@ -1,8 +1,10 @@
+from decimal import Decimal
+
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from core.models import Fornecedor
+from core.models import Fornecedor, Produto, Lote
 
 
 class FornecedorAPITestCase(APITestCase):
@@ -54,3 +56,43 @@ class FornecedorAPITestCase(APITestCase):
         fornecedor.refresh_from_db()
         self.assertEqual(fornecedor.nome, payload["nome"])
         self.assertFalse(fornecedor.ativo)
+
+    def test_listar_lotes_de_fornecedor(self):
+        fornecedor = Fornecedor.objects.create(nome="Fornecedor Teste")
+        produto = Produto.objects.create(nome="Produto 1", preco=1, estoque=0)
+        lote = Lote.objects.create(
+            produto=produto,
+            fornecedor=fornecedor,
+            quantidade=Decimal("5"),
+            numero_lote="LT123",
+        )
+
+        response = self.client.get(f"/api/fornecedores/{fornecedor.id}/lotes/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], lote.id)
+
+    def test_estatisticas_fornecedor(self):
+        fornecedor = Fornecedor.objects.create(nome="Fornecedor Estatisticas")
+        produto = Produto.objects.create(nome="Produto 1", preco=10, estoque=0)
+        Lote.objects.create(
+            produto=produto,
+            fornecedor=fornecedor,
+            quantidade=Decimal("3"),
+            preco_custo_lote=Decimal("5"),
+        )
+        Lote.objects.create(
+            produto=produto,
+            fornecedor=fornecedor,
+            quantidade=Decimal("2"),
+            preco_custo_lote=Decimal("4"),
+        )
+
+        response = self.client.get(f"/api/fornecedores/{fornecedor.id}/estatisticas/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["total_lotes"], 2)
+        self.assertEqual(data["total_produtos_diferentes"], 1)
+        self.assertAlmostEqual(data["total_compras"], 23.0)

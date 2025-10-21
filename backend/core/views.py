@@ -1106,8 +1106,13 @@ class LoteViewSet(viewsets.ModelViewSet):
 
         with transaction.atomic():
             # Baixa do lote
-            lote.quantidade -= quantidade
-            lote.save(update_fields=["quantidade"])
+            lote._skip_signal_update = True
+            try:
+                lote.quantidade -= quantidade
+                lote.save(update_fields=["quantidade"])
+            finally:
+                if hasattr(lote, "_skip_signal_update"):
+                    delattr(lote, "_skip_signal_update")
 
             # Desativa se zerou
             if lote.quantidade == 0:

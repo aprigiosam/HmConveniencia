@@ -36,6 +36,8 @@ def atualizar_estoque_ao_editar_lote(sender, instance, **kwargs):
     Quando a quantidade de um lote é editada, atualiza o estoque do produto.
     """
     if instance.pk:  # Se está editando (não é novo)
+        if getattr(instance, "_skip_signal_update", False):
+            return
         try:
             lote_antigo = Lote.objects.select_related("produto").get(pk=instance.pk)
             produto_original = lote_antigo.produto
