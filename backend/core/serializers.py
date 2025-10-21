@@ -3,7 +3,7 @@ Serializers para API - HMConveniencia
 """
 from decimal import Decimal
 from rest_framework import serializers
-from .models import Cliente, Produto, Venda, ItemVenda, Caixa, MovimentacaoCaixa, Categoria, Alerta, Lote
+from .models import Cliente, Fornecedor, Produto, Venda, ItemVenda, Caixa, MovimentacaoCaixa, Categoria, Alerta, Lote
 
 
 class ClienteSerializer(serializers.ModelSerializer):
@@ -24,6 +24,32 @@ class ClienteSerializer(serializers.ModelSerializer):
         return value
 
 
+class FornecedorSerializer(serializers.ModelSerializer):
+    """Serializer para Fornecedores"""
+    total_lotes = serializers.SerializerMethodField()
+    total_compras = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Fornecedor
+        fields = [
+            'id', 'nome', 'nome_fantasia', 'cnpj', 'telefone', 'email',
+            'endereco', 'observacoes', 'ativo', 'created_at', 'updated_at',
+            'total_lotes', 'total_compras'
+        ]
+        read_only_fields = ['created_at', 'updated_at', 'total_lotes', 'total_compras']
+
+    def get_total_lotes(self, obj):
+        return obj.total_lotes()
+
+    def get_total_compras(self, obj):
+        return float(obj.total_compras())
+
+    def validate_cnpj(self, value):
+        if value == '':
+            return None
+        return value
+
+
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
@@ -34,6 +60,7 @@ class CategoriaSerializer(serializers.ModelSerializer):
 class LoteSerializer(serializers.ModelSerializer):
     """Serializer para Lotes"""
     produto_nome = serializers.CharField(source='produto.nome', read_only=True)
+    fornecedor_nome = serializers.CharField(source='fornecedor.nome', read_only=True, allow_null=True)
     esta_vencido = serializers.SerializerMethodField()
     dias_para_vencer = serializers.SerializerMethodField()
     proximo_vencimento = serializers.SerializerMethodField()
@@ -42,11 +69,11 @@ class LoteSerializer(serializers.ModelSerializer):
         model = Lote
         fields = [
             'id', 'produto', 'produto_nome', 'numero_lote', 'quantidade',
-            'data_validade', 'data_entrada', 'fornecedor', 'preco_custo_lote',
+            'data_validade', 'data_entrada', 'fornecedor', 'fornecedor_nome', 'preco_custo_lote',
             'observacoes', 'ativo', 'created_at', 'updated_at',
             'esta_vencido', 'dias_para_vencer', 'proximo_vencimento'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'esta_vencido', 'dias_para_vencer', 'proximo_vencimento']
+        read_only_fields = ['created_at', 'updated_at', 'esta_vencido', 'dias_para_vencer', 'proximo_vencimento', 'fornecedor_nome']
 
     def get_esta_vencido(self, obj):
         return obj.esta_vencido

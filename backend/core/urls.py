@@ -5,6 +5,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     ClienteViewSet,
+    FornecedorViewSet,
     ProdutoViewSet,
     VendaViewSet,
     CaixaViewSet,
@@ -20,6 +21,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register('clientes', ClienteViewSet, basename='cliente')
+router.register('fornecedores', FornecedorViewSet, basename='fornecedor')
 router.register('produtos', ProdutoViewSet, basename='produto')
 router.register('vendas', VendaViewSet, basename='venda')
 router.register('caixa', CaixaViewSet, basename='caixa')

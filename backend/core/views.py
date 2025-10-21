@@ -18,9 +18,10 @@ from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.core.cache import cache
-from .models import Cliente, Produto, Venda, Caixa, MovimentacaoCaixa, Categoria, Alerta, Lote
+from .models import Cliente, Fornecedor, Produto, Venda, Caixa, MovimentacaoCaixa, Categoria, Alerta, Lote
 from .serializers import (
     ClienteSerializer,
+    FornecedorSerializer,
     ProdutoSerializer,
     VendaSerializer,
     VendaCreateSerializer,
@@ -112,6 +113,61 @@ class ClienteViewSet(viewsets.ModelViewSet):
         cache.set(cache_key, data, 300)
 
         return Response(data)
+
+
+class FornecedorViewSet(viewsets.ModelViewSet):
+    """ViewSet para Fornecedores"""
+    queryset = Fornecedor.objects.all()
+    serializer_class = FornecedorSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filtro por ativos
+        ativo = self.request.query_params.get('ativo', None)
+        if ativo is not None:
+            queryset = queryset.filter(ativo=ativo.lower() == 'true')
+
+        # Busca por nome
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                Q(nome__icontains=search) |
+                Q(nome_fantasia__icontains=search) |
+                Q(cnpj__icontains=search)
+            )
+
+        return queryset.order_by('nome')
+
+    @action(detail=True, methods=['get'])
+    def lotes(self, request, pk=None):
+        """Retorna todos os lotes de um fornecedor"""
+        fornecedor = self.get_object()
+        lotes = fornecedor.lotes.filter(ativo=True).select_related('produto')
+        serializer = LoteSerializer(lotes, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def estatisticas(self, request, pk=None):
+        """Retorna estatísticas de compras do fornecedor"""
+        fornecedor = self.get_object()
+
+        lotes = fornecedor.lotes.filter(ativo=True)
+
+        stats = {
+            'total_lotes': lotes.count(),
+            'total_compras': float(fornecedor.total_compras()),
+            'total_produtos_diferentes': lotes.values('produto').distinct().count(),
+            'quantidade_total': float(lotes.aggregate(
+                total=Sum('quantidade')
+            )['total'] or 0),
+            'ticket_medio': 0,
+        }
+
+        if stats['total_lotes'] > 0:
+            stats['ticket_medio'] = stats['total_compras'] / stats['total_lotes']
+
+        return Response(stats)
 
 
 class ProdutoViewSet(viewsets.ModelViewSet):
