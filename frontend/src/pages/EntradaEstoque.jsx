@@ -85,6 +85,15 @@ const EntradaEstoque = () => {
       setLoading(true);
 
       // Formata a data corretamente
+      console.log('=== DEBUG DATA VALIDADE ===');
+      console.log('dataValidade:', dataValidade);
+      console.log('tipo:', typeof dataValidade);
+      console.log('é Date?', dataValidade instanceof Date);
+      if (dataValidade instanceof Date) {
+        console.log('isNaN?', isNaN(dataValidade.getTime()));
+        console.log('getTime():', dataValidade.getTime());
+      }
+
       let dataValidadeFormatada = null;
       if (dataValidade) {
         if (dataValidade instanceof Date && !isNaN(dataValidade.getTime())) {
@@ -93,7 +102,12 @@ const EntradaEstoque = () => {
           const month = String(dataValidade.getMonth() + 1).padStart(2, '0');
           const day = String(dataValidade.getDate()).padStart(2, '0');
           dataValidadeFormatada = `${year}-${month}-${day}`;
+          console.log('Data formatada:', dataValidadeFormatada);
+        } else {
+          console.log('Data inválida - não passou na validação');
         }
+      } else {
+        console.log('dataValidade é falsy:', dataValidade);
       }
 
       const data = {
