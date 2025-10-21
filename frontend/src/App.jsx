@@ -19,6 +19,7 @@ const Categorias = lazy(() => import('./pages/Categorias'));
 const Alertas = lazy(() => import('./pages/Alertas'));
 const EntradaEstoque = lazy(() => import('./pages/EntradaEstoque'));
 const Fornecedores = lazy(() => import('./pages/Fornecedores'));
+const RelatorioFornecedores = lazy(() => import('./pages/RelatorioFornecedores'));
 const Login = lazy(() => import('./pages/Login'));
 const SyncStatus = lazy(() => import('./components/SyncStatus'));
 
@@ -52,6 +53,7 @@ const navLinks = [
   { icon: <FaSyncAlt />, label: 'Giro de Estoque', path: '/estoque/giro' },
   { icon: <FaHistory />, label: 'Histórico de Caixas', path: '/caixa/historico' },
   { icon: <FaChartBar />, label: 'Relatório de Lucro', path: '/relatorios/lucro' },
+  { icon: <FaBuilding />, label: 'Relatório de Fornecedores', path: '/relatorios/fornecedores' },
   { icon: <FaTags />, label: 'Categorias', path: '/categorias' },
 ];
 
@@ -143,6 +145,7 @@ function AppContent() {
             <Route path="/caixa" element={<PrivateRoute><Caixa /></PrivateRoute>} />
             <Route path="/caixa/historico" element={<PrivateRoute><HistoricoCaixa /></PrivateRoute>} />
             <Route path="/relatorios/lucro" element={<PrivateRoute><RelatorioLucro /></PrivateRoute>} />
+            <Route path="/relatorios/fornecedores" element={<PrivateRoute><RelatorioFornecedores /></PrivateRoute>} />
             <Route path="/categorias" element={<PrivateRoute><Categorias /></PrivateRoute>} />
           </Routes>
         </Suspense>
