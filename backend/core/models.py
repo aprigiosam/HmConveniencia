@@ -49,6 +49,42 @@ class Cliente(models.Model):
         return (saldo + valor) <= self.limite_credito
 
 
+class Fornecedor(models.Model):
+    """Fornecedor - para controle de compras"""
+    nome = models.CharField('Nome/Razão Social', max_length=200)
+    nome_fantasia = models.CharField('Nome Fantasia', max_length=200, blank=True)
+    cnpj = models.CharField('CNPJ', max_length=18, blank=True, unique=True, null=True)
+    telefone = models.CharField('Telefone', max_length=20, blank=True)
+    email = models.EmailField('Email', blank=True)
+    endereco = models.TextField('Endereço', blank=True)
+    observacoes = models.TextField('Observações', blank=True)
+    ativo = models.BooleanField('Ativo', default=True)
+    created_at = models.DateTimeField('Criado em', auto_now_add=True)
+    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+
+    class Meta:
+        ordering = ['nome']
+        verbose_name = 'Fornecedor'
+        verbose_name_plural = 'Fornecedores'
+        indexes = [
+            models.Index(fields=['ativo']),
+            models.Index(fields=['nome']),
+        ]
+
+    def __str__(self):
+        return self.nome_fantasia if self.nome_fantasia else self.nome
+
+    def total_compras(self):
+        """Retorna o total de lotes comprados deste fornecedor"""
+        return self.lotes.filter(ativo=True).aggregate(
+            total=models.Sum(models.F('quantidade') * models.F('preco_custo_lote'))
+        )['total'] or Decimal('0.00')
+
+    def total_lotes(self):
+        """Retorna quantidade de lotes ativos deste fornecedor"""
+        return self.lotes.filter(ativo=True).count()
+
+
 class Categoria(models.Model):
     """Categorias de produtos"""
     nome = models.CharField('Nome', max_length=100, unique=True)
@@ -429,11 +465,14 @@ class Lote(models.Model):
         auto_now_add=True,
         help_text='Data de cadastro do lote'
     )
-    fornecedor = models.CharField(
+    fornecedor = models.ForeignKey(
         'Fornecedor',
-        max_length=200,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        help_text='Nome do fornecedor (opcional)'
+        related_name='lotes',
+        verbose_name='Fornecedor',
+        help_text='Fornecedor deste lote'
     )
     preco_custo_lote = models.DecimalField(
         'Preço de Custo do Lote',

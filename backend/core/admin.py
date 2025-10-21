@@ -2,7 +2,7 @@
 Admin para HMConveniencia
 """
 from django.contrib import admin
-from .models import Cliente, Produto, Venda, ItemVenda, Categoria, Caixa, MovimentacaoCaixa, Alerta, Lote
+from .models import Cliente, Fornecedor, Produto, Venda, ItemVenda, Categoria, Caixa, MovimentacaoCaixa, Alerta, Lote
 
 
 @admin.register(Cliente)
@@ -15,6 +15,37 @@ class ClienteAdmin(admin.ModelAdmin):
     def saldo_devedor(self, obj):
         return f'R$ {obj.saldo_devedor():.2f}'
     saldo_devedor.short_description = 'Saldo Devedor'
+
+
+@admin.register(Fornecedor)
+class FornecedorAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'nome_fantasia', 'cnpj', 'telefone', 'total_lotes_display', 'total_compras_display', 'ativo', 'created_at']
+    list_filter = ['ativo', 'created_at']
+    search_fields = ['nome', 'nome_fantasia', 'cnpj']  # Necessário para autocomplete
+    list_editable = ['ativo']
+
+    fieldsets = (
+        ('Identificação', {
+            'fields': ('nome', 'nome_fantasia', 'cnpj')
+        }),
+        ('Contato', {
+            'fields': ('telefone', 'email', 'endereco')
+        }),
+        ('Outras Informações', {
+            'fields': ('observacoes', 'ativo', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    readonly_fields = ['created_at', 'updated_at']
+
+    def total_lotes_display(self, obj):
+        return obj.total_lotes()
+    total_lotes_display.short_description = 'Total Lotes'
+
+    def total_compras_display(self, obj):
+        return f'R$ {obj.total_compras():.2f}'
+    total_compras_display.short_description = 'Total Compras'
 
 
 @admin.register(Categoria)
@@ -130,10 +161,11 @@ class AlertaAdmin(admin.ModelAdmin):
 @admin.register(Lote)
 class LoteAdmin(admin.ModelAdmin):
     list_display = ['id', 'produto', 'numero_lote', 'quantidade', 'data_validade', 'dias_para_vencer_display', 'fornecedor', 'ativo', 'data_entrada']
-    list_filter = ['ativo', 'data_validade', 'data_entrada', 'produto']
-    search_fields = ['numero_lote', 'produto__nome', 'fornecedor']
+    list_filter = ['ativo', 'data_validade', 'data_entrada', 'produto', 'fornecedor']
+    search_fields = ['numero_lote', 'produto__nome', 'fornecedor__nome', 'fornecedor__nome_fantasia']
     list_editable = ['ativo']
     readonly_fields = ['created_at', 'updated_at', 'esta_vencido', 'dias_para_vencer', 'proximo_vencimento']
+    autocomplete_fields = ['fornecedor']
 
     fieldsets = (
         ('Informações do Lote', {
