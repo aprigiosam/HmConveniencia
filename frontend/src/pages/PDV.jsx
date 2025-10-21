@@ -6,8 +6,8 @@ import { Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIc
 import { DatePickerInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode } from 'react-icons/fa';
-import { BrowserMultiFormatReader } from '@zxing/browser';
 import Comprovante from '../components/Comprovante';
+import BarcodeScanner from '../components/BarcodeScanner';
 
 function PDV() {
   const [produtos, setProdutos] = useState([]);
@@ -23,8 +23,6 @@ function PDV() {
   const [comprovanteAberto, setComprovanteAberto] = useState(false);
   const [dadosVenda, setDadosVenda] = useState(null);
   const buscaRef = useRef(null);
-  const scannerRef = useRef(null);
-  const leituraEmAndamentoRef = useRef(false);
 
   useEffect(() => {
     loadInitialData();
@@ -115,37 +113,10 @@ function PDV() {
   };
 
   const abrirScanner = () => {
-    leituraEmAndamentoRef.current = false; // Reseta o lock
     setScannerAberto(true);
   };
 
-  const fecharScanner = () => {
-    if (scannerRef.current) {
-      scannerRef.current.clear();
-      scannerRef.current = null;
-    }
-    setScannerAberto(false);
-  };
-
-  const processarCodigoBarras = (codigoBarras) => {
-    // Proteção dupla: verifica lock E se scanner ainda existe
-    if (leituraEmAndamentoRef.current || !scannerRef.current) return;
-
-    // Seta lock e limpa ref IMEDIATAMENTE (bloqueia callbacks futuros)
-    leituraEmAndamentoRef.current = true;
-    const scanner = scannerRef.current;
-    scannerRef.current = null; // <- CRÍTICO: impede novos callbacks
-
-    // Para o scanner
-    try {
-      scanner.reset();
-    } catch (error) {
-      console.log('Erro ao parar scanner (ignorado):', error);
-    }
-
-    // Fecha o modal
-    setScannerAberto(false);
-
+  const handleBarcodeScanned = (codigoBarras) => {
     // Busca produto pelo código de barras
     const produto = produtos.find(p => p.codigo_barras === codigoBarras);
 
@@ -167,61 +138,7 @@ function PDV() {
         autoClose: 4000,
       });
     }
-
-    // Reseta o lock após delay
-    setTimeout(() => {
-      leituraEmAndamentoRef.current = false;
-    }, 1000);
   };
-
-  // Inicializa o scanner quando o modal abre
-  useEffect(() => {
-    if (scannerAberto && !scannerRef.current) {
-      const codeReader = new BrowserMultiFormatReader();
-
-      // Aguarda o DOM renderizar
-      setTimeout(async () => {
-        const videoElement = document.getElementById('video-reader');
-        if (!videoElement) {
-          console.error('Elemento video não encontrado');
-          return;
-        }
-
-        try {
-          // Inicia detecção contínua (usa câmera padrão/traseira automaticamente)
-          await codeReader.decodeFromVideoDevice(
-            undefined,  // undefined = usa câmera padrão
-            videoElement,
-            (result, error) => {
-              if (result) {
-                // Código detectado!
-                processarCodigoBarras(result.getText());
-              }
-              // Ignora erros de leitura (scanner tentando ler)
-            }
-          );
-
-          scannerRef.current = codeReader;
-        } catch (error) {
-          console.error('Erro ao inicializar scanner:', error);
-          notifications.show({
-            title: 'Erro ao abrir câmera',
-            message: error.message || 'Permita o acesso à câmera nas configurações do navegador.',
-            color: 'red',
-            icon: <FaTimes />,
-          });
-          setScannerAberto(false);
-        }
-      }, 100);
-    }
-
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.reset();
-        scannerRef.current = null;
-      }
-    };
-  }, [scannerAberto]);
 
   const finalizarVenda = async () => {
     if (carrinho.length === 0) {
@@ -549,31 +466,12 @@ function PDV() {
       </Grid.Col>
 
       {/* Modal do Scanner de Código de Barras */}
-      <Modal
+      <BarcodeScanner
         opened={scannerAberto}
-        onClose={fecharScanner}
-        title="Ler Código de Barras"
-        size="lg"
-        centered
-      >
-        <Stack gap="md">
-          <Text size="sm" c="dimmed">
-            Aponte a câmera para o código de barras do produto
-          </Text>
-          <video
-            id="video-reader"
-            style={{
-              width: '100%',
-              maxHeight: '400px',
-              borderRadius: '8px',
-              backgroundColor: '#000'
-            }}
-          />
-          <Button onClick={fecharScanner} variant="light" fullWidth>
-            Cancelar
-          </Button>
-        </Stack>
-      </Modal>
+        onClose={() => setScannerAberto(false)}
+        onScan={handleBarcodeScanned}
+        title="Ler Código de Barras do Produto"
+      />
 
       {/* Modal do Comprovante de Venda */}
       <Modal

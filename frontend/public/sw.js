@@ -124,3 +124,35 @@ async function syncVendas() {
     client.postMessage({ type: 'SYNC_VENDAS' });
   });
 }
+
+// Handler para cliques em notificações
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notificação clicada:', event.notification.tag);
+  event.notification.close();
+
+  const data = event.notification.data || {};
+  const url = data.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Tenta focar em uma janela existente
+      for (const client of clientList) {
+        if (client.url.includes(url) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Se não encontrou, abre nova janela
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
+  );
+
+  // Handler para ações da notificação
+  if (event.action === 'view') {
+    clients.openWindow(data.url || '/');
+  } else if (event.action === 'retry') {
+    // Dispara nova tentativa de sincronização
+    syncVendas();
+  }
+});

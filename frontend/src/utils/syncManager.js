@@ -1,5 +1,6 @@
 import { localDB } from './db'
 import { createVenda } from '../services/api'
+import { notificationManager } from './notifications'
 
 // Helper para logging condicional (apenas em desenvolvimento)
 const isDev = import.meta.env.DEV
@@ -116,6 +117,15 @@ class SyncManager {
       }
 
       log(`[SyncManager] Sincronização concluída: ${syncedCount} sucesso, ${failedCount} falhas`)
+
+      // Envia notificação push sobre conclusão
+      if (syncedCount > 0) {
+        notificationManager.notifySyncCompleted(syncedCount)
+      }
+
+      if (failedCount > 0) {
+        notificationManager.notifySyncError(failedCount)
+      }
 
       // Notifica conclusão
       this.notifyListeners({

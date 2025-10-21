@@ -22,6 +22,7 @@ const Fornecedores = lazy(() => import('./pages/Fornecedores'));
 const RelatorioFornecedores = lazy(() => import('./pages/RelatorioFornecedores'));
 const Login = lazy(() => import('./pages/Login'));
 const SyncStatus = lazy(() => import('./components/SyncStatus'));
+const OfflineIndicator = lazy(() => import('./components/OfflineIndicator'));
 
 import { localDB } from './utils/db';
 import { syncManager } from './utils/syncManager';
@@ -131,6 +132,7 @@ function AppContent() {
       <AppShell.Main>
         <Suspense fallback={<Center style={{ padding: '2rem' }}><Loader /></Center>}>
           <SyncStatus />
+          <OfflineIndicator />
           <Routes>
             <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
             <Route path="/alertas" element={<PrivateRoute><Alertas /></PrivateRoute>} />

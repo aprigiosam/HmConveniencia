@@ -1,6 +1,6 @@
 // IndexedDB para armazenamento local offline
 const DB_NAME = 'HMConvenienciaDB'
-const DB_VERSION = 2 // Incrementado para adicionar categorias_cache
+const DB_VERSION = 3 // Incrementado para adicionar fornecedores_cache
 
 class LocalDB {
   constructor() {
@@ -52,6 +52,14 @@ class LocalDB {
             keyPath: 'id'
           })
           categoriasStore.createIndex('timestamp', 'timestamp', { unique: false })
+        }
+
+        // Store para cache de fornecedores
+        if (!db.objectStoreNames.contains('fornecedores_cache')) {
+          const fornecedoresStore = db.createObjectStore('fornecedores_cache', {
+            keyPath: 'id'
+          })
+          fornecedoresStore.createIndex('timestamp', 'timestamp', { unique: false })
         }
       }
     })
@@ -269,6 +277,45 @@ class LocalDB {
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['categorias_cache'], 'readonly')
       const store = transaction.objectStore('categorias_cache')
+
+      const request = store.getAll()
+
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  // Cachear fornecedores
+  async cacheFornecedores(fornecedores) {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['fornecedores_cache'], 'readwrite')
+      const store = transaction.objectStore('fornecedores_cache')
+
+      // Limpa cache antigo
+      store.clear()
+
+      // Adiciona novos fornecedores
+      fornecedores.forEach((fornecedor) => {
+        store.add({
+          ...fornecedor,
+          timestamp: new Date().toISOString()
+        })
+      })
+
+      transaction.oncomplete = () => resolve(true)
+      transaction.onerror = () => reject(transaction.error)
+    })
+  }
+
+  // Buscar fornecedores do cache
+  async getCachedFornecedores() {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['fornecedores_cache'], 'readonly')
+      const store = transaction.objectStore('fornecedores_cache')
 
       const request = store.getAll()
 
