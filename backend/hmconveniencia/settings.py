@@ -107,9 +107,21 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # CORS
-CORS_ALLOWED_ORIGINS = config(
-    "CORS_ALLOWED_ORIGins", default="http://localhost:5173,http://127.0.0.1:5173"
-).split(",")
+def _split_env_list(value):
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+default_cors_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+extra_cors_origins = _split_env_list(config("CORS_ALLOWED_ORIGINS", default=""))
+frontend_origin = config("FRONTEND_URL", default="").strip()
+if frontend_origin:
+    extra_cors_origins.append(frontend_origin)
+
+CORS_ALLOWED_ORIGINS = list(dict.fromkeys(default_cors_origins + extra_cors_origins))
 CORS_ALLOW_CREDENTIALS = True
 
 # CACHE - Redis (Upstash) com fallback para LocMem
