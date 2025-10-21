@@ -8,7 +8,6 @@ import { notifications } from '@mantine/notifications';
 import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaCreditCard, FaMoneyBillWave, FaQrcode, FaHandHoldingUsd, FaUniversity } from 'react-icons/fa';
 import Comprovante from '../components/Comprovante';
 import BarcodeScanner from '../components/BarcodeScanner';
-import ProdutosGrid from '../components/ProdutosGrid';
 import './PDV.css';
 
 function PDV() {
