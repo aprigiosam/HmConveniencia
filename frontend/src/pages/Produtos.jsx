@@ -300,7 +300,16 @@ function Produtos() {
           <Text size="xs" c="red">Não cadastrado</Text>
         )}
       </Table.Td>
-      <Table.Td>{parseInt(produto.estoque)}</Table.Td>
+      <Table.Td>
+        <Group gap="xs">
+          <Text>{parseInt(produto.estoque)}</Text>
+          {produto.total_lotes > 0 && (
+            <Badge size="sm" variant="light" color="blue">
+              {produto.total_lotes} lote{produto.total_lotes !== 1 ? 's' : ''}
+            </Badge>
+          )}
+        </Group>
+      </Table.Td>
       <Table.Td>{produto.categoria_nome || 'Sem categoria'}</Table.Td>
       <Table.Td>
         <Group gap="xs" wrap="nowrap">
@@ -356,7 +365,14 @@ function Produtos() {
         )}
         <Group justify="space-between">
           <Text size="sm" c="dimmed">Estoque:</Text>
-          <Text size="sm" fw={500}>{parseInt(produto.estoque)}</Text>
+          <Group gap="xs">
+            <Text size="sm" fw={500}>{parseInt(produto.estoque)}</Text>
+            {produto.total_lotes > 0 && (
+              <Badge size="xs" variant="light" color="blue">
+                {produto.total_lotes} lote{produto.total_lotes !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </Group>
         </Group>
         <Group justify="space-between">
           <Text size="sm" c="dimmed">Categoria:</Text>

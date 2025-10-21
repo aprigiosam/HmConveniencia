@@ -229,10 +229,30 @@ class Venda(models.Model):
         self.status = 'FINALIZADA'
         self.save()
 
-        # Baixa estoque
+        # Baixa estoque usando FEFO (First Expired, First Out)
+        from .services.lote_service import LoteService
+
         for item in self.itens.all():
-            item.produto.estoque -= item.quantidade
-            item.produto.save()
+            produto = item.produto
+
+            # Verifica se produto usa sistema de lotes
+            if LoteService.produto_usa_lotes(produto):
+                # Usa FEFO para baixar dos lotes
+                try:
+                    lotes_afetados = LoteService.baixar_estoque_fefo(produto, item.quantidade)
+                    # Log para debug
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f'Venda {self.numero}: FEFO aplicado em {produto.nome}. Lotes: {lotes_afetados}')
+                except ValueError as e:
+                    # Se falhar, reverte a venda
+                    self.status = 'ABERTA'
+                    self.save()
+                    raise e
+            else:
+                # Produto sem lotes: baixa direta do estoque
+                produto.estoque -= item.quantidade
+                produto.save()
 
     def receber_pagamento(self):
         """Marca a venda como paga"""

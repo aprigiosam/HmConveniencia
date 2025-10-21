@@ -92,4 +92,16 @@ export const marcarAlertaLido = (id) => api.post(`/alertas/${id}/marcar_lido/`);
 export const resolverAlerta = (id) => api.post(`/alertas/${id}/resolver/`);
 export const marcarTodosLidos = () => api.post('/alertas/marcar_todos_lidos/');
 
+// Lotes
+export const getLotes = (params = {}) => api.get('/lotes/', { params });
+export const getLote = (id) => api.get(`/lotes/${id}/`);
+export const createLote = (data) => api.post('/lotes/', data);
+export const updateLote = (id, data) => api.put(`/lotes/${id}/`, data);
+export const deleteLote = (id) => api.delete(`/lotes/${id}/`);
+export const entradaEstoque = (data) => api.post('/lotes/entrada_estoque/', data);
+export const baixarEstoqueLote = (id, quantidade) => api.post(`/lotes/${id}/baixar_estoque/`, { quantidade });
+export const getLotesVencidos = () => api.get('/lotes/vencidos/');
+export const getLotesProximosVencimento = () => api.get('/lotes/proximos_vencimento/');
+export const getLotesPorProduto = (produtoId) => api.get(`/lotes/por_produto/?produto_id=${produtoId}`);
+
 export default api;

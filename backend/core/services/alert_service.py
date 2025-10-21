@@ -117,28 +117,35 @@ class AlertService:
     @classmethod
     def verificar_produtos_vencendo(cls):
         """
-        Verifica produtos que vencerão nos próximos 3 dias
+        Verifica LOTES que vencerão nos próximos 3 dias
         Retorna: lista de alertas criados
         """
+        from ..models import Lote
         alertas_criados = []
 
         hoje = date.today()
         daqui_3_dias = hoje + timedelta(days=3)
 
-        produtos = Produto.objects.filter(
+        # Busca lotes ativos que vencerão nos próximos 3 dias
+        lotes = Lote.objects.filter(
             ativo=True,
             data_validade__isnull=False,
             data_validade__lte=daqui_3_dias,
             data_validade__gt=hoje
-        )
+        ).select_related('produto')
 
-        for produto in produtos:
-            dias = (produto.data_validade - hoje).days
+        for lote in lotes:
+            dias = (lote.data_validade - hoje).days
+            produto = lote.produto
 
-            titulo = f"📅 {produto.nome} vence em {dias} dia(s)"
+            lote_info = f"Lote {lote.numero_lote}" if lote.numero_lote else f"Lote #{lote.id}"
+
+            titulo = f"📅 {produto.nome} - {lote_info} vence em {dias} dia(s)"
             mensagem = (
-                f"Produto vence em {produto.data_validade.strftime('%d/%m/%Y')}\n"
-                f"Estoque atual: {produto.estoque}\n"
+                f"Lote vence em {lote.data_validade.strftime('%d/%m/%Y')}\n"
+                f"{lote_info}\n"
+                f"Quantidade: {lote.quantidade} un\n"
+                f"Produto: {produto.nome}\n"
                 f"Categoria: {produto.categoria.nome if produto.categoria else 'Sem categoria'}"
             )
 
@@ -159,26 +166,33 @@ class AlertService:
     @classmethod
     def verificar_produtos_vencidos(cls):
         """
-        Verifica produtos já vencidos
+        Verifica LOTES já vencidos
         Retorna: lista de alertas criados
         """
+        from ..models import Lote
         alertas_criados = []
 
         hoje = date.today()
 
-        produtos = Produto.objects.filter(
+        # Busca lotes ativos que já venceram
+        lotes = Lote.objects.filter(
             ativo=True,
             data_validade__isnull=False,
             data_validade__lt=hoje
-        )
+        ).select_related('produto')
 
-        for produto in produtos:
-            dias_vencido = (hoje - produto.data_validade).days
+        for lote in lotes:
+            dias_vencido = (hoje - lote.data_validade).days
+            produto = lote.produto
 
-            titulo = f"❌ {produto.nome} VENCIDO há {dias_vencido} dia(s)"
+            lote_info = f"Lote {lote.numero_lote}" if lote.numero_lote else f"Lote #{lote.id}"
+
+            titulo = f"❌ {produto.nome} - {lote_info} VENCIDO há {dias_vencido} dia(s)"
             mensagem = (
-                f"Produto venceu em {produto.data_validade.strftime('%d/%m/%Y')}\n"
-                f"Estoque: {produto.estoque}\n"
+                f"Lote venceu em {lote.data_validade.strftime('%d/%m/%Y')}\n"
+                f"{lote_info}\n"
+                f"Quantidade: {lote.quantidade} un\n"
+                f"Produto: {produto.nome}\n"
                 f"⚠️ REMOVER DO ESTOQUE IMEDIATAMENTE"
             )
 
