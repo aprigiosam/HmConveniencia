@@ -4,6 +4,7 @@ import { localDB } from '../utils/db';
 import { syncManager } from '../utils/syncManager';
 import { AppShell, Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
+import { useHotkeys, useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaCreditCard, FaMoneyBillWave, FaQrcode, FaHandHoldingUsd, FaUniversity } from 'react-icons/fa';
 import Comprovante from '../components/Comprovante';
@@ -25,6 +26,20 @@ function PDV() {
   const [dadosVenda, setDadosVenda] = useState(null);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const buscaRef = useRef(null);
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  useHotkeys([
+    ['F2', () => buscaRef.current?.focus()],
+    ['F4', () => abrirScanner()],
+    ['F9', () => finalizarVenda()],
+    ['Escape', () => {
+      setCarrinho([]);
+      setBusca('');
+      setClienteId(null);
+      setDataVencimento(null);
+      setValorRecebido('');
+    }],
+  ]);
 
   useEffect(() => {
     loadInitialData();
@@ -298,6 +313,149 @@ function PDV() {
     }
   };
 
+  const renderCart = () => (
+    <Stack gap="sm">
+      {carrinho.map(item => (
+        <Paper withBorder p="sm" radius="xs" key={item.produto.id}>
+          <Group justify="space-between" align="flex-start" wrap="nowrap">
+            <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
+              <Text size="sm" fw={500} truncate>{item.produto.nome}</Text>
+              <Text size="xs" c="dimmed">R$ {parseFloat(item.produto.preco).toFixed(2)}</Text>
+            </Stack>
+            <Group gap="xs" wrap="nowrap">
+              <NumberInput
+                value={item.quantidade}
+                onChange={(val) => alterarQuantidade(item.produto.id, val)}
+                w={70}
+                min={0}
+                size="sm"
+              />
+              <ActionIcon
+                color="red"
+                size="lg"
+                onClick={() => removerDoCarrinho(item.produto.id)}
+              >
+                <FaTrash size={14} />
+              </ActionIcon>
+            </Group>
+          </Group>
+        </Paper>
+      ))}
+
+      <Select
+        label="Forma de Pagamento"
+        value={formaPagamento}
+        onChange={(value) => {
+          setFormaPagamento(value);
+          setValorRecebido('');
+        }}
+        size="md"
+        data={[
+          { value: 'DINHEIRO', label: 'Dinheiro' },
+          { value: 'DEBITO', label: 'Débito' },
+          { value: 'CREDITO', label: 'Crédito' },
+          { value: 'PIX', label: 'PIX' },
+          { value: 'FIADO', label: 'Fiado' },
+        ]}
+      />
+
+      {formaPagamento === 'DINHEIRO' && (
+        <>
+          <NumberInput
+            label="Valor Recebido"
+            placeholder="0.00"
+            value={valorRecebido}
+            onChange={setValorRecebido}
+            precision={2}
+            min={0}
+            size="md"
+            leftSection="R$"
+            required
+          />
+          {valorRecebido && parseFloat(valorRecebido) >= calcularTotal() && (
+            <Paper p="md" withBorder style={{ backgroundColor: '#d3f9d8', borderColor: '#51cf66' }}>
+              <Group justify="space-between">
+                <Text fw={600} c="green.9">TROCO:</Text>
+                <Text size="xl" fw={700} c="green.9">R$ {calcularTroco().toFixed(2)}</Text>
+              </Group>
+            </Paper>
+          )}
+        </>
+      )}
+
+      {formaPagamento === 'FIADO' && (
+        <>
+          <Select
+            label="Cliente"
+            placeholder="Selecione o cliente"
+            value={clienteId}
+            onChange={setClienteId}
+            size="md"
+            data={clientes.map(c => ({ value: c.id.toString(), label: c.nome }))}
+            searchable
+            required
+          />
+          <DatePickerInput
+            label="Data de Vencimento"
+            placeholder="Selecione a data"
+            value={dataVencimento}
+            onChange={setDataVencimento}
+            minDate={new Date()}
+            size="md"
+            required
+          />
+        </>
+      )}
+    </Stack>
+  );
+
+  const renderProductSearch = () => (
+    <Stack gap="sm">
+      <Group gap="xs">
+        <TextInput
+          ref={buscaRef}
+          placeholder="Buscar produto (F2)"
+          leftSection={<FaSearch />}
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          size="md"
+          autoFocus
+          style={{ flex: 1 }}
+        />
+        <ActionIcon
+          size={42}
+          color="orange"
+          variant="filled"
+          onClick={abrirScanner}
+          title="Ler código de barras (F4)"
+        >
+          <FaBarcode size={20} />
+        </ActionIcon>
+      </Group>
+      <Stack gap="xs">
+        {produtosFiltrados.length > 0 ? (
+          produtosFiltrados.slice(0, 10).map(produto => (
+            <Paper
+              shadow="xs"
+              p="sm"
+              withBorder
+              key={produto.id}
+              onClick={() => { adicionarAoCarrinho(produto); if (isMobile) setSearchModalOpen(false); }}
+              style={{ cursor: 'pointer', minHeight: '60px' }}
+            >
+              <Group justify="space-between">
+                <Text size="sm" fw={500}>{produto.nome}</Text>
+                <Text size="sm" fw={600} c="orange">R$ {parseFloat(produto.preco).toFixed(2)}</Text>
+              </Group>
+            </Paper>
+          ))
+        ) : (
+          <Text ta="center" c="dimmed">Nenhum produto encontrado.</Text>
+        )}
+      </Stack>
+    </Stack>
+  );
+
   return (
     <AppShell
       header={{ height: 60 }}
@@ -307,115 +465,32 @@ function PDV() {
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Title order={3}>PDV</Title>
-          <ActionIcon onClick={() => setSearchModalOpen(true)} size="lg" variant="filled" color="blue">
-            <FaSearch />
-          </ActionIcon>
+          {isMobile && (
+            <ActionIcon onClick={() => setSearchModalOpen(true)} size="lg" variant="filled" color="blue">
+              <FaSearch />
+            </ActionIcon>
+          )}
         </Group>
       </AppShell.Header>
 
       <AppShell.Main>
-        {carrinho.length === 0 ? (
-          <Center style={{ height: '100%' }}>
-            <Stack align="center">
-              <FaShoppingCart size={48} color="gray" />
-              <Text c="dimmed">Carrinho vazio</Text>
-              <Button onClick={() => setSearchModalOpen(true)}>Adicionar Produto</Button>
-            </Stack>
-          </Center>
+        {isMobile ? (
+          carrinho.length === 0 ? (
+            <Center style={{ height: '100%' }}>
+              <Stack align="center">
+                <FaShoppingCart size={48} color="gray" />
+                <Text c="dimmed">Carrinho vazio</Text>
+                <Button onClick={() => setSearchModalOpen(true)}>Adicionar Produto</Button>
+              </Stack>
+            </Center>
+          ) : (
+            renderCart()
+          )
         ) : (
-          <Stack gap="sm">
-            {carrinho.map(item => (
-              <Paper withBorder p="sm" radius="xs" key={item.produto.id}>
-                <Group justify="space-between" align="flex-start" wrap="nowrap">
-                  <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                    <Text size="sm" fw={500} truncate>{item.produto.nome}</Text>
-                    <Text size="xs" c="dimmed">R$ {parseFloat(item.produto.preco).toFixed(2)}</Text>
-                  </Stack>
-                  <Group gap="xs" wrap="nowrap">
-                    <NumberInput
-                      value={item.quantidade}
-                      onChange={(val) => alterarQuantidade(item.produto.id, val)}
-                      w={70}
-                      min={0}
-                      size="sm"
-                    />
-                    <ActionIcon
-                      color="red"
-                      size="lg"
-                      onClick={() => removerDoCarrinho(item.produto.id)}
-                    >
-                      <FaTrash size={14} />
-                    </ActionIcon>
-                  </Group>
-                </Group>
-              </Paper>
-            ))}
-
-            <Select
-              label="Forma de Pagamento"
-              value={formaPagamento}
-              onChange={(value) => {
-                setFormaPagamento(value);
-                setValorRecebido('');
-              }}
-              size="md"
-              data={[
-                { value: 'DINHEIRO', label: 'Dinheiro' },
-                { value: 'DEBITO', label: 'Débito' },
-                { value: 'CREDITO', label: 'Crédito' },
-                { value: 'PIX', label: 'PIX' },
-                { value: 'FIADO', label: 'Fiado' },
-              ]}
-            />
-
-            {formaPagamento === 'DINHEIRO' && (
-              <>
-                <NumberInput
-                  label="Valor Recebido"
-                  placeholder="0.00"
-                  value={valorRecebido}
-                  onChange={setValorRecebido}
-                  precision={2}
-                  min={0}
-                  size="md"
-                  leftSection="R$"
-                  required
-                />
-                {valorRecebido && parseFloat(valorRecebido) >= calcularTotal() && (
-                  <Paper p="md" withBorder style={{ backgroundColor: '#d3f9d8', borderColor: '#51cf66' }}>
-                    <Group justify="space-between">
-                      <Text fw={600} c="green.9">TROCO:</Text>
-                      <Text size="xl" fw={700} c="green.9">R$ {calcularTroco().toFixed(2)}</Text>
-                    </Group>
-                  </Paper>
-                )}
-              </>
-            )}
-
-            {formaPagamento === 'FIADO' && (
-              <>
-                <Select
-                  label="Cliente"
-                  placeholder="Selecione o cliente"
-                  value={clienteId}
-                  onChange={setClienteId}
-                  size="md"
-                  data={clientes.map(c => ({ value: c.id.toString(), label: c.nome }))}
-                  searchable
-                  required
-                />
-                <DatePickerInput
-                  label="Data de Vencimento"
-                  placeholder="Selecione a data"
-                  value={dataVencimento}
-                  onChange={setDataVencimento}
-                  minDate={new Date()}
-                  size="md"
-                  required
-                />
-              </>
-            )}
-          </Stack>
+          <Grid>
+            <Grid.Col span={7}>{renderCart()}</Grid.Col>
+            <Grid.Col span={5}>{renderProductSearch()}</Grid.Col>
+          </Grid>
         )}
       </AppShell.Main>
 
@@ -425,8 +500,8 @@ function PDV() {
             <Text size="sm" c="dimmed">Total:</Text>
             <Title order={2} c="orange">R$ {calcularTotal().toFixed(2)}</Title>
           </div>
-          <Button onClick={finalizarVenda} loading={loading} size="lg" w="60%">
-            FINALIZAR VENDA
+          <Button onClick={finalizarVenda} loading={loading} size="lg" w={isMobile ? '60%' : 'auto'}>
+            FINALIZAR VENDA (F9)
           </Button>
         </Group>
       </AppShell.Footer>
@@ -437,50 +512,7 @@ function PDV() {
         title="Buscar Produto"
         size="xl"
       >
-        <Stack gap="sm">
-          <Group gap="xs">
-            <TextInput
-              ref={buscaRef}
-              placeholder="Buscar produto..."
-              leftSection={<FaSearch />}
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              size="md"
-              autoFocus
-              style={{ flex: 1 }}
-            />
-            <ActionIcon
-              size={42}
-              color="orange"
-              variant="filled"
-              onClick={abrirScanner}
-              title="Ler código de barras"
-            >
-              <FaBarcode size={20} />
-            </ActionIcon>
-          </Group>
-          <Stack gap="xs">
-            {produtosFiltrados.length > 0 ? (
-              produtosFiltrados.slice(0, 10).map(produto => (
-                <Paper
-                  shadow="xs"
-                  p="sm"
-                  withBorder
-                  key={produto.id}
-                  onClick={() => { adicionarAoCarrinho(produto); setSearchModalOpen(false); }}
-                  style={{ cursor: 'pointer', minHeight: '60px' }}
-                >
-                  <Group justify="space-between">
-                    <Text size="sm" fw={500}>{produto.nome}</Text>
-                    <Text size="sm" fw={600} c="orange">R$ {parseFloat(produto.preco).toFixed(2)}</Text>
-                  </Group>
-                </Paper>
-              ))
-            ) : (
-              <Text ta="center" c="dimmed">Nenhum produto encontrado.</Text>
-            )}
-          </Stack>
-        </Stack>
+        {renderProductSearch()}
       </Modal>
 
       <BarcodeScanner
