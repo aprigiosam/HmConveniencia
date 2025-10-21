@@ -20,11 +20,12 @@ import {
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { FaBoxOpen, FaPlus, FaCalendar, FaTruck } from 'react-icons/fa';
-import { getProdutos, entradaEstoque, getLotes } from '../services/api';
+import { getProdutos, entradaEstoque, getLotes, getFornecedores } from '../services/api';
 
 const EntradaEstoque = () => {
   const [loading, setLoading] = useState(false);
   const [produtos, setProdutos] = useState([]);
+  const [fornecedores, setFornecedores] = useState([]);
   const [lotesRecentes, setLotesRecentes] = useState([]);
 
   // Form state
@@ -43,12 +44,14 @@ const EntradaEstoque = () => {
   const carregarDados = async () => {
     try {
       setLoading(true);
-      const [produtosRes, lotesRes] = await Promise.all([
+      const [produtosRes, lotesRes, fornecedoresRes] = await Promise.all([
         getProdutos({ ativo: true }),
         getLotes({ ativo: true }),
+        getFornecedores({ ativo: true }),
       ]);
 
       setProdutos(produtosRes.data.results || produtosRes.data);
+      setFornecedores(fornecedoresRes.data.results || fornecedoresRes.data);
 
       // Ordena lotes por data de entrada (mais recentes primeiro)
       const lotes = lotesRes.data.results || lotesRes.data;
@@ -104,7 +107,7 @@ const EntradaEstoque = () => {
         quantidade: parseFloat(quantidade),
         data_validade: dataValidadeFormatada,
         numero_lote: numeroLote,
-        fornecedor: fornecedor,
+        fornecedor_id: fornecedor ? parseInt(fornecedor) : null,
         preco_custo_lote: precoCustoLote ? parseFloat(precoCustoLote) : null,
         observacoes: observacoes,
       };
@@ -179,6 +182,11 @@ const EntradaEstoque = () => {
     label: `${p.nome} - Estoque: ${p.estoque}`,
   }));
 
+  const fornecedoresOptions = fornecedores.map(f => ({
+    value: f.id.toString(),
+    label: f.nome_fantasia ? `${f.nome} (${f.nome_fantasia})` : f.nome,
+  }));
+
   return (
     <Container size="xl" py="xl">
       <LoadingOverlay visible={loading} />
@@ -251,12 +259,15 @@ const EntradaEstoque = () => {
                 </Grid.Col>
 
                 <Grid.Col span={{ base: 12, md: 4 }}>
-                  <TextInput
+                  <Select
                     label="Fornecedor"
-                    placeholder="Nome do fornecedor (opcional)"
+                    placeholder="Selecione o fornecedor (opcional)"
+                    data={fornecedoresOptions}
                     value={fornecedor}
-                    onChange={(e) => setFornecedor(e.target.value)}
+                    onChange={setFornecedor}
                     leftSection={<FaTruck size={16} />}
+                    searchable
+                    clearable
                   />
                 </Grid.Col>
 
@@ -330,7 +341,7 @@ const EntradaEstoque = () => {
                       <Table.Td>
                         {getBadgeValidade(lote)}
                       </Table.Td>
-                      <Table.Td>{lote.fornecedor || '-'}</Table.Td>
+                      <Table.Td>{lote.fornecedor_nome || '-'}</Table.Td>
                     </Table.Tr>
                   ))
                 )}

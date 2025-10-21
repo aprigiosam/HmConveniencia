@@ -959,7 +959,7 @@ class LoteViewSet(viewsets.ModelViewSet):
         quantidade = Decimal(str(request.data.get('quantidade', 0)))
         data_validade = request.data.get('data_validade')
         numero_lote = request.data.get('numero_lote', '')
-        fornecedor = request.data.get('fornecedor', '')
+        fornecedor_id = request.data.get('fornecedor_id')
         preco_custo_lote = request.data.get('preco_custo_lote')
         observacoes = request.data.get('observacoes', '')
 
@@ -996,6 +996,17 @@ class LoteViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Valida fornecedor se fornecido
+        fornecedor_obj = None
+        if fornecedor_id:
+            try:
+                fornecedor_obj = Fornecedor.objects.get(id=fornecedor_id)
+            except Fornecedor.DoesNotExist:
+                return Response(
+                    {'error': 'Fornecedor não encontrado'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
         with transaction.atomic():
             # Cria o lote
             lote = Lote.objects.create(
@@ -1003,7 +1014,7 @@ class LoteViewSet(viewsets.ModelViewSet):
                 numero_lote=numero_lote,
                 quantidade=quantidade,
                 data_validade=data_validade if data_validade else None,
-                fornecedor=fornecedor,
+                fornecedor=fornecedor_obj,
                 preco_custo_lote=Decimal(str(preco_custo_lote)) if preco_custo_lote else None,
                 observacoes=observacoes,
                 ativo=True
