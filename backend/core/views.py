@@ -959,6 +959,8 @@ class LoteViewSet(viewsets.ModelViewSet):
 
             logger.info(f'Entrada de estoque: Lote {lote.id} criado para produto {produto.nome} (+{quantidade} un)')
 
+        # Recarrega o lote com produto para evitar erro no serializer
+        lote = Lote.objects.select_related('produto').get(pk=lote.pk)
         serializer = self.get_serializer(lote)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
