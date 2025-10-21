@@ -35,6 +35,8 @@ class AlertService:
             filtro['venda'] = kwargs['venda']
         if kwargs.get('caixa'):
             filtro['caixa'] = kwargs['caixa']
+        if kwargs.get('lote'):
+            filtro['lote'] = kwargs['lote']
 
         alerta_existente = Alerta.objects.filter(**filtro).first()
 
@@ -50,7 +52,8 @@ class AlertService:
             cliente=kwargs.get('cliente'),
             produto=kwargs.get('produto'),
             venda=kwargs.get('venda'),
-            caixa=kwargs.get('caixa')
+            caixa=kwargs.get('caixa'),
+            lote=kwargs.get('lote')
         )
 
         return alerta, True
@@ -156,7 +159,8 @@ class AlertService:
                 prioridade=prioridade,
                 titulo=titulo,
                 mensagem=mensagem,
-                produto=produto
+                produto=produto,
+                lote=lote
             )
             if created:
                 alertas_criados.append(alerta)
@@ -201,7 +205,8 @@ class AlertService:
                 prioridade='CRITICA',
                 titulo=titulo,
                 mensagem=mensagem,
-                produto=produto
+                produto=produto,
+                lote=lote
             )
             if created:
                 alertas_criados.append(alerta)

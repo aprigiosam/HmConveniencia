@@ -773,7 +773,7 @@ def health_check(request):
 
 class AlertaViewSet(viewsets.ModelViewSet):
     """ViewSet para Alertas do Sistema"""
-    queryset = Alerta.objects.all()
+    queryset = Alerta.objects.select_related('cliente', 'produto', 'venda', 'caixa', 'lote').all()
     serializer_class = AlertaSerializer
 
     def get_queryset(self):

@@ -362,6 +362,7 @@ class Alerta(models.Model):
     produto = models.ForeignKey(Produto, on_delete=models.CASCADE, null=True, blank=True, related_name='alertas')
     venda = models.ForeignKey(Venda, on_delete=models.CASCADE, null=True, blank=True, related_name='alertas')
     caixa = models.ForeignKey(Caixa, on_delete=models.CASCADE, null=True, blank=True, related_name='alertas')
+    lote = models.ForeignKey('Lote', on_delete=models.CASCADE, null=True, blank=True, related_name='alertas', verbose_name='Lote')
 
     # Controle
     lido = models.BooleanField('Lido', default=False)

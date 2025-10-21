@@ -298,12 +298,20 @@ class AlertaSerializer(serializers.ModelSerializer):
     tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
     prioridade_display = serializers.CharField(source='get_prioridade_display', read_only=True)
 
+    # Informações do lote
+    lote_numero = serializers.CharField(source='lote.numero_lote', read_only=True)
+    lote_quantidade = serializers.DecimalField(source='lote.quantidade', max_digits=10, decimal_places=2, read_only=True)
+    lote_data_validade = serializers.DateField(source='lote.data_validade', read_only=True)
+    lote_fornecedor = serializers.CharField(source='lote.fornecedor', read_only=True)
+
     class Meta:
         model = Alerta
         fields = [
             'id', 'tipo', 'tipo_display', 'prioridade', 'prioridade_display',
             'titulo', 'mensagem', 'cliente', 'cliente_nome', 'produto', 'produto_nome',
-            'venda', 'venda_numero', 'caixa', 'lido', 'resolvido', 'notificado',
+            'venda', 'venda_numero', 'caixa', 'lote', 'lote_numero', 'lote_quantidade',
+            'lote_data_validade', 'lote_fornecedor', 'lido', 'resolvido', 'notificado',
             'created_at', 'resolvido_em'
         ]
-        read_only_fields = ['created_at', 'resolvido_em', 'tipo_display', 'prioridade_display']
+        read_only_fields = ['created_at', 'resolvido_em', 'tipo_display', 'prioridade_display',
+                           'lote_numero', 'lote_quantidade', 'lote_data_validade', 'lote_fornecedor']
