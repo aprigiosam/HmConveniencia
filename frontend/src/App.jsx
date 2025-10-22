@@ -1,6 +1,6 @@
 import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Center, Loader } from '@mantine/core';
+import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Center, Loader, ScrollArea } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBell, FaTruck, FaBuilding } from 'react-icons/fa';
 import { localDB } from './utils/db';
@@ -126,18 +126,20 @@ function AppContent() {
       </AppShell.Header>
 
       <AppShell.Navbar p={{ base: 'xs', sm: 'md' }}>
-        {navLinks.map((link) => (
-          <NavLink
-            key={link.label}
-            label={link.label}
-            leftSection={link.icon}
-            component={Link}
-            to={link.path}
-            active={location.pathname === link.path}
-            onClick={() => opened && toggle()}
-            style={{ borderRadius: '6px', marginBottom: '4px' }}
-          />
-        ))}
+        <ScrollArea type="always" style={{ height: '100%' }}>
+          {navLinks.map((link) => (
+            <NavLink
+              key={link.label}
+              label={link.label}
+              leftSection={link.icon}
+              component={Link}
+              to={link.path}
+              active={location.pathname === link.path}
+              onClick={() => opened && toggle()}
+              style={{ borderRadius: '6px', marginBottom: '4px' }}
+            />
+          ))}
+        </ScrollArea>
       </AppShell.Navbar>
 
       <AppShell.Main>
