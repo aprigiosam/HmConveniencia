@@ -28,6 +28,13 @@ class Cliente(models.Model):
     ativo = models.BooleanField("Ativo", default=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
+    empresa = models.ForeignKey(
+        "fiscal.Empresa",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="clientes",
+    )
 
     class Meta:
         ordering = ["nome"]
@@ -36,6 +43,7 @@ class Cliente(models.Model):
         indexes = [
             models.Index(fields=["ativo"]),
             models.Index(fields=["nome"]),
+            models.Index(fields=["empresa", "ativo"]),
         ]
 
     def __str__(self):
@@ -68,6 +76,13 @@ class Fornecedor(models.Model):
     ativo = models.BooleanField("Ativo", default=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
+    empresa = models.ForeignKey(
+        "fiscal.Empresa",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="fornecedores",
+    )
 
     class Meta:
         ordering = ["nome"]
@@ -76,6 +91,7 @@ class Fornecedor(models.Model):
         indexes = [
             models.Index(fields=["ativo"]),
             models.Index(fields=["nome"]),
+            models.Index(fields=["empresa", "ativo"]),
         ]
 
     def __str__(self):
@@ -99,6 +115,13 @@ class Categoria(models.Model):
     ativo = models.BooleanField("Ativo", default=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
+    empresa = models.ForeignKey(
+        "fiscal.Empresa",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="categorias",
+    )
 
     class Meta:
         ordering = ["nome"]
@@ -159,6 +182,13 @@ class Produto(models.Model):
     ativo = models.BooleanField("Ativo", default=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
+    empresa = models.ForeignKey(
+        "fiscal.Empresa",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="produtos",
+    )
 
     class Meta:
         ordering = ["nome"]
@@ -169,6 +199,7 @@ class Produto(models.Model):
             models.Index(fields=["codigo_barras"]),
             models.Index(fields=["estoque"]),
             models.Index(fields=["nome"]),
+            models.Index(fields=["empresa", "ativo"], name="produto_empresa_ativo_idx"),
         ]
 
     def __str__(self):
@@ -244,6 +275,13 @@ class Venda(models.Model):
         related_name="vendas",
         verbose_name="Cliente",
     )
+    empresa = models.ForeignKey(
+        "fiscal.Empresa",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="vendas",
+    )
     status = models.CharField(
         "Status", max_length=20, choices=STATUS_CHOICES, default="ABERTA"
     )
@@ -278,6 +316,7 @@ class Venda(models.Model):
             models.Index(fields=["-created_at"]),
             models.Index(fields=["data_vencimento"]),
             models.Index(fields=["status", "status_pagamento"]),
+            models.Index(fields=["empresa", "-created_at"], name="venda_empresa_created_idx"),
         ]
 
     def __str__(self):
@@ -412,6 +451,13 @@ class Caixa(models.Model):
         "Status", max_length=10, choices=STATUS_CHOICES, default="ABERTO"
     )
     observacoes = models.TextField("Observações", blank=True)
+    empresa = models.ForeignKey(
+        "fiscal.Empresa",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="caixas",
+    )
 
     class Meta:
         ordering = ["-data_abertura"]
@@ -419,6 +465,7 @@ class Caixa(models.Model):
         verbose_name_plural = "Caixas"
         indexes = [
             models.Index(fields=["status"]),
+            models.Index(fields=["empresa", "status", "-data_abertura"], name="caixa_empresa_status_idx"),
         ]
 
     def __str__(self):
@@ -440,11 +487,21 @@ class MovimentacaoCaixa(models.Model):
     valor = models.DecimalField("Valor", max_digits=10, decimal_places=2)
     descricao = models.CharField("Descrição", max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
+    empresa = models.ForeignKey(
+        "fiscal.Empresa",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="movimentacoes_caixa",
+    )
 
     class Meta:
         ordering = ["-created_at"]
         verbose_name = "Movimentação de Caixa"
         verbose_name_plural = "Movimentações de Caixa"
+        indexes = [
+            models.Index(fields=["empresa", "-created_at"], name="mov_caixa_empresa_idx"),
+        ]
 
     def __str__(self):
         return f"{self.get_tipo_display()} - R$ {self.valor}"
@@ -476,6 +533,13 @@ class Alerta(models.Model):
     )
     titulo = models.CharField("Título", max_length=200)
     mensagem = models.TextField("Mensagem")
+    empresa = models.ForeignKey(
+        "fiscal.Empresa",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="alertas",
+    )
 
     # Relacionamentos opcionais (para rastreabilidade)
     cliente = models.ForeignKey(
@@ -515,6 +579,7 @@ class Alerta(models.Model):
             models.Index(fields=["tipo", "resolvido"]),
             models.Index(fields=["lido"]),
             models.Index(fields=["prioridade", "-created_at"]),
+            models.Index(fields=["empresa", "-created_at"], name="alerta_empresa_idx"),
         ]
 
     def __str__(self):
@@ -574,6 +639,13 @@ class Lote(models.Model):
         verbose_name="Fornecedor",
         help_text="Fornecedor deste lote",
     )
+    empresa = models.ForeignKey(
+        "fiscal.Empresa",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="lotes",
+    )
     preco_custo_lote = models.DecimalField(
         "Preço de Custo do Lote",
         max_digits=10,
@@ -599,6 +671,7 @@ class Lote(models.Model):
             models.Index(fields=["data_validade"]),
             models.Index(fields=["numero_lote"]),
             models.Index(fields=["produto", "data_validade", "ativo"]),
+            models.Index(fields=["empresa", "ativo"], name="lote_empresa_ativo_idx"),
         ]
 
     def __str__(self):
