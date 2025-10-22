@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -46,6 +46,7 @@ import {
   marcarTodosLidos,
 } from '../services/api';
 import './Alertas.css';
+import { notificationManager } from '../utils/notifications';
 
 const Alertas = () => {
   const navigate = useNavigate();
@@ -55,6 +56,7 @@ const Alertas = () => {
   const [verificando, setVerificando] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState(null);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null);
+  const alertasNotificadosRef = useRef(new Set());
 
   useEffect(() => {
     carregarAlertas();
@@ -71,7 +73,19 @@ const Alertas = () => {
         getAlertasPorPrioridade(),
       ]);
       setResumo(resumoRes.data);
-      setAlertasPorPrioridade(alertasRes.data);
+
+      const dadosPrioridade = alertasRes.data || {};
+      if (alertasNotificadosRef.current.size === 0) {
+        Object.values(dadosPrioridade).forEach((lista) => {
+          (lista || []).forEach((alerta) =>
+            alertasNotificadosRef.current.add(alerta.id)
+          );
+        });
+      } else {
+        notificarAlertas(dadosPrioridade);
+      }
+
+      setAlertasPorPrioridade(dadosPrioridade);
       setUltimaAtualizacao(new Date());
     } catch (error) {
       console.error('Erro ao carregar alertas:', error);
@@ -105,6 +119,36 @@ const Alertas = () => {
     } finally {
       setVerificando(false);
     }
+  };
+
+  const notificarAlertas = (dados) => {
+    const enviados = alertasNotificadosRef.current;
+    if (!dados || !notificationManager.isSupported()) return;
+
+    ['CRITICA', 'ALTA'].forEach((prioridade) => {
+      const lista = dados[prioridade] || [];
+      lista.forEach(async (alerta) => {
+        if (alerta.resolvido || alerta.lido) {
+          enviados.add(alerta.id);
+          return;
+        }
+        if (enviados.has(alerta.id)) {
+          return;
+        }
+        enviados.add(alerta.id);
+        await notificationManager.send(alerta.titulo, {
+          body: alerta.mensagem,
+          tag: `alert-${alerta.id}`,
+          requireInteraction: prioridade === 'CRITICA',
+          data: {
+            type: 'alerta',
+            alerta_id: alerta.id,
+            url: '/alertas',
+          },
+          actions: [{ action: 'view', title: 'Abrir Alertas' }],
+        });
+      });
+    });
   };
 
   const handleMarcarLido = async (id) => {

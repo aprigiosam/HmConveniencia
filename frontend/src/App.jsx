@@ -5,6 +5,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaTags, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBell, FaTruck, FaBuilding } from 'react-icons/fa';
 import { localDB } from './utils/db';
 import { syncManager } from './utils/syncManager';
+import { notificationManager } from './utils/notifications';
 
 // Lazy loading das páginas para reduzir bundle inicial
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -66,6 +67,17 @@ function AppContent() {
     localDB.init();
     syncManager.init();
     return () => syncManager.stop();
+  }, []);
+
+  useEffect(() => {
+    if (notificationManager.isSupported()) {
+      const flagKey = 'hmconv_push_permission_requested';
+      if (!localStorage.getItem(flagKey)) {
+        notificationManager.requestPermission().finally(() => {
+          localStorage.setItem(flagKey, '1');
+        });
+      }
+    }
   }, []);
 
   if (!token) {
