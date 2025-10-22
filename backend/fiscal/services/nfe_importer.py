@@ -8,7 +8,7 @@ import xmltodict
 from django.db import transaction
 from django.utils.dateparse import parse_datetime
 
-from core.models import Categoria, Fornecedor, Produto
+from core.models import Alerta, Categoria, Fornecedor, Produto
 from fiscal.models import (
     AmbienteChoices,
     Empresa,
@@ -352,19 +352,40 @@ class NFeEntradaImporter:
                 update_fields.append("categoria")
             produto.save(update_fields=update_fields)
         else:
-            preco_para_venda = valor_unitario if valor_unitario > 0 else Decimal("0.01")
             produto = Produto.objects.create(
                 empresa=self.empresa,
                 nome=descricao or "Produto importado NF-e",
-                preco=preco_para_venda,
+                preco=Decimal("0.00"),
                 preco_custo=valor_unitario if valor_unitario > 0 else Decimal("0.00"),
                 estoque=Decimal("0"),
                 codigo_barras=codigo_barras,
                 ativo=True,
                 categoria=categoria,
             )
+            self._criar_alerta_produto_sem_preco(produto)
 
         return produto
+
+    def _criar_alerta_produto_sem_preco(self, produto: Produto) -> None:
+        if produto.preco and produto.preco > 0:
+            return
+
+        Alerta.objects.update_or_create(
+            empresa=self.empresa,
+            produto=produto,
+            tipo="PRODUTO_SEM_PRECO",
+            defaults={
+                "prioridade": "MEDIA",
+                "titulo": f"Defina o preço de venda de {produto.nome}",
+                "mensagem": (
+                    "Produto importado sem preço de venda. "
+                    "Atualize o valor antes de disponibilizar no PDV."
+                ),
+                "lido": False,
+                "resolvido": False,
+                "notificado": False,
+            },
+        )
 
     def _normalizar_item(
         self,

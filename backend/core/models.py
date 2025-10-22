@@ -516,6 +516,7 @@ class Alerta(models.Model):
         ("PRODUTO_VENCIDO", "Produto Vencido"),
         ("ESTOQUE_BAIXO", "Estoque Baixo"),
         ("ESTOQUE_ZERADO", "Estoque Zerado"),
+        ("PRODUTO_SEM_PRECO", "Produto sem preço"),
         ("CONTA_VENCIDA", "Conta Vencida"),
         ("DIFERENCA_CAIXA", "Diferença de Caixa"),
     ]
