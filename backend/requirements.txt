@@ -16,3 +16,6 @@ redis==5.0.1
 # Ferramentas de Qualidade de Código
 flake8==7.1.0
 black==24.4.2
+
+# Notificações externas
+twilio==8.5.0

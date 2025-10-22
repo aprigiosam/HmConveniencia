@@ -5,6 +5,7 @@ Serviço de Detecção e Criação de Alertas
 from datetime import date, timedelta
 from django.utils import timezone
 from core.models import Alerta, Cliente, Produto, Venda, Caixa
+from core.notifications.whatsapp import WhatsappNotifier
 
 
 class AlertService:
@@ -17,6 +18,17 @@ class AlertService:
         Retorna: (alerta, created)
         """
         filtro = {"tipo": tipo, "resolvido": False}
+        empresa = kwargs.get("empresa")
+
+        if not empresa:
+            for chave in ("produto", "cliente", "venda", "caixa"):
+                obj = kwargs.get(chave)
+                if obj and getattr(obj, "empresa_id", None):
+                    empresa = obj.empresa
+                    break
+
+        if empresa:
+            filtro["empresa"] = empresa
 
         # Adiciona filtros específicos se fornecidos
         if kwargs.get("cliente"):
@@ -34,6 +46,7 @@ class AlertService:
             Alerta.objects.filter(**filtro).order_by("-created_at").first()
         )
 
+        created = False
         if alerta_existente:
             # Atualiza informações caso prioridade/título/mensagem tenham mudado
             alterado = False
@@ -46,26 +59,41 @@ class AlertService:
             if alerta_existente.mensagem != mensagem:
                 alerta_existente.mensagem = mensagem
                 alterado = True
+            if empresa and alerta_existente.empresa_id != getattr(empresa, "id", None):
+                alerta_existente.empresa = empresa
+                alterado = True
             if alterado:
                 alerta_existente.save(
                     update_fields=["prioridade", "titulo", "mensagem", "updated_at"]
                 )
-            return alerta_existente, False
+            alerta = alerta_existente
+        else:
+            alerta = Alerta.objects.create(
+                tipo=tipo,
+                prioridade=prioridade,
+                titulo=titulo,
+                mensagem=mensagem,
+                cliente=kwargs.get("cliente"),
+                produto=kwargs.get("produto"),
+                venda=kwargs.get("venda"),
+                caixa=kwargs.get("caixa"),
+                lote=kwargs.get("lote"),
+                empresa=empresa,
+            )
+            created = True
 
-        # Cria novo alerta
-        alerta = Alerta.objects.create(
-            tipo=tipo,
-            prioridade=prioridade,
-            titulo=titulo,
-            mensagem=mensagem,
-            cliente=kwargs.get("cliente"),
-            produto=kwargs.get("produto"),
-            venda=kwargs.get("venda"),
-            caixa=kwargs.get("caixa"),
-            lote=kwargs.get("lote"),
-        )
+        AlertService._enviar_notificacao(alerta)
+        return alerta, created
 
-        return alerta, True
+    @staticmethod
+    def _enviar_notificacao(alerta: Alerta) -> None:
+        if alerta.prioridade not in {"ALTA", "CRITICA"}:
+            return
+        if alerta.notificado:
+            return
+        if WhatsappNotifier.send_alert(alerta):
+            alerta.notificado = True
+            alerta.save(update_fields=["notificado", "updated_at"])
 
     @classmethod
     def verificar_limite_credito(cls):
