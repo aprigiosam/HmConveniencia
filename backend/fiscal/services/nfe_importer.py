@@ -1,4 +1,5 @@
 import logging
+import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import List, Optional, Tuple
@@ -7,7 +8,7 @@ import xmltodict
 from django.db import transaction
 from django.utils.dateparse import parse_datetime
 
-from core.models import Fornecedor, Produto
+from core.models import Categoria, Fornecedor, Produto
 from fiscal.models import (
     AmbienteChoices,
     Empresa,
@@ -261,15 +262,41 @@ class NFeEntradaImporter:
             if not prod:
                 continue
 
-            quantidade = _safe_decimal(prod.get("qCom", "0"))
-            if quantidade <= 0:
+            quantidade_bruta = _safe_decimal(prod.get("qCom", "0"))
+            if quantidade_bruta <= 0:
                 continue
 
-            valor_unitario = _safe_decimal(prod.get("vUnCom", "0"))
             valor_total = _safe_decimal(prod.get("vProd", "0"))
+            valor_unitario_bruto = _safe_decimal(prod.get("vUnCom", "0"))
             valor_desconto = _safe_decimal(prod.get("vDesc", "0"))
 
-            produto = self._localizar_ou_criar_produto(prod, valor_unitario)
+            (
+                quantidade,
+                unidade,
+                valor_unitario,
+                categoria,
+                codigo_barras,
+            ) = self._normalizar_item(
+                prod,
+                quantidade_bruta,
+                valor_total,
+                valor_unitario_bruto,
+            )
+
+            if quantidade <= 0:
+                logger.warning(
+                    "Item %s com quantidade convertida inválida (qCom=%s). Ignorado.",
+                    prod.get("cProd"),
+                    quantidade_bruta,
+                )
+                continue
+
+            produto = self._localizar_ou_criar_produto(
+                prod,
+                valor_unitario,
+                codigo_barras,
+                categoria,
+            )
 
             item = NotaItem.objects.create(
                 nota=nota,
@@ -279,7 +306,7 @@ class NFeEntradaImporter:
                 ncm=str(prod.get("NCM", ""))[:8],
                 cfop=str(prod.get("CFOP", ""))[:4],
                 cest=str(prod.get("CEST", ""))[:7],
-                unidade=str(prod.get("uCom", ""))[:6],
+                unidade=unidade,
                 quantidade=quantidade,
                 valor_unitario=valor_unitario if valor_unitario > 0 else Decimal("0.000001"),
                 valor_total=valor_total,
@@ -289,8 +316,13 @@ class NFeEntradaImporter:
 
         return itens_criados
 
-    def _localizar_ou_criar_produto(self, prod: dict, valor_unitario: Decimal) -> Produto:
-        codigo_barras = prod.get("cEAN") or ""
+    def _localizar_ou_criar_produto(
+        self,
+        prod: dict,
+        valor_unitario: Decimal,
+        codigo_barras: str,
+        categoria: Optional[Categoria],
+    ) -> Produto:
         if codigo_barras.upper().startswith("SEM GTIN"):
             codigo_barras = ""
 
@@ -312,8 +344,13 @@ class NFeEntradaImporter:
                 produto.codigo_barras = codigo_barras
             if valor_unitario > 0:
                 produto.preco_custo = valor_unitario
+            if categoria and produto.categoria_id != categoria.id:
+                produto.categoria = categoria
             produto.empresa = self.empresa
-            produto.save(update_fields=["codigo_barras", "preco_custo", "empresa", "updated_at"])
+            update_fields = ["codigo_barras", "preco_custo", "empresa", "updated_at"]
+            if categoria:
+                update_fields.append("categoria")
+            produto.save(update_fields=update_fields)
         else:
             preco_para_venda = valor_unitario if valor_unitario > 0 else Decimal("0.01")
             produto = Produto.objects.create(
@@ -324,9 +361,94 @@ class NFeEntradaImporter:
                 estoque=Decimal("0"),
                 codigo_barras=codigo_barras,
                 ativo=True,
+                categoria=categoria,
             )
 
         return produto
+
+    def _normalizar_item(
+        self,
+        prod: dict,
+        quantidade_bruta: Decimal,
+        valor_total: Decimal,
+        valor_unitario_bruto: Decimal,
+    ) -> Tuple[Decimal, str, Decimal, Optional[Categoria], str]:
+        unidade_nf = (prod.get("uCom") or "").upper()
+        multiplicador_unidade = self._multiplicador_unidade(unidade_nf)
+        quantidade_basica = quantidade_bruta * multiplicador_unidade
+
+        pack_size = self._detectar_pack_size(prod)
+        if pack_size and pack_size > 0:
+            quantidade_convertida = quantidade_basica / pack_size
+            unidade_final = "UN"
+        else:
+            quantidade_convertida = quantidade_basica
+            unidade_final = unidade_nf[:6] if unidade_nf else "UN"
+
+        if quantidade_convertida <= 0:
+            quantidade_convertida = quantidade_basica or Decimal("0")
+
+        if quantidade_convertida > 0:
+            valor_unitario = valor_total / quantidade_convertida
+        else:
+            valor_unitario = valor_unitario_bruto if valor_unitario_bruto > 0 else Decimal("0.000001")
+
+        categoria = self._identificar_categoria(prod)
+        codigo_barras = self._obter_codigo_barras(prod)
+
+        return (
+            quantidade_convertida,
+            unidade_final,
+            valor_unitario,
+            categoria,
+            codigo_barras,
+        )
+
+    def _multiplicador_unidade(self, unidade: str) -> Decimal:
+        if unidade == "MIL":
+            return Decimal("1000")
+        if unidade == "DZ":
+            return Decimal("12")
+        return Decimal("1")
+
+    def _detectar_pack_size(self, prod: dict) -> Optional[Decimal]:
+        ncm = str(prod.get("NCM", "")).strip()
+        if ncm == "24022000":
+            return Decimal("20")
+
+        descricao = prod.get("xProd", "") or ""
+        match = re.search(r"(\d{2})\b(?!.*\d)", descricao)
+        if match:
+            try:
+                valor = int(match.group(1))
+                if valor > 1:
+                    return Decimal(valor)
+            except ValueError:
+                pass
+        return None
+
+    def _identificar_categoria(self, prod: dict) -> Optional[Categoria]:
+        ncm = str(prod.get("NCM", "")).strip()
+        if not ncm:
+            return None
+
+        categoria_nome = None
+        if ncm == "24022000":
+            categoria_nome = "Cigarros"
+
+        if not categoria_nome:
+            return None
+
+        categoria, _ = Categoria.objects.get_or_create(
+            empresa=self.empresa,
+            nome=categoria_nome,
+            defaults={"ativo": True},
+        )
+        return categoria
+
+    def _obter_codigo_barras(self, prod: dict) -> str:
+        codigo = prod.get("cEANTrib") or prod.get("cEAN") or ""
+        return str(codigo).strip()
 
     def _criar_movimentacao_estoque(self, nota: NotaFiscal, itens: List[NotaItem]) -> None:
         for item in itens:
