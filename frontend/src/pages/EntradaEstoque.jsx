@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Container,
   Title,
@@ -17,11 +18,15 @@ import {
   Card,
   Stack,
   ActionIcon,
+  FileInput,
+  Divider,
+  Alert,
+  ThemeIcon,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
-import { FaBoxOpen, FaPlus, FaCalendar, FaTruck, FaEdit, FaTimes } from 'react-icons/fa';
-import { getProdutos, entradaEstoque, getLotes, getFornecedores, updateLote } from '../services/api';
+import { FaBoxOpen, FaPlus, FaCalendar, FaTruck, FaEdit, FaTimes, FaFileUpload, FaFileInvoiceDollar, FaInfoCircle, FaCheck } from 'react-icons/fa';
+import { getProdutos, entradaEstoque, getLotes, getFornecedores, updateLote, importarNFe } from '../services/api';
 
 const EntradaEstoque = () => {
   const [loading, setLoading] = useState(false);
@@ -29,6 +34,9 @@ const EntradaEstoque = () => {
   const [fornecedores, setFornecedores] = useState([]);
   const [lotesRecentes, setLotesRecentes] = useState([]);
   const [editingLote, setEditingLote] = useState(null);
+  const [xmlFile, setXmlFile] = useState(null);
+  const [importandoXml, setImportandoXml] = useState(false);
+  const [notaImportada, setNotaImportada] = useState(null);
 
   // Form state
   const [produtoId, setProdutoId] = useState('');
@@ -76,6 +84,47 @@ const EntradaEstoque = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleImportarXml = async () => {
+    if (!xmlFile) {
+      notifications.show({
+        title: 'Selecione um arquivo',
+        message: 'Escolha o XML da NF-e para importar',
+        color: 'orange',
+        icon: <FaInfoCircle />,
+      });
+      return;
+    }
+
+    setImportandoXml(true);
+    try {
+      const response = await importarNFe(xmlFile);
+      const nota = response.data;
+      setNotaImportada(nota);
+      notifications.show({
+        title: 'NF-e importada',
+        message: `Nota ${nota.numero}/${nota.serie} importada com ${nota.itens?.length || 0} item(ns)`,
+        color: 'green',
+        icon: <FaCheck />,
+      });
+      setXmlFile(null);
+      await carregarDados();
+    } catch (error) {
+      console.error('Erro ao importar NF-e:', error);
+      const detalhe =
+        error.response?.data?.detail ||
+        error.response?.data?.error ||
+        'Não foi possível importar a NF-e';
+      notifications.show({
+        title: 'Erro ao importar NF-e',
+        message: detalhe,
+        color: 'red',
+        icon: <FaTimes />,
+      });
+    } finally {
+      setImportandoXml(false);
     }
   };
 
@@ -256,21 +305,118 @@ const EntradaEstoque = () => {
             </Group>
           </Title>
           <Text c="dimmed" size="sm">
-            Adicione novos lotes ao estoque com controle de validade
+            Importe notas fiscais para atualizar o estoque automaticamente e use os ajustes abaixo apenas para casos excepcionais.
           </Text>
         </div>
 
-        {/* Formulário de Entrada */}
+        {/* Importação NF-e */}
+        <Paper shadow="sm" p="md" withBorder>
+          <Stack gap="md">
+            <Group justify="space-between" align="flex-start">
+              <Group gap="sm">
+                <ThemeIcon color="blue" size="lg" radius="md" variant="light">
+                  <FaFileInvoiceDollar size={18} />
+                </ThemeIcon>
+                <div>
+                  <Title order={4}>Importar NF-e (XML)</Title>
+                  <Text c="dimmed" size="sm">
+                    Faça o upload do XML da nota fiscal de entrada para cadastrar produtos, atualizar estoque e registrar custos automaticamente.
+                  </Text>
+                </div>
+              </Group>
+            </Group>
+
+            <Alert icon={<FaInfoCircle size={16} />} color="blue" variant="light">
+              Garanta que o XML esteja completo (modelo 55). Após a importação, defina o preço de venda dos itens sinalizados em <strong>Produtos</strong>.
+            </Alert>
+
+            <FileInput
+              label="Arquivo XML da NF-e"
+              placeholder="Selecione o arquivo .xml"
+              value={xmlFile}
+              onChange={setXmlFile}
+              accept=".xml"
+              leftSection={<FaFileUpload size={16} />}
+            />
+
+            <Group justify="space-between" align="center">
+              <Text size="sm" c="dimmed">
+                Aceita arquivos de NF-e (versão 4.0). Cada upload importa todos os itens da nota.
+              </Text>
+              <Button
+                leftSection={<FaFileUpload size={16} />}
+                onClick={handleImportarXml}
+                loading={importandoXml}
+                disabled={!xmlFile || importandoXml}
+              >
+                Importar NF-e
+              </Button>
+            </Group>
+
+            {notaImportada && (
+              <Card withBorder shadow="sm" radius="md">
+                <Stack gap="sm">
+                  <Group justify="space-between" align="center">
+                    <div>
+                      <Text fw={600}>
+                        Nota {notaImportada.numero}/{notaImportada.serie} · Chave {notaImportada.chave_acesso}
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        Emitente: {notaImportada.fornecedor_nome || '—'} · Total R$ {Number(notaImportada.valor_total || 0).toFixed(2)}
+                      </Text>
+                    </div>
+                    <Button
+                      variant="light"
+                      color="orange"
+                      component={Link}
+                      to="/produtos"
+                      size="xs"
+                    >
+                      Ajustar preços dos produtos
+                    </Button>
+                  </Group>
+
+                  <Text size="sm" fw={500}>
+                    Itens importados ({notaImportada.itens?.length || 0})
+                  </Text>
+
+                  <Table highlightOnHover withTableBorder>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Descrição</Table.Th>
+                        <Table.Th>Qtd.</Table.Th>
+                        <Table.Th>Unidade</Table.Th>
+                        <Table.Th>Preço de custo</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {(notaImportada.itens || []).map((item) => (
+                        <Table.Tr key={item.id}>
+                          <Table.Td>{item.descricao}</Table.Td>
+                          <Table.Td>{Number(item.quantidade || 0).toFixed(2)}</Table.Td>
+                          <Table.Td>{item.unidade || '-'}</Table.Td>
+                          <Table.Td>R$ {Number(item.valor_unitario || 0).toFixed(2)}</Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Stack>
+              </Card>
+            )}
+          </Stack>
+        </Paper>
+
+        <Divider label="Ajustes manuais (usar apenas em exceções)" labelPosition="center" />
+
+        {/* Formulário de Ajuste Manual */}
         <Paper shadow="sm" p="md" withBorder>
           <Group justify="space-between" align="center" mb="sm">
             <Stack gap={2}>
               <Title order={4}>
-                {editingLote ? 'Editar Entrada de Estoque' : 'Nova Entrada de Estoque'}
+                {editingLote ? 'Editar ajuste de estoque' : 'Novo ajuste de estoque'}
               </Title>
               <Text c="dimmed" size="sm">
-                {editingLote
-                  ? `Atualize as informações do lote ${editingLote.numero_lote || `#${editingLote.id}`}`
-                  : 'Preencha os dados para registrar um novo lote de entrada'}
+                Utilize este formulário somente para correções de inventário, perdas ou ajustes pontuais. Entradas regulares devem ser feitas via NF-e.
               </Text>
             </Stack>
             {editingLote && (

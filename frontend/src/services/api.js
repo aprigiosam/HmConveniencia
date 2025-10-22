@@ -113,4 +113,19 @@ export const getLotesVencidos = () => api.get('/lotes/vencidos/');
 export const getLotesProximosVencimento = () => api.get('/lotes/proximos_vencimento/');
 export const getLotesPorProduto = (produtoId) => api.get(`/lotes/por_produto/?produto_id=${produtoId}`);
 
+// NF-e de entrada
+export const importarNFe = (file, extraFields = {}) => {
+  const formData = new FormData();
+  formData.append('xml', file);
+  Object.entries(extraFields).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      formData.append(key, value);
+    }
+  });
+
+  return api.post('/entradas/importar-xml', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+
 export default api;
