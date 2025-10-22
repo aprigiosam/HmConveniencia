@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias } from '../services/api';
 import { localDB } from '../utils/db';
-import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, ActionIcon, Stack, Text, ScrollArea, Card, Badge } from '@mantine/core';
+import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, ActionIcon, Stack, Text, ScrollArea, Card, Badge, ThemeIcon } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes, FaExclamationTriangle, FaSearch } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes, FaExclamationTriangle, FaSearch, FaTag } from 'react-icons/fa';
 import BarcodeScanner from '../components/BarcodeScanner';
 import './Produtos.css';
 
@@ -204,20 +204,49 @@ function Produtos() {
     produto.categoria_nome?.toLowerCase().includes(busca.toLowerCase())
   );
 
-  const rows = produtosFiltrados.map((produto) => (
-    <Table.Tr key={produto.id} style={{ backgroundColor: produto.esta_vencido ? '#fee' : produto.proximo_vencimento ? '#ffeaa7' : 'inherit' }}>
+  const rows = produtosFiltrados.map((produto) => {
+    const precoVenda = Number(produto.preco || 0);
+    const precoCusto = Number(produto.preco_custo || 0);
+    const estoqueAtual = Number(produto.estoque || 0);
+    const semPreco = precoVenda <= 0;
+
+    const estiloLinha = {
+      backgroundColor: produto.esta_vencido
+        ? '#fee'
+        : produto.proximo_vencimento
+        ? '#ffeaa7'
+        : semPreco
+        ? '#fff4e6'
+        : 'inherit',
+    };
+
+    return (
+      <Table.Tr key={produto.id} style={estiloLinha}>
       <Table.Td>
         <Group gap="xs">
           <Text>{produto.nome}</Text>
           {getValidadeBadge(produto)}
+          {semPreco && (
+            <Badge color="orange" size="sm" leftSection={<FaTag size={10} />}>
+              Sem preço
+            </Badge>
+          )}
         </Group>
       </Table.Td>
       <Table.Td>{produto.codigo_barras || '-'}</Table.Td>
-      <Table.Td>R$ {parseFloat(produto.preco).toFixed(2)}</Table.Td>
       <Table.Td>
-        {produto.preco_custo && parseFloat(produto.preco_custo) > 0 ? (
+        {semPreco ? (
+          <Text size="sm" c="orange" fw={600}>
+            Defina o preço
+          </Text>
+        ) : (
+          <>R$ {precoVenda.toFixed(2)}</>
+        )}
+      </Table.Td>
+      <Table.Td>
+        {precoCusto > 0 ? (
           <>
-            <Text size="sm">R$ {parseFloat(produto.preco_custo).toFixed(2)}</Text>
+            <Text size="sm">R$ {precoCusto.toFixed(2)}</Text>
             <Text size="xs" c="dimmed">{produto.margem_lucro?.toFixed(1)}%</Text>
           </>
         ) : (
@@ -226,7 +255,7 @@ function Produtos() {
       </Table.Td>
       <Table.Td>
         <Group gap="xs">
-          <Text>{parseInt(produto.estoque)}</Text>
+          <Text>{estoqueAtual}</Text>
           {produto.total_lotes > 0 && (
             <Badge size="sm" variant="light" color="blue">
               {produto.total_lotes} lote{produto.total_lotes !== 1 ? 's' : ''}
@@ -246,9 +275,16 @@ function Produtos() {
         </Group>
       </Table.Td>
     </Table.Tr>
-  ));
+    );
+  });
 
-  const cards = produtosFiltrados.map((produto) => (
+  const cards = produtosFiltrados.map((produto) => {
+    const precoVenda = Number(produto.preco || 0);
+    const precoCusto = Number(produto.preco_custo || 0);
+    const estoqueAtual = Number(produto.estoque || 0);
+    const semPreco = precoVenda <= 0;
+
+    return (
     <Card
       withBorder
       radius="md"
@@ -274,12 +310,23 @@ function Produtos() {
       <Stack gap="xs">
         <Group justify="space-between">
           <Text size="sm" c="dimmed">Preço Venda:</Text>
-          <Text size="sm" fw={500}>R$ {parseFloat(produto.preco).toFixed(2)}</Text>
+          {semPreco ? (
+            <Group gap={4}>
+              <ThemeIcon size="sm" radius="xl" color="orange" variant="light">
+                <FaTag size={10} />
+              </ThemeIcon>
+              <Text size="sm" c="orange" fw={600}>
+                Defina o preço
+              </Text>
+            </Group>
+          ) : (
+            <Text size="sm" fw={500}>R$ {precoVenda.toFixed(2)}</Text>
+          )}
         </Group>
-        {produto.preco_custo && parseFloat(produto.preco_custo) > 0 ? (
+        {precoCusto > 0 ? (
           <Group justify="space-between">
             <Text size="sm" c="dimmed">Preço Custo:</Text>
-            <Text size="sm">R$ {parseFloat(produto.preco_custo).toFixed(2)} ({produto.margem_lucro?.toFixed(1)}%)</Text>
+            <Text size="sm">R$ {precoCusto.toFixed(2)} ({produto.margem_lucro?.toFixed(1)}%)</Text>
           </Group>
         ) : (
           <Group justify="space-between">
@@ -290,7 +337,7 @@ function Produtos() {
         <Group justify="space-between">
           <Text size="sm" c="dimmed">Estoque:</Text>
           <Group gap="xs">
-            <Text size="sm" fw={500}>{parseInt(produto.estoque)}</Text>
+            <Text size="sm" fw={500}>{estoqueAtual}</Text>
             {produto.total_lotes > 0 && (
               <Badge size="xs" variant="light" color="blue">
                 {produto.total_lotes} lote{produto.total_lotes !== 1 ? 's' : ''}
@@ -306,9 +353,21 @@ function Produtos() {
           <Text size="sm" c="dimmed">Cód. Barras:</Text>
           <Text size="sm">{produto.codigo_barras || '-'}</Text>
         </Group>
+        {semPreco && (
+          <Button
+            mt="sm"
+            variant="light"
+            color="orange"
+            onClick={() => handleOpenModal(produto)}
+            leftSection={<FaTag size={14} />}
+          >
+            Definir preço agora
+          </Button>
+        )}
       </Stack>
     </Card>
-  ));
+    );
+  });
 
   const categoriaOptions = categorias.map(cat => ({ value: cat.id.toString(), label: cat.nome }));
 
