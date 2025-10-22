@@ -266,8 +266,8 @@ class NFeEntradaImporter:
             if quantidade_bruta <= 0:
                 continue
 
-            valor_total = _safe_decimal(prod.get("vProd", "0"))
             valor_unitario_bruto = _safe_decimal(prod.get("vUnCom", "0"))
+            valor_total = self._calcular_valor_total_item(det)
             valor_desconto = _safe_decimal(prod.get("vDesc", "0"))
 
             (
@@ -315,6 +315,54 @@ class NFeEntradaImporter:
             itens_criados.append(item)
 
         return itens_criados
+
+    def _calcular_valor_total_item(self, det: dict) -> Decimal:
+        prod = det.get("prod") or {}
+
+        valor_total = (
+            _safe_decimal(prod.get("vProd", "0"))
+            + _safe_decimal(prod.get("vFrete", "0"))
+            + _safe_decimal(prod.get("vSeg", "0"))
+            + _safe_decimal(prod.get("vOutro", "0"))
+            - _safe_decimal(prod.get("vDesc", "0"))
+        )
+
+        valor_total += self._somar_impostos_para_custo(det)
+
+        return valor_total if valor_total >= 0 else Decimal("0")
+
+    def _somar_impostos_para_custo(self, det: dict) -> Decimal:
+        imposto = det.get("imposto") or {}
+        if not imposto:
+            return Decimal("0")
+
+        total_impostos = Decimal("0")
+
+        icms_info = imposto.get("ICMS") or {}
+        if isinstance(icms_info, dict):
+            for dados in icms_info.values():
+                if not isinstance(dados, dict):
+                    continue
+
+                valor_icms_st = dados.get("vICMSST")
+                if valor_icms_st in (None, "", "null"):
+                    valor_icms_st = dados.get("vST")
+                if valor_icms_st not in (None, "", "null"):
+                    total_impostos += _safe_decimal(valor_icms_st)
+
+                for campo in ("vFCPST", "vFCP", "vFCPSTRet"):
+                    valor = dados.get(campo)
+                    if valor not in (None, "", "null"):
+                        total_impostos += _safe_decimal(valor)
+
+        icms_uf_dest = imposto.get("ICMSUFDest") or {}
+        if isinstance(icms_uf_dest, dict):
+            for campo in ("vICMSUFDest", "vICMSUFRemet", "vFCPUFDest"):
+                valor = icms_uf_dest.get(campo)
+                if valor not in (None, "", "null"):
+                    total_impostos += _safe_decimal(valor)
+
+        return total_impostos
 
     def _localizar_ou_criar_produto(
         self,
