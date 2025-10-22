@@ -25,6 +25,18 @@ function Fornecedores() {
     loadFornecedores();
   }, []);
 
+  const formatCurrency = (valor) => {
+    if (valor === null || valor === undefined) return 'R$ 0,00';
+    return `R$ ${parseFloat(valor || 0).toFixed(2)}`;
+  };
+
+  const formatDate = (valor) => {
+    if (!valor) return '-';
+    const date = new Date(valor);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('pt-BR');
+  };
+
   const loadFornecedores = async () => {
     try {
       const response = await getFornecedores({ ativo: true });
@@ -127,12 +139,28 @@ function Fornecedores() {
       <Table.Td>{fornecedor.cnpj || '-'}</Table.Td>
       <Table.Td>{fornecedor.telefone || '-'}</Table.Td>
       <Table.Td>
-        <Badge color="blue" variant="light" leftSection={<FaBox size={12} />}>
-          {fornecedor.total_lotes || 0} lotes
-        </Badge>
+        <Stack gap={2} align="flex-start">
+          <Badge color="blue" variant="light" leftSection={<FaBox size={12} />}>
+            {fornecedor.total_lotes || 0} lotes
+          </Badge>
+          <Text size="xs" c="dimmed">
+            {fornecedor.total_notas || 0} nota(s)
+          </Text>
+        </Stack>
       </Table.Td>
       <Table.Td>
-        R$ {parseFloat(fornecedor.total_compras || 0).toFixed(2)}
+        <Stack gap={2} align="flex-start">
+          <Text size="sm" fw={600}>{formatCurrency(fornecedor.total_compras)}</Text>
+          <Text size="xs" c="dimmed">NF-e importadas</Text>
+        </Stack>
+      </Table.Td>
+      <Table.Td>
+        <Stack gap={2} align="flex-start">
+          <Text size="sm">{formatDate(fornecedor.ultima_compra_data)}</Text>
+          <Text size="xs" c="dimmed">
+            {fornecedor.ultima_compra_valor ? formatCurrency(fornecedor.ultima_compra_valor) : 'Sem registro'}
+          </Text>
+        </Stack>
       </Table.Td>
       <Table.Td>
         <Group gap="xs" wrap="nowrap">
@@ -181,10 +209,23 @@ function Fornecedores() {
           </Badge>
         </Group>
         <Group justify="space-between">
+          <Text size="sm" c="dimmed">Notas NF-e:</Text>
+          <Text size="sm" fw={500}>{fornecedor.total_notas || 0}</Text>
+        </Group>
+        <Group justify="space-between">
           <Text size="sm" c="dimmed">Total Compras:</Text>
           <Text size="sm" fw={500} c="green">
-            R$ {parseFloat(fornecedor.total_compras || 0).toFixed(2)}
+            {formatCurrency(fornecedor.total_compras)}
           </Text>
+        </Group>
+        <Group justify="space-between">
+          <Text size="sm" c="dimmed">Última Compra:</Text>
+          <Stack gap={0} align="flex-end">
+            <Text size="sm">{formatDate(fornecedor.ultima_compra_data)}</Text>
+            <Text size="xs" c="dimmed">
+              {fornecedor.ultima_compra_valor ? formatCurrency(fornecedor.ultima_compra_valor) : 'Sem registro'}
+            </Text>
+          </Stack>
         </Group>
       </Stack>
     </Card>
@@ -302,15 +343,16 @@ function Fornecedores() {
                 <Table.Th>Nome</Table.Th>
                 <Table.Th>CNPJ</Table.Th>
                 <Table.Th>Telefone</Table.Th>
-                <Table.Th>Lotes</Table.Th>
-                <Table.Th>Total Compras</Table.Th>
+                <Table.Th>Lotes / Notas</Table.Th>
+                <Table.Th>Total NF-e</Table.Th>
+                <Table.Th>Última Compra</Table.Th>
                 <Table.Th style={{ width: '120px' }}>Ações</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {rows.length > 0 ? rows : (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={7}>
                     <Text c="dimmed" ta="center">Nenhum fornecedor cadastrado.</Text>
                   </Table.Td>
                 </Table.Tr>

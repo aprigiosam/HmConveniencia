@@ -3,8 +3,10 @@ Serializers para API - HMConveniencia
 """
 
 from decimal import Decimal
+from django.db.models import Sum
 from django.db import transaction
 from rest_framework import serializers
+from fiscal.models import NotaFiscal
 from .models import (
     Cliente,
     Fornecedor,
@@ -51,6 +53,11 @@ class FornecedorSerializer(serializers.ModelSerializer):
 
     total_lotes = serializers.SerializerMethodField()
     total_compras = serializers.SerializerMethodField()
+    total_notas = serializers.SerializerMethodField()
+    valor_notas = serializers.SerializerMethodField()
+    ultima_compra_data = serializers.SerializerMethodField()
+    ultima_compra_valor = serializers.SerializerMethodField()
+    ultima_nota_chave = serializers.SerializerMethodField()
 
     class Meta:
         model = Fornecedor
@@ -68,14 +75,77 @@ class FornecedorSerializer(serializers.ModelSerializer):
             "updated_at",
             "total_lotes",
             "total_compras",
+            "total_notas",
+            "valor_notas",
+            "ultima_compra_data",
+            "ultima_compra_valor",
+            "ultima_nota_chave",
         ]
-        read_only_fields = ["created_at", "updated_at", "total_lotes", "total_compras"]
+        read_only_fields = [
+            "created_at",
+            "updated_at",
+            "total_lotes",
+            "total_compras",
+            "total_notas",
+            "valor_notas",
+            "ultima_compra_data",
+            "ultima_compra_valor",
+            "ultima_nota_chave",
+        ]
 
     def get_total_lotes(self, obj):
         return obj.total_lotes()
 
     def get_total_compras(self, obj):
+        if hasattr(obj, "valor_notas") and obj.valor_notas is not None:
+            return float(obj.valor_notas)
         return float(obj.total_compras())
+
+    def get_total_notas(self, obj):
+        if hasattr(obj, "total_notas") and obj.total_notas is not None:
+            return int(obj.total_notas)
+        return NotaFiscal.objects.filter(fornecedor=obj).count()
+
+    def get_valor_notas(self, obj):
+        if hasattr(obj, "valor_notas") and obj.valor_notas is not None:
+            return float(obj.valor_notas)
+        total = NotaFiscal.objects.filter(fornecedor=obj).aggregate(
+            total=Sum("valor_total")
+        )["total"]
+        return float(total or 0)
+
+    def get_ultima_compra_data(self, obj):
+        valor = getattr(obj, "ultima_compra_data", None)
+        if valor:
+            return valor
+        nota = (
+            NotaFiscal.objects.filter(fornecedor=obj)
+            .order_by("-data_emissao", "-created_at")
+            .first()
+        )
+        return nota.data_emissao if nota else None
+
+    def get_ultima_compra_valor(self, obj):
+        valor = getattr(obj, "ultima_compra_valor", None)
+        if valor is not None:
+            return float(valor)
+        nota = (
+            NotaFiscal.objects.filter(fornecedor=obj)
+            .order_by("-data_emissao", "-created_at")
+            .first()
+        )
+        return float(nota.valor_total) if nota else None
+
+    def get_ultima_nota_chave(self, obj):
+        chave = getattr(obj, "ultima_nota_chave", None)
+        if chave:
+            return chave
+        nota = (
+            NotaFiscal.objects.filter(fornecedor=obj)
+            .order_by("-data_emissao", "-created_at")
+            .first()
+        )
+        return nota.chave_acesso if nota else None
 
     def validate_cnpj(self, value):
         if value == "":

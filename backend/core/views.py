@@ -10,7 +10,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, OuterRef, Subquery
 from django.utils import timezone
 from django.db import connection, transaction
 from datetime import timedelta
@@ -18,6 +18,7 @@ from decimal import Decimal
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.core.cache import cache
+from fiscal.models import NotaFiscal
 from .models import (
     Cliente,
     Fornecedor,
@@ -155,6 +156,18 @@ class FornecedorViewSet(viewsets.ModelViewSet):
                 | Q(nome_fantasia__icontains=search)
                 | Q(cnpj__icontains=search)
             )
+
+        ultima_nf = NotaFiscal.objects.filter(fornecedor_id=OuterRef("pk")).order_by(
+            "-data_emissao", "-created_at"
+        )
+
+        queryset = queryset.annotate(
+            total_notas=Count("notas_fiscais", distinct=True),
+            valor_notas=Sum("notas_fiscais__valor_total"),
+            ultima_compra_data=Subquery(ultima_nf.values("data_emissao")[:1]),
+            ultima_compra_valor=Subquery(ultima_nf.values("valor_total")[:1]),
+            ultima_nota_chave=Subquery(ultima_nf.values("chave_acesso")[:1]),
+        )
 
         return queryset.order_by("nome")
 
