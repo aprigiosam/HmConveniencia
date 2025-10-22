@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias } from '../services/api';
 import { localDB } from '../utils/db';
 import { Table, Button, Modal, TextInput, NumberInput, Select, Group, Title, ActionIcon, Stack, Text, ScrollArea, Card, Badge, ThemeIcon } from '@mantine/core';
@@ -20,10 +21,20 @@ function Produtos() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [deletingProduct, setDeletingProduct] = useState(null);
   const [formData, setFormData] = useState({ nome: '', preco: '', preco_custo: '', estoque: '', categoria: '', codigo_barras: '', data_validade: null });
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [pendingEditId, setPendingEditId] = useState(location.state?.editarProdutoId || null);
 
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  useEffect(() => {
+    if (location.state?.editarProdutoId) {
+      setPendingEditId(location.state.editarProdutoId);
+      navigate('/produtos', { replace: true });
+    }
+  }, [location.state, navigate]);
 
   const loadInitialData = async () => {
     const cachedProdutos = await localDB.getCachedProdutos();
@@ -46,6 +57,16 @@ function Produtos() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (pendingEditId && produtos.length > 0) {
+      const produto = produtos.find((p) => p.id === pendingEditId);
+      if (produto) {
+        handleOpenModal(produto);
+        setPendingEditId(null);
+      }
+    }
+  }, [pendingEditId, produtos]);
 
   const resetForm = () => {
     setFormData({ nome: '', preco: '', preco_custo: '', estoque: '', categoria: '', codigo_barras: '', data_validade: null });

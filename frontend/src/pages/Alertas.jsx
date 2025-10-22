@@ -147,11 +147,7 @@ const Alertas = () => {
   };
 
   const handleIrParaProduto = (produtoId) => {
-    navigate('/produtos');
-    // Adicionar filtro por produto depois que a página carregar
-    setTimeout(() => {
-      // Você pode implementar scroll até o produto específico aqui
-    }, 500);
+    navigate('/produtos', { state: { editarProdutoId: produtoId } });
   };
 
   const getPrioridadeColor = (prioridade) => {
