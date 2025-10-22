@@ -16,10 +16,7 @@ class AlertService:
         Cria um alerta se não existir um similar não resolvido
         Retorna: (alerta, created)
         """
-        # Evita duplicação: verifica se já existe alerta similar não resolvido nas últimas 24h
-        ultimas_24h = timezone.now() - timedelta(hours=24)
-
-        filtro = {"tipo": tipo, "resolvido": False, "created_at__gte": ultimas_24h}
+        filtro = {"tipo": tipo, "resolvido": False}
 
         # Adiciona filtros específicos se fornecidos
         if kwargs.get("cliente"):
@@ -33,9 +30,26 @@ class AlertService:
         if kwargs.get("lote"):
             filtro["lote"] = kwargs["lote"]
 
-        alerta_existente = Alerta.objects.filter(**filtro).first()
+        alerta_existente = (
+            Alerta.objects.filter(**filtro).order_by("-created_at").first()
+        )
 
         if alerta_existente:
+            # Atualiza informações caso prioridade/título/mensagem tenham mudado
+            alterado = False
+            if alerta_existente.prioridade != prioridade:
+                alerta_existente.prioridade = prioridade
+                alterado = True
+            if alerta_existente.titulo != titulo:
+                alerta_existente.titulo = titulo
+                alterado = True
+            if alerta_existente.mensagem != mensagem:
+                alerta_existente.mensagem = mensagem
+                alterado = True
+            if alterado:
+                alerta_existente.save(
+                    update_fields=["prioridade", "titulo", "mensagem", "updated_at"]
+                )
             return alerta_existente, False
 
         # Cria novo alerta
@@ -221,6 +235,12 @@ class AlertService:
         alertas_criados = []
 
         produtos = Produto.objects.filter(ativo=True, estoque__lt=10, estoque__gt=0)
+        produtos_ids = list(produtos.values_list("id", flat=True))
+
+        # Resolve alertas antigos de estoque baixo para produtos que já normalizaram
+        Alerta.objects.filter(tipo="ESTOQUE_BAIXO", resolvido=False).exclude(
+            produto_id__in=produtos_ids
+        ).update(resolvido=True, resolvido_em=timezone.now())
 
         for produto in produtos:
             titulo = f"📦 {produto.nome} - Estoque Baixo ({produto.estoque})"
@@ -253,6 +273,11 @@ class AlertService:
         alertas_criados = []
 
         produtos = Produto.objects.filter(ativo=True, estoque=0)
+        produtos_ids = list(produtos.values_list("id", flat=True))
+
+        Alerta.objects.filter(tipo="ESTOQUE_ZERADO", resolvido=False).exclude(
+            produto_id__in=produtos_ids
+        ).update(resolvido=True, resolvido_em=timezone.now())
 
         for produto in produtos:
             titulo = f"🚫 {produto.nome} - SEM ESTOQUE"
