@@ -362,6 +362,32 @@ class NFeEntradaImporter:
                 if valor not in (None, "", "null"):
                     total_impostos += _safe_decimal(valor)
 
+        ipi_info = imposto.get("IPI") or {}
+        if isinstance(ipi_info, dict):
+            valor_ipi = ipi_info.get("vIPI")
+            if valor_ipi not in (None, "", "null"):
+                total_impostos += _safe_decimal(valor_ipi)
+            else:
+                for dados in ipi_info.values():
+                    if isinstance(dados, dict):
+                        valor_ipi_item = dados.get("vIPI") or dados.get("vIPIDevol")
+                        if valor_ipi_item not in (None, "", "null"):
+                            total_impostos += _safe_decimal(valor_ipi_item)
+
+        pis_st = imposto.get("PISST") or {}
+        if isinstance(pis_st, dict):
+            if str(pis_st.get("indSomaPISST", "1")).strip() != "0":
+                valor_pis_st = pis_st.get("vPIS")
+                if valor_pis_st not in (None, "", "null"):
+                    total_impostos += _safe_decimal(valor_pis_st)
+
+        cofins_st = imposto.get("COFINSST") or {}
+        if isinstance(cofins_st, dict):
+            if str(cofins_st.get("indSomaCOFINSST", "1")).strip() != "0":
+                valor_cofins_st = cofins_st.get("vCOFINS")
+                if valor_cofins_st not in (None, "", "null"):
+                    total_impostos += _safe_decimal(valor_cofins_st)
+
         return total_impostos
 
     def _localizar_ou_criar_produto(
@@ -446,13 +472,35 @@ class NFeEntradaImporter:
         multiplicador_unidade = self._multiplicador_unidade(unidade_nf)
         quantidade_basica = quantidade_bruta * multiplicador_unidade
 
-        pack_size = self._detectar_pack_size(prod)
-        if pack_size and pack_size > 0:
-            quantidade_convertida = quantidade_basica / pack_size
-            unidade_final = "UN"
+        unidade_trib = (prod.get("uTrib") or "").upper()
+        quantidade_trib = _safe_decimal(prod.get("qTrib", "0"))
+        multiplicador_trib = self._multiplicador_unidade(unidade_trib)
+        quantidade_trib_convertida = quantidade_trib * multiplicador_trib
+
+        if self._deve_usar_quantidade_tributavel(
+            quantidade_basica,
+            quantidade_trib_convertida,
+            unidade_nf,
+            unidade_trib,
+        ):
+            quantidade_convertida = quantidade_trib_convertida
+            unidade_final = unidade_trib[:6] if unidade_trib else "UN"
         else:
+            pack_size = self._detectar_pack_size(prod)
+            if pack_size and pack_size > 0:
+                quantidade_convertida = quantidade_basica / pack_size
+                unidade_final = "UN"
+            else:
+                quantidade_convertida = quantidade_basica
+                unidade_final = unidade_nf[:6] if unidade_nf else "UN"
+
+        if quantidade_convertida <= 0 and quantidade_trib_convertida > 0:
+            quantidade_convertida = quantidade_trib_convertida
+            unidade_final = unidade_trib[:6] if unidade_trib else unidade_final
+
+        if quantidade_convertida <= 0:
             quantidade_convertida = quantidade_basica
-            unidade_final = unidade_nf[:6] if unidade_nf else "UN"
+            unidade_final = unidade_nf[:6] if unidade_nf else unidade_final
 
         if quantidade_convertida <= 0:
             quantidade_convertida = quantidade_basica or Decimal("0")
@@ -478,7 +526,34 @@ class NFeEntradaImporter:
             return Decimal("1000")
         if unidade == "DZ":
             return Decimal("12")
+        if unidade in {"TH", "MILHEIRO"}:
+            return Decimal("1000")
         return Decimal("1")
+
+    def _deve_usar_quantidade_tributavel(
+        self,
+        quantidade_basica: Decimal,
+        quantidade_trib: Decimal,
+        unidade_nf: str,
+        unidade_trib: str,
+    ) -> bool:
+        if quantidade_trib <= 0:
+            return False
+        if quantidade_basica <= 0:
+            return True
+
+        try:
+            ratio = quantidade_trib / quantidade_basica
+        except (InvalidOperation, ZeroDivisionError):
+            ratio = Decimal("0")
+
+        if ratio >= Decimal("1.5"):
+            return True
+
+        if unidade_trib and unidade_nf and unidade_trib != unidade_nf and ratio > Decimal("1.0"):
+            return True
+
+        return False
 
     def _detectar_pack_size(self, prod: dict) -> Optional[Decimal]:
         ncm = str(prod.get("NCM", "")).strip()
