@@ -34,6 +34,7 @@ import {
   FaMoneyBill,
   FaFilter,
   FaEye,
+  FaTag,
 } from 'react-icons/fa';
 import { notifications } from '@mantine/notifications';
 import {
@@ -170,6 +171,7 @@ const Alertas = () => {
       PRODUTO_VENCIDO: FaExclamationCircle,
       ESTOQUE_BAIXO: FaBoxOpen,
       ESTOQUE_ZERADO: FaBoxOpen,
+      PRODUTO_SEM_PRECO: FaTag,
       CONTA_VENCIDA: FaMoneyBill,
       DIFERENCA_CAIXA: FaMoneyBill,
     };
@@ -183,6 +185,7 @@ const Alertas = () => {
       PRODUTO_VENCIDO: 'Produto Vencido',
       ESTOQUE_BAIXO: 'Estoque Baixo',
       ESTOQUE_ZERADO: 'Estoque Zerado',
+      PRODUTO_SEM_PRECO: 'Produto sem Preço',
       CONTA_VENCIDA: 'Conta Vencida',
       DIFERENCA_CAIXA: 'Diferença de Caixa',
     };
@@ -286,6 +289,16 @@ const Alertas = () => {
           </Group>
 
           <Group gap="xs">
+            {alerta.tipo === 'PRODUTO_SEM_PRECO' && alerta.produto && (
+              <Button
+                size="xs"
+                variant="light"
+                color="orange"
+                onClick={() => handleIrParaProduto(alerta.produto)}
+              >
+                Definir preço
+              </Button>
+            )}
             {alerta.produto && (
               <Tooltip label="Ver produto">
                 <ActionIcon
@@ -456,6 +469,7 @@ const Alertas = () => {
                 { value: 'PRODUTO_VENCENDO', label: 'Produtos Vencendo' },
                 { value: 'ESTOQUE_BAIXO', label: 'Estoque Baixo' },
                 { value: 'ESTOQUE_ZERADO', label: 'Estoque Zerado' },
+                { value: 'PRODUTO_SEM_PRECO', label: 'Produtos sem Preço' },
                 { value: 'CONTA_VENCIDA', label: 'Contas Vencidas' },
                 { value: 'LIMITE_CREDITO', label: 'Limite de Crédito' },
                 { value: 'DIFERENCA_CAIXA', label: 'Diferença de Caixa' },
@@ -511,4 +525,3 @@ const Alertas = () => {
 };
 
 export default Alertas;
-
