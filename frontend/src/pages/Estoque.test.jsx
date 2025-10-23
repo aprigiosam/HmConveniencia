@@ -52,7 +52,7 @@ describe('Página de Estoque', () => {
 
   test('Deve renderizar o título da página', async () => {
     render(<Estoque />);
-    const title = await screen.findByText('Estoque');
+    const title = await screen.findByRole('heading', { name: 'Estoque', level: 2 });
     expect(title).toBeInTheDocument();
   });
 

@@ -291,14 +291,14 @@ class ClienteSerializerOptimizationTestCase(TestCase):
     def test_serializer_usa_metodo_quando_annotate_ausente(self):
         """Verifica fallback para método do model quando annotate ausente"""
         # Cria vendas pendentes
-        venda1 = Venda.objects.create(
+        Venda.objects.create(
             cliente=self.cliente,
             status="FINALIZADA",
             status_pagamento="PENDENTE",
             total=Decimal("100.00"),
             empresa=self.empresa
         )
-        venda2 = Venda.objects.create(
+        Venda.objects.create(
             cliente=self.cliente,
             status="FINALIZADA",
             status_pagamento="PENDENTE",
