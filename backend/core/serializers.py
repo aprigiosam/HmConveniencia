@@ -18,6 +18,8 @@ from .models import (
     Categoria,
     Alerta,
     Lote,
+    InventarioSessao,
+    InventarioItem,
 )
 
 
@@ -234,22 +236,31 @@ class ProdutoSerializer(serializers.ModelSerializer):
     lotes = LoteSerializer(many=True, read_only=True)
     total_lotes = serializers.SerializerMethodField()
     estoque_lotes = serializers.SerializerMethodField()
+    fornecedor_nome = serializers.CharField(source="fornecedor.nome", read_only=True)
+    fornecedor = serializers.PrimaryKeyRelatedField(
+        queryset=Fornecedor.objects.all(), allow_null=True, required=False
+    )
 
     class Meta:
         model = Produto
         fields = [
             "id",
             "nome",
+            "marca",
             "preco",
             "preco_custo",
             "estoque",
             "codigo_barras",
+            "conteudo_valor",
+            "conteudo_unidade",
             "data_validade",
             "ativo",
             "created_at",
             "margem_lucro",
             "categoria",
             "categoria_nome",
+             "fornecedor",
+             "fornecedor_nome",
             "esta_vencido",
             "dias_para_vencer",
             "proximo_vencimento",
@@ -266,6 +277,7 @@ class ProdutoSerializer(serializers.ModelSerializer):
             "lotes",
             "total_lotes",
             "estoque_lotes",
+            "fornecedor_nome",
         ]
 
     def get_margem_lucro(self, obj):
@@ -290,6 +302,80 @@ class ProdutoSerializer(serializers.ModelSerializer):
 
         total = obj.lotes.filter(ativo=True).aggregate(total=Sum("quantidade"))["total"]
         return float(total) if total else 0.0
+
+
+class OpenFoodFactsProductSerializer(serializers.Serializer):
+    code = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    name = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    brand = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    quantity = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    quantity_value = serializers.FloatField(required=False, allow_null=True)
+    quantity_unit = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    category_suggestion = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True
+    )
+    categories = serializers.ListField(
+        child=serializers.CharField(), required=False, allow_empty=True
+    )
+    image_small_url = serializers.URLField(
+        required=False, allow_null=True, allow_blank=True
+    )
+    image_url = serializers.URLField(required=False, allow_null=True, allow_blank=True)
+    nutriscore_grade = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True
+    )
+    ecoscore_grade = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True
+    )
+    data_source = serializers.CharField(read_only=True, default="Open Food Facts")
+
+
+class InventarioItemSerializer(serializers.ModelSerializer):
+    produto_nome = serializers.CharField(source="produto.nome", read_only=True)
+    sessao = serializers.PrimaryKeyRelatedField(
+        queryset=InventarioSessao.objects.all(),
+        write_only=True,
+        required=True,
+    )
+    diferenca = serializers.DecimalField(
+        max_digits=14, decimal_places=4, read_only=True, source="diferenca"
+    )
+
+    class Meta:
+        model = InventarioItem
+        fields = [
+            "id",
+            "sessao",
+            "produto",
+            "produto_nome",
+            "codigo_barras",
+            "descricao",
+            "quantidade_sistema",
+            "quantidade_contada",
+            "custo_informado",
+            "validade_informada",
+            "observacao",
+            "diferenca",
+        ]
+        read_only_fields = ["id", "produto_nome", "diferenca"]
+
+
+class InventarioSessaoSerializer(serializers.ModelSerializer):
+    itens = InventarioItemSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = InventarioSessao
+        fields = [
+            "id",
+            "titulo",
+            "responsavel",
+            "status",
+            "observacoes",
+            "iniciado_em",
+            "finalizado_em",
+            "itens",
+        ]
+        read_only_fields = ["id", "status", "iniciado_em", "finalizado_em", "itens"]
 
 
 class ItemVendaSerializer(serializers.ModelSerializer):

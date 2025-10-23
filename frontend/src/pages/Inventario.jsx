@@ -1,0 +1,362 @@
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Badge,
+  Button,
+  Card,
+  Divider,
+  Group,
+  Modal,
+  Paper,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Textarea,
+  Title,
+} from '@mantine/core';
+import { FaClipboardList, FaPlus, FaSearch } from 'react-icons/fa';
+import dayjs from 'dayjs';
+import { notifications } from '@mantine/notifications';
+import { getInventarios, createInventario } from '../services/api';
+
+function Inventario() {
+  const [inventarios, setInventarios] = useState([]);
+  const [busca, setBusca] = useState('');
+  const [opened, setOpened] = useState(false);
+  const [criando, setCriando] = useState(false);
+  const [form, setForm] = useState({ titulo: '', responsavel: '', observacoes: '' });
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    carregarInventarios();
+  }, []);
+
+  const carregarInventarios = async () => {
+    try {
+      const response = await getInventarios();
+      const data = response.data.results || response.data;
+      setInventarios(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Erro ao carregar inventários:', error);
+      notifications.show({
+        title: 'Erro',
+        message: 'Não foi possível carregar as sessões de inventário.',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!form.titulo.trim()) {
+      notifications.show({
+        title: 'Informe um título',
+        message: 'Defina um nome para identificar esta contagem.',
+        color: 'orange',
+      });
+      return;
+    }
+    try {
+      setCriando(true);
+      const response = await createInventario(form);
+      const novoInventario = response.data;
+      setInventarios((prev) => [novoInventario, ...prev]);
+      setOpened(false);
+      setForm({ titulo: '', responsavel: '', observacoes: '' });
+      notifications.show({
+        title: 'Inventário criado',
+        message: 'Sessão de inventário aberta.',
+        color: 'green',
+      });
+    } catch (error) {
+      console.error('Erro ao criar inventário:', error);
+      const detail = error.response?.data?.detail || 'Não foi possível criar o inventário.';
+      notifications.show({
+        title: 'Erro',
+        message: detail,
+        color: 'red',
+      });
+    } finally {
+      setCriando(false);
+    }
+  };
+
+  const inventariosFiltrados = inventarios.filter((inv) =>
+    inv.titulo.toLowerCase().includes(busca.toLowerCase()) ||
+    (inv.responsavel || '').toLowerCase().includes(busca.toLowerCase())
+  );
+
+  const mockSessao = useMemo(
+    () => ({
+      titulo: 'Inventário geral (exemplo)',
+      responsavel: 'Fulano da Silva',
+      status: 'EM_ANDAMENTO',
+      iniciado_em: dayjs().subtract(2, 'hour'),
+      itens: [
+        {
+          id: 'mock-1',
+          produto: { nome: 'Refrigerante Cola 2L' },
+          codigo_barras: '7890000000001',
+          quantidade_sistema: 12,
+          quantidade_contada: 10,
+          diferenca: -2,
+          custo_informado: 7.2,
+          validade_informada: dayjs().add(90, 'day'),
+          observacao: '1 unidade avariada',
+        },
+        {
+          id: 'mock-2',
+          produto: { nome: 'Batata Chips 90g' },
+          codigo_barras: '7890000000002',
+          quantidade_sistema: 8,
+          quantidade_contada: 9,
+          diferenca: 1,
+          custo_informado: 4.1,
+          validade_informada: null,
+          observacao: '',
+        },
+        {
+          id: 'mock-3',
+          produto: null,
+          descricao: 'Chocolate novo (cadastro pendente)',
+          codigo_barras: '7890000000003',
+          quantidade_sistema: 0,
+          quantidade_contada: 6,
+          diferenca: 6,
+          custo_informado: 2.8,
+          validade_informada: dayjs().add(120, 'day'),
+          observacao: 'Produto ainda não cadastrado',
+        },
+      ],
+    }),
+    []
+  );
+
+  return (
+    <Stack gap="lg">
+      <Group justify="space-between" align="center">
+        <Group gap="sm">
+          <FaClipboardList size={22} />
+          <Title order={2}>Inventário</Title>
+        </Group>
+        <Button leftSection={<FaPlus size={14} />} onClick={() => setOpened(true)}>
+          Nova Sessão
+        </Button>
+      </Group>
+
+      <Card withBorder padding="md" radius="md">
+        <Group align="flex-end" gap="sm">
+          <TextInput
+            label="Buscar sessões"
+            placeholder="Filtrar por título ou responsável"
+            leftSection={<FaSearch size={14} />}
+            value={busca}
+            onChange={(event) => setBusca(event.currentTarget.value)}
+            style={{ flex: 1 }}
+          />
+        </Group>
+      </Card>
+
+      <Card withBorder padding="0" radius="md">
+        <Table highlightOnHover striped withTableBorder>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Título</Table.Th>
+              <Table.Th>Responsável</Table.Th>
+              <Table.Th>Status</Table.Th>
+              <Table.Th>Iniciado</Table.Th>
+              <Table.Th>Finalizado</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {inventariosFiltrados.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={5}>
+                  <Text ta="center" c="dimmed">
+                    Nenhuma sessão de inventário cadastrada ainda.
+                  </Text>
+                </Table.Td>
+              </Table.Tr>
+            ) : (
+              inventariosFiltrados.map((inv) => (
+                <Table.Tr
+                  key={inv.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/estoque/inventario/${inv.id}`)}
+                >
+                  <Table.Td>
+                    <Stack gap={2}>
+                      <Group gap="xs" align="center">
+                        <Text fw={600}>{inv.titulo}</Text>
+                        <Badge size="xs" color="gray" variant="light">
+                          Ver detalhes
+                        </Badge>
+                      </Group>
+                      {inv.observacoes && (
+                        <Text size="xs" c="dimmed">{inv.observacoes}</Text>
+                      )}
+                    </Stack>
+                  </Table.Td>
+                  <Table.Td>{inv.responsavel || '-'}</Table.Td>
+                  <Table.Td>
+                    <Badge color={inv.status === 'FINALIZADO' ? 'green' : inv.status === 'EM_ANDAMENTO' ? 'blue' : 'orange'}>
+                      {inv.status.replace('_', ' ')}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>{inv.iniciado_em ? dayjs(inv.iniciado_em).format('DD/MM/YYYY HH:mm') : '-'}</Table.Td>
+                  <Table.Td>{inv.finalizado_em ? dayjs(inv.finalizado_em).format('DD/MM/YYYY HH:mm') : '-'}</Table.Td>
+                </Table.Tr>
+              ))
+            )}
+          </Table.Tbody>
+        </Table>
+      </Card>
+
+      <Card withBorder padding="md" radius="md">
+        <Group justify="space-between" align="flex-start" mb="md">
+          <Stack gap={2}>
+            <Group gap="xs">
+              <FaClipboardList size={18} />
+              <Text fw={600}>Prévia da contagem</Text>
+            </Group>
+            <Text size="sm" c="dimmed">
+              Esta prévia demonstra como ficará a tela ao abrir uma sessão de inventário. Os dados são ilustrativos.
+            </Text>
+          </Stack>
+          <Badge color="blue" variant="light">
+            Sessão em andamento
+          </Badge>
+        </Group>
+
+        <Paper withBorder radius="md" p="md" mb="md">
+          <Group justify="space-between" align="flex-start">
+            <Stack gap={2}>
+              <Text fw={600}>{mockSessao.titulo}</Text>
+              <Text size="sm" c="dimmed">
+                Responsável: {mockSessao.responsavel}
+              </Text>
+            </Stack>
+            <Stack align="flex-end" gap={2}>
+              <Text size="xs" c="dimmed">
+                Iniciado em
+              </Text>
+              <Text fw={500}>{mockSessao.iniciado_em.format('DD/MM/YYYY HH:mm')}</Text>
+            </Stack>
+          </Group>
+          <Divider my="sm" />
+          <Group gap="sm" align="flex-end">
+            <TextInput
+              label="Código / nome"
+              placeholder="Escaneie ou digite para buscar"
+              leftSection={<FaSearch size={14} />}
+              style={{ flex: 1 }}
+              disabled
+            />
+            <Button variant="light" color="indigo" disabled>
+              Ler código
+            </Button>
+            <Button disabled>Adicionar</Button>
+          </Group>
+        </Paper>
+
+        <Table striped highlightOnHover withTableBorder>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Produto</Table.Th>
+              <Table.Th>Código</Table.Th>
+              <Table.Th ta="right">Sis.</Table.Th>
+              <Table.Th ta="right">Contado</Table.Th>
+              <Table.Th ta="right">Dif.</Table.Th>
+              <Table.Th ta="center">Observação</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {mockSessao.itens.map((item) => (
+              <Table.Tr key={item.id}>
+                <Table.Td>
+                  <Stack gap={2}>
+                    <Text fw={500}>{item.produto?.nome || item.descricao || '—'}</Text>
+                    <Group gap="xs">
+                      <Badge size="xs" color={item.diferenca < 0 ? 'red' : item.diferenca > 0 ? 'green' : 'gray'}>
+                        Dif.: {item.diferenca}
+                      </Badge>
+                      {item.validade_informada && (
+                        <Badge size="xs" color="yellow">
+                          Validade: {dayjs(item.validade_informada).format('DD/MM/YYYY')}
+                        </Badge>
+                      )}
+                    </Group>
+                  </Stack>
+                </Table.Td>
+                <Table.Td>{item.codigo_barras || '—'}</Table.Td>
+                <Table.Td ta="right">{Number(item.quantidade_sistema).toFixed(2)}</Table.Td>
+                <Table.Td ta="right">{Number(item.quantidade_contada).toFixed(2)}</Table.Td>
+                <Table.Td ta="right">
+                  <Text c={item.diferenca < 0 ? 'red' : item.diferenca > 0 ? 'green' : 'dimmed'}>
+                    {Number(item.diferenca).toFixed(2)}
+                  </Text>
+                </Table.Td>
+                <Table.Td>
+                  <Text size="sm" c="dimmed">
+                    {item.observacao || '—'}
+                  </Text>
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+
+        <Paper withBorder radius="md" p="md" mt="md">
+          <Group justify="space-between">
+            <Text size="sm" c="dimmed">
+              Ajuste estimado com base na prévia:
+            </Text>
+            <Group gap="sm">
+              <Badge color="red" variant="light">
+                -2 unidades (perdas)
+              </Badge>
+              <Badge color="green" variant="light">
+                +7 unidades (sobras)
+              </Badge>
+            </Group>
+          </Group>
+        </Paper>
+      </Card>
+
+      <Modal opened={opened} onClose={() => setOpened(false)} title="Nova sessão de inventário" size="md">
+        <Stack gap="sm">
+          <TextInput
+            label="Título"
+            placeholder="Ex.: Inventário geral outubro"
+            value={form.titulo}
+            onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+            required
+          />
+          <TextInput
+            label="Responsável"
+            placeholder="Quem vai conduzir a contagem"
+            value={form.responsavel}
+            onChange={(e) => setForm({ ...form, responsavel: e.target.value })}
+          />
+          <Textarea
+            label="Observações"
+            placeholder="Notas importantes sobre esta contagem"
+            minRows={3}
+            value={form.observacoes}
+            onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+          />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setOpened(false)}>
+              Cancelar
+            </Button>
+            <Button loading={criando} onClick={handleCreate}>
+              Criar sessão
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </Stack>
+  );
+}
+
+export default Inventario;

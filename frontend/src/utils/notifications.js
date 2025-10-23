@@ -82,7 +82,7 @@ class NotificationManager {
     return await this.send('⚠️ Estoque Baixo', {
       body: `${produto.nome} está com apenas ${produto.quantidade} unidades`,
       tag: `low-stock-${produto.id}`,
-      data: { type: 'low_stock', produto_id: produto.id, url: '/produtos' },
+      data: { type: 'low_stock', produto_id: produto.id, url: '/estoque' },
       actions: [
         { action: 'view', title: 'Ver Produto' },
         { action: 'dismiss', title: 'Dispensar' }
@@ -98,7 +98,7 @@ class NotificationManager {
     return await this.send(`⚠️ ${urgencia}`, {
       body: `${produto.nome} - ${urgencia}`,
       tag: `expiring-${produto.id}`,
-      data: { type: 'expiring', produto_id: produto.id, url: '/produtos' },
+      data: { type: 'expiring', produto_id: produto.id, url: '/estoque' },
       requireInteraction: diasRestantes <= 0, // Requer ação se já venceu
       actions: [
         { action: 'view', title: 'Ver Produto' },

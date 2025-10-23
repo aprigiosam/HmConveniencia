@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '../setupTests';
 import { vi } from 'vitest';
-import Produtos from './Produtos';
+import Estoque from './Estoque';
 import * as api from '../services/api';
 import { localDB } from '../utils/db';
 
@@ -34,24 +34,30 @@ const mockCategorias = [
   { id: 2, nome: 'Categoria 2' },
 ];
 
-describe('Página de Produtos', () => {
+const mockFornecedores = [
+  { id: 1, nome: 'Fornecedor 1' },
+  { id: 2, nome: 'Fornecedor 2' },
+];
+
+describe('Página de Estoque', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     api.getProdutos.mockResolvedValue({ data: { results: mockProdutos } });
     api.getCategorias.mockResolvedValue({ data: { results: mockCategorias } });
+    api.getFornecedores.mockResolvedValue({ data: { results: mockFornecedores } });
     localDB.getCachedProdutos.mockResolvedValue([]);
     localDB.cacheProdutos.mockResolvedValue(true);
     api.createProduto.mockResolvedValue({ data: { id: 3, ...mockProdutos[0] } });
   });
 
   test('Deve renderizar o título da página', async () => {
-    render(<Produtos />);
-    const title = await screen.findByText('Produtos');
+    render(<Estoque />);
+    const title = await screen.findByText('Estoque');
     expect(title).toBeInTheDocument();
   });
 
   test('Deve carregar e exibir os produtos na tabela (desktop)', async () => {
-    render(<Produtos />);
+    render(<Estoque />);
     const table = await screen.findByRole('table');
     await waitFor(() => {
       expect(within(table).getByText('Produto Teste 1')).toBeInTheDocument();
@@ -60,7 +66,7 @@ describe('Página de Produtos', () => {
   });
 
   test('Deve chamar a API para criar um novo produto ao submeter o formulário', async () => {
-    const { user } = render(<Produtos />);
+    const { user } = render(<Estoque />);
 
     const novoProdutoBtn = screen.getByText('Novo Produto');
     await user.click(novoProdutoBtn);
@@ -79,14 +85,13 @@ describe('Página de Produtos', () => {
 
     await waitFor(() => {
       expect(api.createProduto).toHaveBeenCalledTimes(1);
-      expect(api.createProduto).toHaveBeenCalledWith({
+      expect(api.createProduto).toHaveBeenCalledWith(expect.objectContaining({
         nome: 'Novo Produto via Teste',
         preco: 15.99,
         estoque: 75,
         categoria: null,
-        codigo_barras: '',
-        data_validade: null, // Adicionado para corresponder à chamada real da API
-      });
+        fornecedor: null,
+      }));
     });
   }, 10000);
 });

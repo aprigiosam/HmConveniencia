@@ -191,7 +191,7 @@ const Alertas = () => {
   };
 
   const handleIrParaProduto = (produtoId) => {
-    navigate('/produtos', { state: { editarProdutoId: produtoId } });
+    navigate('/estoque', { state: { editarProdutoId: produtoId } });
   };
 
   const getPrioridadeColor = (prioridade) => {
