@@ -5,7 +5,7 @@ Views da API - HMConveniencia
 import logging
 from django.core.management import call_command
 from django.contrib.auth import authenticate
-from rest_framework import viewsets, status, serializers
+from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
