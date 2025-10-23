@@ -31,6 +31,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Lint backend code with Flake8
+        working-directory: backend
+        run: |
+          flake8 . --max-line-length=120 --exclude=venv,migrations,__pycache__,.git,htmlcov --statistics
+
       - name: Run Django tests
         working-directory: backend
         env:
@@ -59,7 +64,7 @@ jobs:
           python manage.py test core.tests.test_code_review_fixes.VendaCalcularTotalTestCase --verbosity=2
 
   frontend:
-    name: Frontend Build
+    name: Frontend Tests & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -78,6 +83,14 @@ jobs:
         run: |
           npm ci --maxsockets 1 || npm ci --maxsockets 1 || npm ci --maxsockets 1
         timeout-minutes: 10
+
+      - name: Lint frontend code with ESLint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm run test
 
       - name: Build frontend
         working-directory: frontend

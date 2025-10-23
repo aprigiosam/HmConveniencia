@@ -8,8 +8,6 @@ from django.db.models import Sum
 from django.db import transaction
 from rest_framework import serializers
 from fiscal.models import NotaFiscal
-
-logger = logging.getLogger(__name__)
 from .models import (
     Cliente,
     Fornecedor,
@@ -24,6 +22,8 @@ from .models import (
     InventarioSessao,
     InventarioItem,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ClienteSerializer(serializers.ModelSerializer):
@@ -276,8 +276,8 @@ class ProdutoSerializer(serializers.ModelSerializer):
             "margem_lucro",
             "categoria",
             "categoria_nome",
-             "fornecedor",
-             "fornecedor_nome",
+            "fornecedor",
+            "fornecedor_nome",
             "esta_vencido",
             "dias_para_vencer",
             "proximo_vencimento",

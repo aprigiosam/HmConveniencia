@@ -211,6 +211,7 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class CategoriaViewSet(viewsets.ModelViewSet):
     """ViewSet para Categorias de Produtos"""
 
