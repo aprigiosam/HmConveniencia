@@ -7,7 +7,7 @@ import { localDB } from './utils/db';
 import { syncManager } from './utils/syncManager';
 import { notificationManager } from './utils/notifications';
 import { useSwipeGesture, useEdgeSwipe } from './hooks/useSwipeGesture';
-import './components/MobileNav.css';
+import './components/PremiumNav.css';
 
 // Lazy loading das páginas para reduzir bundle inicial
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -30,7 +30,7 @@ const InventarioDetalhe = lazy(() => import('./pages/InventarioDetalhe'));
 const Login = lazy(() => import('./pages/Login'));
 const SyncStatus = lazy(() => import('./components/SyncStatus'));
 const OfflineIndicator = lazy(() => import('./components/OfflineIndicator'));
-const BottomNav = lazy(() => import('./components/BottomNav'));
+const FloatingActionButton = lazy(() => import('./components/FloatingActionButton'));
 
 // Loading component para Suspense
 const PageLoader = () => (
@@ -45,45 +45,22 @@ function PrivateRoute({ children }) {
   return token ? children : <Navigate to="/login" replace />;
 }
 
+// Lista plana de navegação - sem categorias expandíveis para melhor UX mobile
 const navLinks = [
   { icon: <FaTachometerAlt />, label: 'Dashboard', path: '/' },
-  {
-    icon: <FaCashRegister />,
-    label: 'Caixa',
-    children: [
-      { label: 'Visão do Caixa', path: '/caixa', icon: <FaCashRegister /> },
-      { label: 'PDV', path: '/pdv', icon: <FaShoppingCart /> },
-      { label: 'Histórico de Caixas', path: '/caixa/historico', icon: <FaHistory /> },
-    ],
-  },
-  {
-    icon: <FaBoxOpen />,
-    label: 'Estoque',
-    children: [
-      { label: 'Visão Geral', path: '/estoque', icon: <FaBoxOpen /> },
-      { label: 'Inventário', path: '/estoque/inventario', icon: <FaClipboardList /> },
-      { label: 'Entrada de Estoque', path: '/estoque/entrada', icon: <FaTruck /> },
-      { label: 'Fornecedores', path: '/fornecedores', icon: <FaBuilding /> },
-    ],
-  },
-  {
-    icon: <FaUsers />,
-    label: 'Clientes',
-    children: [
-      { label: 'Clientes', path: '/clientes', icon: <FaUsers /> },
-      { label: 'Contas a Receber', path: '/contas-receber', icon: <FaFileInvoiceDollar /> },
-    ],
-  },
-  {
-    icon: <FaChartBar />,
-    label: 'Relatórios',
-    children: [
-      { label: 'Relatório de Lucro', path: '/relatorios/lucro', icon: <FaChartBar /> },
-      { label: 'Relatório de Fornecedores', path: '/relatorios/fornecedores', icon: <FaBuilding /> },
-      { label: 'Histórico de Vendas', path: '/vendas/historico', icon: <FaListAlt /> },
-      { label: 'Giro de Estoque', path: '/estoque/giro', icon: <FaSyncAlt /> },
-    ],
-  },
+  { icon: <FaShoppingCart />, label: 'PDV', path: '/pdv' },
+  { icon: <FaCashRegister />, label: 'Caixa', path: '/caixa' },
+  { icon: <FaBoxOpen />, label: 'Estoque', path: '/estoque' },
+  { icon: <FaClipboardList />, label: 'Inventário', path: '/estoque/inventario' },
+  { icon: <FaTruck />, label: 'Entrada de Estoque', path: '/estoque/entrada' },
+  { icon: <FaBuilding />, label: 'Fornecedores', path: '/fornecedores' },
+  { icon: <FaUsers />, label: 'Clientes', path: '/clientes' },
+  { icon: <FaFileInvoiceDollar />, label: 'Contas a Receber', path: '/contas-receber' },
+  { icon: <FaHistory />, label: 'Histórico de Caixas', path: '/caixa/historico' },
+  { icon: <FaListAlt />, label: 'Histórico de Vendas', path: '/vendas/historico' },
+  { icon: <FaSyncAlt />, label: 'Giro de Estoque', path: '/estoque/giro' },
+  { icon: <FaChartBar />, label: 'Relatório de Lucro', path: '/relatorios/lucro' },
+  { icon: <FaBuilding />, label: 'Relatório de Fornecedores', path: '/relatorios/fornecedores' },
 ];
 
 function AppContent() {
@@ -190,56 +167,27 @@ function AppContent() {
       </AppShell.Header>
 
       <AppShell.Navbar p={{ base: 'xs', sm: 'md' }}>
-        <ScrollArea type="always" style={{ height: '100%' }}>
-          {navLinks.map((link) => {
-            const hasChildren = Array.isArray(link.children) && link.children.length > 0;
-            if (!hasChildren) {
-              return (
-                <NavLink
-                  key={link.label}
-                  label={link.label}
-                  leftSection={link.icon}
-                  component={Link}
-                  to={link.path}
-                  active={location.pathname === link.path}
-                  onClick={() => opened && toggle()}
-                  style={{ borderRadius: '6px', marginBottom: '4px' }}
-                />
-              );
-            }
-
-            const childActive = link.children.some((child) => location.pathname === child.path);
-            return (
-              <NavLink
-                key={link.label}
-                label={link.label}
-                leftSection={link.icon}
-                active={childActive}
-                defaultOpened={childActive}
-                style={{ borderRadius: '6px', marginBottom: '4px' }}
-              >
-                {link.children.map((child) => (
-                  <NavLink
-                    key={child.path}
-                    label={child.label}
-                    leftSection={child.icon}
-                    component={Link}
-                    to={child.path}
-                    active={location.pathname === child.path}
-                    onClick={() => opened && toggle()}
-                    style={{ borderRadius: '6px', marginBottom: '4px' }}
-                  />
-                ))}
-              </NavLink>
-            );
-          })}
+        <ScrollArea type="auto" style={{ height: '100%' }}>
+          {navLinks.map((link) => (
+            <NavLink
+              key={link.path}
+              label={link.label}
+              leftSection={link.icon}
+              component={Link}
+              to={link.path}
+              active={location.pathname === link.path}
+              onClick={() => isMobile && close()}
+              className="nav-item-ripple"
+            />
+          ))}
         </ScrollArea>
       </AppShell.Navbar>
 
-      <AppShell.Main className={isMobile ? 'app-main-with-bottom-nav' : ''}>
+      <AppShell.Main>
         <Suspense fallback={<Center style={{ padding: '2rem' }}><Loader /></Center>}>
           <SyncStatus />
           <OfflineIndicator />
+          <FloatingActionButton />
           <Routes>
             <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
             <Route path="/alertas" element={<PrivateRoute><Alertas /></PrivateRoute>} />
@@ -262,9 +210,6 @@ function AppContent() {
           </Routes>
         </Suspense>
       </AppShell.Main>
-
-      {/* Bottom Navigation para mobile */}
-      {isMobile && <BottomNav onMenuClick={toggle} />}
     </AppShell>
     </>
   );

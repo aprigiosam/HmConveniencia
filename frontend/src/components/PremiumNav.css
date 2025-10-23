@@ -1,0 +1,326 @@
+/* ========== PREMIUM MOBILE NAVIGATION ========== */
+
+/* Header Premium */
+@media (max-width: 768px) {
+  [data-mantine-header] {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-bottom: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  [data-mantine-header] .mantine-Text-root {
+    color: white !important;
+    font-weight: 600 !important;
+  }
+
+  /* Burger branco */
+  [data-mantine-header] .mantine-Burger-burger {
+    background: white !important;
+  }
+
+  /* User icon branco */
+  [data-mantine-header] .mantine-Button-root {
+    color: white !important;
+  }
+}
+
+/* Overlay Premium com Blur */
+.mobile-nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 199;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-nav-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Navbar Premium - Menu Lateral */
+@media (max-width: 768px) {
+  [data-mantine-navbar] {
+    background: #ffffff !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12) !important;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  /* Header do menu com gradiente */
+  [data-mantine-navbar]::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 120px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    z-index: 0;
+  }
+
+  /* Espaçamento do conteúdo */
+  [data-mantine-navbar] > div {
+    position: relative;
+    z-index: 1;
+    padding-top: 80px !important;
+  }
+
+  /* Items do menu - Lista plana sem categorias */
+  [data-mantine-navbar] .mantine-NavLink-root {
+    margin: 0 12px 8px 12px !important;
+    padding: 14px 16px !important;
+    border-radius: 12px !important;
+    background: transparent !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border: none !important;
+    min-height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  /* Hover/Press effect */
+  [data-mantine-navbar] .mantine-NavLink-root:active {
+    transform: scale(0.97);
+    background: rgba(102, 126, 234, 0.08) !important;
+  }
+
+  /* Item ativo - Destaque sutil e elegante */
+  [data-mantine-navbar] .mantine-NavLink-root[data-active="true"] {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%) !important;
+    border-left: 4px solid #667eea !important;
+    padding-left: 12px !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15) !important;
+  }
+
+  /* Ícones maiores e coloridos */
+  [data-mantine-navbar] .mantine-NavLink-leftSection {
+    font-size: 22px !important;
+    margin-right: 16px !important;
+    min-width: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Labels mais legíveis */
+  [data-mantine-navbar] .mantine-NavLink-label {
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    color: #2c3e50 !important;
+    letter-spacing: 0.2px !important;
+  }
+
+  [data-mantine-navbar] .mantine-NavLink-root[data-active="true"] .mantine-NavLink-label {
+    font-weight: 600 !important;
+    color: #667eea !important;
+  }
+
+  /* Remove sub-items (tornando lista plana) */
+  [data-mantine-navbar] .mantine-NavLink-root .mantine-NavLink-root {
+    display: none;
+  }
+
+  /* ScrollArea limpa */
+  [data-mantine-navbar] .mantine-ScrollArea-viewport {
+    padding-right: 8px !important;
+  }
+}
+
+/* Floating Action Button (FAB) */
+.fab-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+}
+
+@media (max-width: 768px) {
+  .fab-container {
+    bottom: 20px;
+    right: 20px;
+  }
+}
+
+.fab-button {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
+  animation: fabEntrance 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fab-button:hover {
+  transform: scale(1.08);
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.5);
+}
+
+.fab-button:active {
+  transform: scale(0.95);
+}
+
+@keyframes fabEntrance {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Pulso sutil no FAB para chamar atenção */
+.fab-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0;
+  animation: fabPulse 2s infinite;
+}
+
+@keyframes fabPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.3;
+  }
+}
+
+/* Tooltip do FAB */
+.fab-tooltip {
+  position: absolute;
+  right: 80px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.fab-container:hover .fab-tooltip {
+  opacity: 1;
+}
+
+/* Ripple effect nos items do menu */
+.nav-item-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-item-ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(102, 126, 234, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.nav-item-ripple:active::after {
+  width: 300px;
+  height: 300px;
+}
+
+/* Safe area support para iOS */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  @media (max-width: 768px) {
+    [data-mantine-header] {
+      padding-top: env(safe-area-inset-top) !important;
+      height: calc(60px + env(safe-area-inset-top)) !important;
+    }
+
+    .fab-container {
+      bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+  }
+}
+
+/* Cores personalizadas para ícones (Material Design inspired) */
+@media (max-width: 768px) {
+  /* Dashboard - Azul */
+  [data-mantine-navbar] .mantine-NavLink-root:nth-child(1) .mantine-NavLink-leftSection {
+    color: #2196F3;
+  }
+
+  /* PDV - Verde */
+  [data-mantine-navbar] .mantine-NavLink-root:nth-child(2) .mantine-NavLink-leftSection {
+    color: #4CAF50;
+  }
+
+  /* Caixa - Laranja */
+  [data-mantine-navbar] .mantine-NavLink-root:nth-child(3) .mantine-NavLink-leftSection {
+    color: #FF9800;
+  }
+
+  /* Estoque - Roxo */
+  [data-mantine-navbar] .mantine-NavLink-root:nth-child(4) .mantine-NavLink-leftSection {
+    color: #9C27B0;
+  }
+
+  /* Inventário - Teal */
+  [data-mantine-navbar] .mantine-NavLink-root:nth-child(5) .mantine-NavLink-leftSection {
+    color: #009688;
+  }
+
+  /* Clientes - Rosa */
+  [data-mantine-navbar] .mantine-NavLink-root:nth-child(6) .mantine-NavLink-leftSection {
+    color: #E91E63;
+  }
+
+  /* Relatórios - Índigo */
+  [data-mantine-navbar] .mantine-NavLink-root:nth-child(7) .mantine-NavLink-leftSection {
+    color: #3F51B5;
+  }
+}
+
+/* Animação de entrada suave do menu */
+@media (max-width: 768px) {
+  [data-mantine-navbar][data-collapsed="false"] {
+    animation: slideInLeft 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
