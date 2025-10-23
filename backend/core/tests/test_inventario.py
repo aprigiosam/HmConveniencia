@@ -103,13 +103,13 @@ class InventarioSessaoDeleteTestCase(TestCase):
         )
 
         # Cria itens com diferenças
-        item1 = InventarioItem.objects.create(
+        InventarioItem.objects.create(
             sessao=sessao,
             produto=self.produto1,
             quantidade_sistema=Decimal("100"),
             quantidade_contada=Decimal("95")  # Diferença: -5
         )
-        item2 = InventarioItem.objects.create(
+        InventarioItem.objects.create(
             sessao=sessao,
             produto=self.produto2,
             quantidade_sistema=Decimal("50"),
@@ -152,7 +152,7 @@ class InventarioSessaoDeleteTestCase(TestCase):
         )
 
         # Cria item com diferença
-        item = InventarioItem.objects.create(
+        InventarioItem.objects.create(
             sessao=sessao,
             produto=self.produto1,
             quantidade_sistema=Decimal("100"),
@@ -160,7 +160,7 @@ class InventarioSessaoDeleteTestCase(TestCase):
         )
 
         # Simula criação de movimento de estoque durante finalização
-        movimento = EstoqueMovimento.objects.create(
+        EstoqueMovimento.objects.create(
             empresa=self.empresa,
             produto=self.produto1,
             quantidade=Decimal("-10"),
