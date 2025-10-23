@@ -1,11 +1,13 @@
 import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Center, Loader, ScrollArea } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBell, FaTruck, FaBuilding, FaClipboardList } from 'react-icons/fa';
 import { localDB } from './utils/db';
 import { syncManager } from './utils/syncManager';
 import { notificationManager } from './utils/notifications';
+import { useSwipeGesture, useEdgeSwipe } from './hooks/useSwipeGesture';
+import './components/MobileNav.css';
 
 // Lazy loading das páginas para reduzir bundle inicial
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -28,6 +30,7 @@ const InventarioDetalhe = lazy(() => import('./pages/InventarioDetalhe'));
 const Login = lazy(() => import('./pages/Login'));
 const SyncStatus = lazy(() => import('./components/SyncStatus'));
 const OfflineIndicator = lazy(() => import('./components/OfflineIndicator'));
+const BottomNav = lazy(() => import('./components/BottomNav'));
 
 // Loading component para Suspense
 const PageLoader = () => (
@@ -85,8 +88,27 @@ const navLinks = [
 
 function AppContent() {
   const token = localStorage.getItem('token');
-  const [opened, { toggle }] = useDisclosure(false);
+  const [opened, { toggle, close, open }] = useDisclosure(false);
   const location = useLocation();
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  // Suporte a gestos de swipe
+  useSwipeGesture({
+    onSwipeLeft: () => {
+      if (isMobile && opened) {
+        close();
+      }
+    },
+  });
+
+  useEdgeSwipe({
+    onSwipeFromLeft: () => {
+      if (isMobile && !opened) {
+        open();
+      }
+    },
+    edgeWidth: 30,
+  });
 
   useEffect(() => {
     localDB.init();
@@ -104,6 +126,13 @@ function AppContent() {
       }
     }
   }, []);
+
+  // Fecha o menu ao navegar no mobile
+  useEffect(() => {
+    if (isMobile && opened) {
+      close();
+    }
+  }, [location.pathname]);
 
   if (!token) {
     return (
@@ -123,15 +152,25 @@ function AppContent() {
   };
 
   return (
-    <AppShell
-      header={{ height: 60 }}
-      navbar={{
-        width: 280,
-        breakpoint: 'sm',
-        collapsed: { mobile: !opened },
-      }}
-      padding={{ base: 'xs', sm: 'md' }}
-    >
+    <>
+      {/* Overlay escuro para mobile quando menu está aberto */}
+      {isMobile && opened && (
+        <div
+          className="mobile-nav-overlay visible"
+          onClick={close}
+          style={{ zIndex: 199 }}
+        />
+      )}
+
+      <AppShell
+        header={{ height: 60 }}
+        navbar={{
+          width: 280,
+          breakpoint: 'sm',
+          collapsed: { mobile: !opened },
+        }}
+        padding={{ base: 'xs', sm: 'md' }}
+      >
       <AppShell.Header>
         <Group h="100%" px={{ base: 'xs', sm: 'md' }} justify="space-between">
           <Group gap="xs">
@@ -197,7 +236,7 @@ function AppContent() {
         </ScrollArea>
       </AppShell.Navbar>
 
-      <AppShell.Main>
+      <AppShell.Main className={isMobile ? 'app-main-with-bottom-nav' : ''}>
         <Suspense fallback={<Center style={{ padding: '2rem' }}><Loader /></Center>}>
           <SyncStatus />
           <OfflineIndicator />
@@ -223,7 +262,11 @@ function AppContent() {
           </Routes>
         </Suspense>
       </AppShell.Main>
+
+      {/* Bottom Navigation para mobile */}
+      {isMobile && <BottomNav onMenuClick={toggle} />}
     </AppShell>
+    </>
   );
 }
 

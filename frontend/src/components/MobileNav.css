@@ -1,0 +1,160 @@
+/* Overlay escuro quando o menu está aberto no mobile */
+.mobile-nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 199;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-nav-overlay.visible {
+  display: block;
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .mobile-nav-overlay {
+    display: block;
+  }
+}
+
+/* Melhorias no navbar mobile */
+@media (max-width: 768px) {
+  /* Animação suave do navbar */
+  [data-mantine-navbar] {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  /* Touch targets maiores para melhor usabilidade */
+  [data-mantine-navbar] button,
+  [data-mantine-navbar] a {
+    min-height: 48px !important;
+    padding: 12px 16px !important;
+  }
+
+  /* Espaçamento otimizado para toque */
+  [data-mantine-navbar] .mantine-NavLink-root {
+    margin-bottom: 6px !important;
+  }
+
+  /* Ícones maiores no mobile */
+  [data-mantine-navbar] .mantine-NavLink-leftSection {
+    font-size: 20px !important;
+  }
+
+  /* Label mais legível */
+  [data-mantine-navbar] .mantine-NavLink-label {
+    font-size: 15px !important;
+  }
+
+  /* Header com melhor espaçamento touch */
+  [data-mantine-header] {
+    padding: 0 12px !important;
+  }
+
+  /* Burger button com área de toque maior */
+  .mantine-Burger-root {
+    width: 44px !important;
+    height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Suporte a gestos de swipe */
+@media (max-width: 768px) {
+  [data-mantine-navbar] {
+    touch-action: pan-y;
+  }
+
+  /* Indicador visual de swipe */
+  [data-mantine-navbar]::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 80px;
+    background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  [data-mantine-navbar][data-swiping="true"]::after {
+    opacity: 1;
+  }
+}
+
+/* Animação de entrada/saída do menu */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutLeft {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+/* Melhoria visual nos itens ativos */
+@media (max-width: 768px) {
+  [data-mantine-navbar] .mantine-NavLink-root[data-active="true"] {
+    background: linear-gradient(90deg, #228be6 0%, rgba(34, 139, 230, 0.1) 100%) !important;
+    border-left: 4px solid #228be6 !important;
+    padding-left: 12px !important;
+  }
+
+  [data-mantine-navbar] .mantine-NavLink-root[data-active="true"] .mantine-NavLink-label {
+    font-weight: 600 !important;
+  }
+}
+
+/* ScrollArea otimizado para mobile */
+@media (max-width: 768px) {
+  [data-mantine-navbar] .mantine-ScrollArea-root {
+    /* Remove a barra de scroll no mobile para visual mais limpo */
+  }
+
+  [data-mantine-navbar] .mantine-ScrollArea-viewport {
+    padding-right: 8px !important;
+  }
+}
+
+/* Feedback tátil visual */
+@media (max-width: 768px) {
+  [data-mantine-navbar] .mantine-NavLink-root:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+}
+
+/* Ajuste para notch/safe area em iOS */
+@supports (padding-top: env(safe-area-inset-top)) {
+  @media (max-width: 768px) {
+    [data-mantine-header] {
+      padding-top: max(12px, env(safe-area-inset-top)) !important;
+      height: calc(60px + env(safe-area-inset-top)) !important;
+    }
+
+    [data-mantine-navbar] {
+      padding-top: max(12px, env(safe-area-inset-top)) !important;
+    }
+  }
+}
