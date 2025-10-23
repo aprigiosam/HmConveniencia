@@ -89,7 +89,7 @@ class NFeEntradaImporter:
                 xml_assinado=xml_text,
                 chave_acesso=chave_acesso,
             )
-            itens = self._processar_itens(nota_fiscal, estrutura)
+            itens = self._processar_itens(nota_fiscal, estrutura, fornecedor)
             self._criar_movimentacao_estoque(nota_fiscal, itens)
             self._armazenar_xml(nota_fiscal, xml_text, chave_acesso, filename, protocolo)
 
@@ -250,7 +250,12 @@ class NFeEntradaImporter:
 
         return nota
 
-    def _processar_itens(self, nota: NotaFiscal, estrutura: dict) -> List[NotaItem]:
+    def _processar_itens(
+        self,
+        nota: NotaFiscal,
+        estrutura: dict,
+        fornecedor: Optional[Fornecedor],
+    ) -> List[NotaItem]:
         itens_nfe = _ensure_list(estrutura.get("det"))
         if not itens_nfe:
             raise ImportNFeError("NF-e sem itens.")
@@ -296,6 +301,7 @@ class NFeEntradaImporter:
                 valor_unitario,
                 codigo_barras,
                 categoria,
+                fornecedor,
             )
 
             item = NotaItem.objects.create(
@@ -396,6 +402,7 @@ class NFeEntradaImporter:
         valor_unitario: Decimal,
         codigo_barras: str,
         categoria: Optional[Categoria],
+        fornecedor: Optional[Fornecedor],
     ) -> Produto:
         if codigo_barras.upper().startswith("SEM GTIN"):
             codigo_barras = ""
@@ -420,10 +427,14 @@ class NFeEntradaImporter:
                 produto.preco_custo = valor_unitario
             if categoria and produto.categoria_id != categoria.id:
                 produto.categoria = categoria
+            if fornecedor and produto.fornecedor_id != (fornecedor.id if fornecedor else None):
+                produto.fornecedor = fornecedor
             produto.empresa = self.empresa
             update_fields = ["codigo_barras", "preco_custo", "empresa", "updated_at"]
             if categoria:
                 update_fields.append("categoria")
+            if fornecedor:
+                update_fields.append("fornecedor")
             produto.save(update_fields=update_fields)
         else:
             produto = Produto.objects.create(
@@ -435,6 +446,7 @@ class NFeEntradaImporter:
                 codigo_barras=codigo_barras,
                 ativo=True,
                 categoria=categoria,
+                fornecedor=fornecedor,
             )
             self._criar_alerta_produto_sem_preco(produto)
 

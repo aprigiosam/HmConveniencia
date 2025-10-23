@@ -2,9 +2,11 @@
 Models simples para PDV - HMConveniencia
 """
 
-from django.db import models
-from django.core.validators import MinValueValidator
+import uuid
 from decimal import Decimal
+
+from django.core.validators import MinValueValidator
+from django.db import models
 
 
 class Cliente(models.Model):
@@ -136,6 +138,7 @@ class Produto(models.Model):
     """Produto - campos essenciais"""
 
     nome = models.CharField("Nome", max_length=200)
+    marca = models.CharField("Marca", max_length=120, blank=True)
     preco = models.DecimalField(
         "Preço",
         max_digits=10,
@@ -165,6 +168,20 @@ class Produto(models.Model):
         ],
     )
     codigo_barras = models.CharField("Código de Barras", max_length=50, blank=True)
+    conteudo_valor = models.DecimalField(
+        "Conteúdo",
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Quantidade numérica do conteúdo (ex.: 2.0)",
+    )
+    conteudo_unidade = models.CharField(
+        "Unidade do Conteúdo",
+        max_length=10,
+        blank=True,
+        help_text="Unidade do conteúdo (ex.: L, ml, g)",
+    )
     data_validade = models.DateField(
         "Data de Validade",
         null=True,
@@ -178,6 +195,14 @@ class Produto(models.Model):
         blank=True,
         related_name="produtos",
         verbose_name="Categoria",
+    )
+    fornecedor = models.ForeignKey(
+        Fornecedor,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="produtos",
+        verbose_name="Fornecedor",
     )
     ativo = models.BooleanField("Ativo", default=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
@@ -728,4 +753,90 @@ class Lote(models.Model):
         # Desativa o lote se quantidade zerou
         if self.quantidade == 0:
             self.ativo = False
-            self.save(update_fields=["ativo", "updated_at"])
+        self.save(update_fields=["ativo", "updated_at"])
+
+
+class InventarioSessao(models.Model):
+    STATUS_CHOICES = [
+        ("ABERTO", "Aberto"),
+        ("EM_ANDAMENTO", "Em andamento"),
+        ("FINALIZADO", "Finalizado"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    empresa = models.ForeignKey(
+        "fiscal.Empresa",
+        on_delete=models.CASCADE,
+        related_name="inventarios",
+    )
+    titulo = models.CharField(max_length=120)
+    responsavel = models.CharField(max_length=120, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="ABERTO")
+    observacoes = models.TextField(blank=True)
+    iniciado_em = models.DateTimeField(auto_now_add=True)
+    finalizado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-iniciado_em"]
+        verbose_name = "Inventário"
+        verbose_name_plural = "Inventários"
+
+    def __str__(self):
+        return f"Inventário {self.titulo} ({self.get_status_display()})"
+
+
+class InventarioItem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sessao = models.ForeignKey(
+        InventarioSessao,
+        on_delete=models.CASCADE,
+        related_name="itens",
+    )
+    produto = models.ForeignKey(
+        Produto,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="inventarios",
+    )
+    codigo_barras = models.CharField(max_length=50, blank=True)
+    descricao = models.CharField(max_length=200, blank=True)
+    quantidade_sistema = models.DecimalField(
+        max_digits=14, decimal_places=4, default=Decimal("0")
+    )
+    quantidade_contada = models.DecimalField(
+        max_digits=14, decimal_places=4, default=Decimal("0")
+    )
+    custo_informado = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    validade_informada = models.DateField(null=True, blank=True)
+    observacao = models.CharField(max_length=255, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["descricao"]
+        verbose_name = "Item de Inventário"
+        verbose_name_plural = "Itens de Inventário"
+
+    @property
+    def diferenca(self) -> Decimal:
+        return (self.quantidade_contada or Decimal("0")) - (
+            self.quantidade_sistema or Decimal("0")
+        )
+
+    def ajustar_produto(self):
+        if not self.produto:
+            return None
+
+        diferenca = self.diferenca
+        if diferenca == 0:
+            return None
+
+        produto = self.produto
+        produto.estoque = (produto.estoque or Decimal("0")) + diferenca
+        if self.custo_informado and self.custo_informado > 0:
+            produto.preco_custo = self.custo_informado
+        produto.save(update_fields=["estoque", "preco_custo", "updated_at"])
+
+        return diferenca

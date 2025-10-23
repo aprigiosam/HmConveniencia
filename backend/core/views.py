@@ -18,7 +18,7 @@ from decimal import Decimal
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.core.cache import cache
-from fiscal.models import NotaFiscal
+from fiscal.models import NotaFiscal, Empresa, EstoqueMovimento, EstoqueOrigem
 from .models import (
     Cliente,
     Fornecedor,
@@ -40,11 +40,129 @@ from .serializers import (
     CategoriaSerializer,
     AlertaSerializer,
     LoteSerializer,
+    OpenFoodFactsProductSerializer,
+    InventarioSessaoSerializer,
 )
 from .services.alert_service import AlertService
+from .services import openfoodfacts
+from .services.openfoodfacts import OpenFoodFactsError
+from .models import InventarioSessao, InventarioItem
 
 # Logger para operações críticas
 logger = logging.getLogger(__name__)
+
+
+class InventarioSessaoViewSet(viewsets.ModelViewSet):
+    queryset = (
+        InventarioSessao.objects.select_related("empresa")
+        .prefetch_related("itens__produto")
+        .all()
+    )
+    serializer_class = InventarioSessaoSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        empresa_id = (
+            self.request.query_params.get("empresa_id")
+            or self.request.headers.get("X-Empresa-Id")
+        )
+        if empresa_id:
+            return qs.filter(empresa_id=empresa_id)
+
+        empresa = Empresa.objects.first()
+        return qs.filter(empresa=empresa) if empresa else qs.none()
+
+    def perform_create(self, serializer):
+        serializer.save(empresa=self._obter_empresa())
+
+    def perform_update(self, serializer):
+        instancia = serializer.save()
+        if instancia.status == "FINALIZADO" and instancia.finalizado_em is None:
+            from django.utils import timezone
+
+            instancia.finalizado_em = timezone.now()
+            instancia.save(update_fields=["finalizado_em"])
+
+    def _obter_empresa(self) -> Empresa:
+        empresa_id = (
+            self.request.data.get("empresa_id")
+            or self.request.headers.get("X-Empresa-Id")
+        )
+        if empresa_id:
+            return Empresa.objects.get(id=empresa_id)
+
+        empresa = Empresa.objects.first()
+        if not empresa:
+            raise Empresa.DoesNotExist("Nenhuma empresa configurada.")
+        return empresa
+
+    @action(detail=True, methods=["post"], url_path="adicionar-item")
+    def adicionar_item(self, request, *args, **kwargs):
+        sessao = self.get_object()
+        dados = request.data.copy()
+        dados["sessao"] = str(sessao.id)
+
+        produto = None
+        produto_id = dados.get("produto") or dados.get("produto_id")
+        if produto_id:
+            try:
+                produto = Produto.objects.get(id=produto_id)
+            except Produto.DoesNotExist:
+                return Response(
+                    {"detail": "Produto informado não encontrado."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if produto and not dados.get("quantidade_sistema"):
+            dados["quantidade_sistema"] = str(produto.estoque or Decimal("0"))
+
+        if produto and not dados.get("descricao"):
+            dados["descricao"] = produto.nome
+
+        if produto and not dados.get("codigo_barras"):
+            dados["codigo_barras"] = produto.codigo_barras or ""
+
+        serializer = InventarioItemSerializer(data=dados)
+        serializer.is_valid(raise_exception=True)
+        item = serializer.save()
+
+        return Response(
+            InventarioItemSerializer(item).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="finalizar")
+    def finalizar(self, request, *args, **kwargs):
+        sessao = self.get_object()
+        if sessao.status == "FINALIZADO":
+            return Response(
+                {"detail": "Essa sessão já está finalizada."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from django.utils import timezone
+
+        with transaction.atomic():
+            for item in sessao.itens.select_related("produto"):
+                diferenca = item.ajustar_produto()
+                if diferenca and item.produto:
+                    EstoqueMovimento.objects.create(
+                        empresa=sessao.empresa,
+                        produto=item.produto,
+                        origem=EstoqueOrigem.AJUSTE,
+                        quantidade=diferenca,
+                        custo_unitario=(item.custo_informado or Decimal("0")),
+                        observacao=f"Ajuste inventário {sessao.titulo}",
+                    )
+
+            sessao.status = "FINALIZADO"
+            sessao.finalizado_em = timezone.now()
+            sessao.save(update_fields=["status", "finalizado_em"])
+
+        return Response(
+            InventarioSessaoSerializer(sessao).data,
+            status=status.HTTP_200_OK,
+        )
 
 
 class CategoriaViewSet(viewsets.ModelViewSet):
@@ -224,6 +342,42 @@ class ProdutoViewSet(viewsets.ModelViewSet):
             )
 
         return queryset
+
+    @action(detail=False, methods=["get"], url_path="buscar-openfood")
+    def buscar_openfood(self, request):
+        """Consulta o Open Food Facts por termo livre ou código de barras."""
+        query = request.query_params.get("q", "").strip()
+        code = request.query_params.get("code", "").strip()
+
+        if not query and not code:
+            return Response(
+                {"detail": "Informe o parâmetro 'q' (termo) ou 'code' (GTIN)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            if code:
+                product = openfoodfacts.fetch_by_code(code)
+                results = [product] if product else []
+            else:
+                try:
+                    page = int(request.query_params.get("page", "1"))
+                except ValueError:
+                    page = 1
+                try:
+                    page_size = int(request.query_params.get("page_size", "10"))
+                except ValueError:
+                    page_size = 10
+                results = openfoodfacts.search_products(
+                    query, page=page, page_size=page_size
+                )
+        except OpenFoodFactsError as exc:
+            return Response(
+                {"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY
+            )
+
+        serializer = OpenFoodFactsProductSerializer(results, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def baixo_estoque(self, request):

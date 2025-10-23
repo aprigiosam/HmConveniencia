@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
-import { getProdutos, createVenda, getClientes } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { getProdutos, createVenda, getClientes, getCaixaStatus } from '../services/api';
 import { localDB } from '../utils/db';
 import { syncManager } from '../utils/syncManager';
-import { AppShell, Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal, ScrollArea, Divider, Badge, Alert } from '@mantine/core';
+import { AppShell, Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal, ScrollArea, Divider, Badge, Alert, Loader } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useHotkeys, useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaKeyboard } from 'react-icons/fa';
+import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaKeyboard, FaCashRegister } from 'react-icons/fa';
 import Comprovante from '../components/Comprovante';
 import BarcodeScanner from '../components/BarcodeScanner';
 import './PDV.css';
 
 function PDV() {
+  const navigate = useNavigate();
   const [produtos, setProdutos] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [carrinho, setCarrinho] = useState([]);
@@ -25,6 +27,9 @@ function PDV() {
   const [comprovanteAberto, setComprovanteAberto] = useState(false);
   const [dadosVenda, setDadosVenda] = useState(null);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [verificandoCaixa, setVerificandoCaixa] = useState(true);
+  const [caixaAberto, setCaixaAberto] = useState(false);
+  const [caixaStatus, setCaixaStatus] = useState(null);
   const buscaRef = useRef(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -42,10 +47,32 @@ function PDV() {
   ]);
 
   useEffect(() => {
-    loadInitialData();
+    verificarCaixa();
   }, []);
 
+  useEffect(() => {
+    if (caixaAberto) {
+      loadInitialData();
+    }
+  }, [caixaAberto]);
+
+  const verificarCaixa = async () => {
+    try {
+      const response = await getCaixaStatus();
+      const status = response.data?.status;
+      setCaixaStatus(response.data);
+      setCaixaAberto(status === 'ABERTO');
+    } catch (error) {
+      console.error('Erro ao verificar status do caixa:', error);
+      setCaixaStatus({ status: 'FECHADO', message: 'Não foi possível verificar o caixa.' });
+      setCaixaAberto(false);
+    } finally {
+      setVerificandoCaixa(false);
+    }
+  };
+
   const loadInitialData = async () => {
+    if (!caixaAberto) return;
     // CACHE-FIRST: Carrega do cache imediatamente (PDV precisa ser rápido!)
     const [cachedProdutos, cachedClientes] = await Promise.all([
       localDB.getCachedProdutos(),
@@ -144,6 +171,15 @@ function PDV() {
   };
 
   const abrirScanner = () => {
+    if (!caixaAberto) {
+      notifications.show({
+        title: 'Caixa fechado',
+        message: 'Abra o caixa antes de usar o leitor.',
+        color: 'orange',
+        icon: <FaTimes />,
+      });
+      return;
+    }
     setScannerAberto(true);
   };
 
@@ -172,6 +208,16 @@ function PDV() {
   };
 
   const finalizarVenda = async () => {
+    if (!caixaAberto) {
+      notifications.show({
+        title: 'Caixa fechado',
+        message: 'Abra o caixa para registrar vendas no PDV.',
+        color: 'red',
+        icon: <FaTimes />,
+      });
+      return;
+    }
+
     if (carrinho.length === 0) {
       notifications.show({
         title: 'Carrinho vazio',
@@ -668,6 +714,37 @@ function PDV() {
       </Stack>
     </Card>
   );
+
+  if (verificandoCaixa) {
+    return (
+      <Center style={{ height: '100%' }}>
+        <Loader size="lg" />
+      </Center>
+    );
+  }
+
+  if (!caixaAberto) {
+    return (
+      <Center style={{ height: '100%' }}>
+        <Stack align="center" gap="md" p="xl" maw={420}>
+          <Alert
+            icon={<FaTimes size={16} />}
+            title="Caixa fechado"
+            color="red"
+            variant="light"
+          >
+            {caixaStatus?.message || 'Abra o caixa para utilizar o PDV.'}
+          </Alert>
+          <Group gap="sm">
+            <Button leftSection={<FaCashRegister size={14} />} onClick={() => navigate('/caixa')}>
+              Ir para o Caixa
+            </Button>
+            <Button variant="subtle" onClick={verificarCaixa}>Recarregar status</Button>
+          </Group>
+        </Stack>
+      </Center>
+    );
+  }
 
   return (
     <AppShell header={{ height: 60 }} padding="md">

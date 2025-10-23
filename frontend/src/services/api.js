@@ -50,6 +50,8 @@ export const createProduto = (data) => api.post('/produtos/', data);
 export const updateProduto = (id, data) => api.put(`/produtos/${id}/`, data);
 export const deleteProduto = (id) => api.delete(`/produtos/${id}/`);
 export const getProdutosMaisLucrativos = () => api.get('/produtos/mais_lucrativos/');
+export const searchOpenFoodProducts = (params = {}) =>
+  api.get('/produtos/buscar-openfood/', { params });
 
 // Categorias
 export const getCategorias = (params = {}) => api.get('/categorias/', { params });
@@ -66,6 +68,13 @@ export const updateFornecedor = (id, data) => api.put(`/fornecedores/${id}/`, da
 export const deleteFornecedor = (id) => api.delete(`/fornecedores/${id}/`);
 export const getFornecedorLotes = (id) => api.get(`/fornecedores/${id}/lotes/`);
 export const getFornecedorEstatisticas = (id) => api.get(`/fornecedores/${id}/estatisticas/`);
+
+// Inventário
+export const getInventarios = () => api.get('/estoque/inventarios/');
+export const createInventario = (data) => api.post('/estoque/inventarios/', data);
+export const getInventario = (id) => api.get(`/estoque/inventarios/${id}/`);
+export const addInventarioItem = (id, data) => api.post(`/estoque/inventarios/${id}/adicionar-item/`, data);
+export const finalizeInventario = (id) => api.post(`/estoque/inventarios/${id}/finalizar/`);
 
 // Vendas
 export const getVendas = (params = {}) => api.get('/vendas/', { params });

@@ -369,7 +369,7 @@ const EntradaEstoque = () => {
                       variant="light"
                       color="orange"
                       component={Link}
-                      to="/produtos"
+                      to="/estoque"
                       size="xs"
                     >
                       Ajustar preços dos produtos
