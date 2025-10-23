@@ -80,6 +80,7 @@ export const getFornecedorEstatisticas = (id) => api.get(`/fornecedores/${id}/es
 export const getInventarios = () => api.get('/estoque/inventarios/');
 export const createInventario = (data) => api.post('/estoque/inventarios/', data);
 export const getInventario = (id) => api.get(`/estoque/inventarios/${id}/`);
+export const deleteInventario = (id) => api.delete(`/estoque/inventarios/${id}/`);
 export const addInventarioItem = (id, data) => api.post(`/estoque/inventarios/${id}/adicionar-item/`, data);
 export const finalizeInventario = (id) => api.post(`/estoque/inventarios/${id}/finalizar/`);
 
