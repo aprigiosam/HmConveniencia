@@ -1,6 +1,6 @@
 // IndexedDB para armazenamento local offline
 const DB_NAME = 'HMConvenienciaDB'
-const DB_VERSION = 3 // Incrementado para adicionar fornecedores_cache
+const DB_VERSION = 4 // Incrementado para adicionar inventario_cache e itens_pendentes
 
 class LocalDB {
   constructor() {
@@ -60,6 +60,26 @@ class LocalDB {
             keyPath: 'id'
           })
           fornecedoresStore.createIndex('timestamp', 'timestamp', { unique: false })
+        }
+
+        // Store para cache de inventários
+        if (!db.objectStoreNames.contains('inventarios_cache')) {
+          const inventariosStore = db.createObjectStore('inventarios_cache', {
+            keyPath: 'id'
+          })
+          inventariosStore.createIndex('timestamp', 'timestamp', { unique: false })
+          inventariosStore.createIndex('status', 'status', { unique: false })
+        }
+
+        // Store para itens de inventário pendentes de sincronização
+        if (!db.objectStoreNames.contains('inventario_itens_pendentes')) {
+          const itensStore = db.createObjectStore('inventario_itens_pendentes', {
+            keyPath: 'localId',
+            autoIncrement: true
+          })
+          itensStore.createIndex('sessao_id', 'sessao_id', { unique: false })
+          itensStore.createIndex('timestamp', 'timestamp', { unique: false })
+          itensStore.createIndex('synced', 'synced', { unique: false })
         }
       }
     })
@@ -320,6 +340,147 @@ class LocalDB {
       const request = store.getAll()
 
       request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  // ========== INVENTÁRIO ==========
+
+  // Cachear inventários
+  async cacheInventarios(inventarios) {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['inventarios_cache'], 'readwrite')
+      const store = transaction.objectStore('inventarios_cache')
+
+      // Limpa cache antigo
+      store.clear()
+
+      // Adiciona novos inventários
+      inventarios.forEach((inventario) => {
+        store.add({
+          ...inventario,
+          timestamp: new Date().toISOString()
+        })
+      })
+
+      transaction.oncomplete = () => resolve(true)
+      transaction.onerror = () => reject(transaction.error)
+    })
+  }
+
+  // Buscar inventários do cache
+  async getCachedInventarios() {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['inventarios_cache'], 'readonly')
+      const store = transaction.objectStore('inventarios_cache')
+
+      const request = store.getAll()
+
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  // Salvar item de inventário pendente de sincronização
+  async saveInventarioItemPendente(itemData) {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['inventario_itens_pendentes'], 'readwrite')
+      const store = transaction.objectStore('inventario_itens_pendentes')
+
+      const item = {
+        ...itemData,
+        timestamp: new Date().toISOString(),
+        synced: false
+      }
+
+      const request = store.add(item)
+
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  // Buscar itens pendentes de uma sessão
+  async getInventarioItensPendentes(sessaoId) {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['inventario_itens_pendentes'], 'readonly')
+      const store = transaction.objectStore('inventario_itens_pendentes')
+      const index = store.index('sessao_id')
+
+      const request = index.getAll(sessaoId)
+
+      request.onsuccess = () => {
+        const itens = request.result.filter(item => !item.synced)
+        resolve(itens)
+      }
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  // Marcar item de inventário como sincronizado
+  async markInventarioItemSynced(localId) {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['inventario_itens_pendentes'], 'readwrite')
+      const store = transaction.objectStore('inventario_itens_pendentes')
+
+      const getRequest = store.get(localId)
+
+      getRequest.onsuccess = () => {
+        const item = getRequest.result
+        if (item) {
+          item.synced = true
+          item.syncedAt = new Date().toISOString()
+          const updateRequest = store.put(item)
+          updateRequest.onsuccess = () => resolve(true)
+          updateRequest.onerror = () => reject(updateRequest.error)
+        } else {
+          resolve(false)
+        }
+      }
+
+      getRequest.onerror = () => reject(getRequest.error)
+    })
+  }
+
+  // Deletar item sincronizado
+  async deleteInventarioItemSynced(localId) {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['inventario_itens_pendentes'], 'readwrite')
+      const store = transaction.objectStore('inventario_itens_pendentes')
+
+      const request = store.delete(localId)
+
+      request.onsuccess = () => resolve(true)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  // Contar itens pendentes de sincronização
+  async countInventarioItensPendentes() {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['inventario_itens_pendentes'], 'readonly')
+      const store = transaction.objectStore('inventario_itens_pendentes')
+
+      const request = store.getAll()
+
+      request.onsuccess = () => {
+        const count = request.result.filter(item => !item.synced).length
+        resolve(count)
+      }
       request.onerror = () => reject(request.error)
     })
   }

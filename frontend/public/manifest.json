@@ -50,6 +50,13 @@
       "icons": [{ "src": "/logo.jpeg", "sizes": "512x512" }]
     },
     {
+      "name": "Inventário",
+      "short_name": "Inventário",
+      "description": "Contagem de estoque",
+      "url": "/inventario",
+      "icons": [{ "src": "/logo.jpeg", "sizes": "512x512" }]
+    },
+    {
       "name": "Produtos",
       "short_name": "Produtos",
       "description": "Gerenciar produtos",

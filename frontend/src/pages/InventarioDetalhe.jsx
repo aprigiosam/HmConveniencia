@@ -32,6 +32,8 @@ import {
 } from '../services/api';
 import BarcodeScanner from '../components/BarcodeScanner';
 import { FaArrowLeft, FaBarcode, FaCheck, FaClipboardList, FaSearch, FaTrash } from 'react-icons/fa';
+import { localDB } from '../utils/db';
+import { inventarioSyncManager } from '../utils/inventarioSyncManager';
 
 function InventarioDetalhe() {
   const { id } = useParams();
@@ -44,6 +46,8 @@ function InventarioDetalhe() {
   const [salvando, setSalvando] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const [excluindoId, setExcluindoId] = useState(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [itensPendentes, setItensPendentes] = useState(0);
   const [form, setForm] = useState({
     produto: '',
     codigo_barras: '',
@@ -58,6 +62,34 @@ function InventarioDetalhe() {
 
   useEffect(() => {
     carregarDados();
+
+    // Inicia sincronização automática
+    inventarioSyncManager.startAutoSync(30000); // A cada 30s
+
+    // Listeners para mudanças de conexão
+    const handleOnline = () => {
+      setIsOnline(true);
+      inventarioSyncManager.syncAll(); // Sincroniza ao voltar online
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Atualiza contador de itens pendentes
+    const updatePending = async () => {
+      const count = await localDB.countInventarioItensPendentes();
+      setItensPendentes(count);
+    };
+    updatePending();
+    const interval = setInterval(updatePending, 10000); // A cada 10s
+
+    return () => {
+      inventarioSyncManager.stopAutoSync();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
+    };
   }, [id]);
 
   const carregarDados = async () => {
@@ -260,17 +292,45 @@ function InventarioDetalhe() {
 
     try {
       setSalvando(true);
-      await addInventarioItem(id, payload);
-      notifications.show({
-        title: 'Item registrado',
-        message: 'Contagem adicionada ao inventário.',
-        color: 'green',
-      });
+
+      if (navigator.onLine) {
+        // Tenta salvar online primeiro
+        try {
+          await addInventarioItem(id, payload);
+          notifications.show({
+            title: 'Item registrado',
+            message: 'Contagem adicionada ao inventário.',
+            color: 'green',
+          });
+        } catch (error) {
+          // Se falhar online, salva offline
+          console.warn('Falha ao salvar online, salvando offline:', error);
+          await inventarioSyncManager.addItemOffline(id, payload);
+          notifications.show({
+            title: '📶 Salvo offline',
+            message: 'Item será sincronizado quando a conexão retornar.',
+            color: 'yellow',
+          });
+        }
+      } else {
+        // Modo offline: salva localmente
+        await inventarioSyncManager.addItemOffline(id, payload);
+        notifications.show({
+          title: '📶 Salvo offline',
+          message: 'Item será sincronizado quando a conexão retornar.',
+          color: 'yellow',
+        });
+      }
+
       resetForm();
       carregarDados();
+
+      // Atualiza contador de itens pendentes
+      const count = await localDB.countInventarioItensPendentes();
+      setItensPendentes(count);
     } catch (error) {
       console.error('Erro ao adicionar item de inventário:', error);
-      const detail = error.response?.data?.detail || 'Não foi possível adicionar o item.';
+      const detail = error.response?.data?.detail || error.message || 'Não foi possível adicionar o item.';
       notifications.show({
         title: 'Erro',
         message: detail,
@@ -370,6 +430,16 @@ function InventarioDetalhe() {
           </Group>
         </Group>
         <Group gap="sm">
+          {!isOnline && (
+            <Badge size="lg" color="red" variant="filled">
+              📶 Offline
+            </Badge>
+          )}
+          {itensPendentes > 0 && (
+            <Badge size="lg" color="yellow" variant="filled">
+              {itensPendentes} {itensPendentes === 1 ? 'item pendente' : 'itens pendentes'}
+            </Badge>
+          )}
           <Badge
             size="lg"
             color={

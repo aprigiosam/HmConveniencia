@@ -22,6 +22,7 @@ import { modals } from '@mantine/modals';
 import dayjs from 'dayjs';
 import { notifications } from '@mantine/notifications';
 import { getInventarios, createInventario, deleteInventario } from '../services/api';
+import { localDB } from '../utils/db';
 
 function Inventario() {
   const [inventarios, setInventarios] = useState([]);
@@ -29,24 +30,72 @@ function Inventario() {
   const [opened, setOpened] = useState(false);
   const [criando, setCriando] = useState(false);
   const [form, setForm] = useState({ titulo: '', responsavel: '', observacoes: '' });
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const navigate = useNavigate();
 
   useEffect(() => {
     carregarInventarios();
+
+    // Listener para mudanças de conexão
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   const carregarInventarios = async () => {
     try {
-      const response = await getInventarios();
-      const data = response.data.results || response.data;
-      setInventarios(Array.isArray(data) ? data : []);
+      // Tenta carregar do cache primeiro (cache-first para performance)
+      const cached = await localDB.getCachedInventarios();
+      if (cached && cached.length > 0) {
+        setInventarios(cached);
+      }
+
+      // Tenta buscar da API se estiver online
+      if (navigator.onLine) {
+        const response = await getInventarios();
+        const data = response.data.results || response.data;
+        const inventariosData = Array.isArray(data) ? data : [];
+
+        setInventarios(inventariosData);
+
+        // Atualiza cache
+        if (inventariosData.length > 0) {
+          await localDB.cacheInventarios(inventariosData);
+        }
+      } else if (!cached || cached.length === 0) {
+        // Offline e sem cache
+        notifications.show({
+          title: 'Modo Offline',
+          message: 'Você está offline. Mostrando dados em cache.',
+          color: 'yellow',
+        });
+      }
     } catch (error) {
       console.error('Erro ao carregar inventários:', error);
-      notifications.show({
-        title: 'Erro',
-        message: 'Não foi possível carregar as sessões de inventário.',
-        color: 'red',
-      });
+
+      // Em caso de erro, tenta usar cache
+      const cached = await localDB.getCachedInventarios();
+      if (cached && cached.length > 0) {
+        setInventarios(cached);
+        notifications.show({
+          title: 'Offline',
+          message: 'Mostrando inventários do cache local.',
+          color: 'yellow',
+        });
+      } else {
+        notifications.show({
+          title: 'Erro',
+          message: 'Não foi possível carregar as sessões de inventário.',
+          color: 'red',
+        });
+      }
     }
   };
 
@@ -193,6 +242,11 @@ function Inventario() {
         <Group gap="sm">
           <FaClipboardList size={22} />
           <Title order={2}>Inventário</Title>
+          {!isOnline && (
+            <Badge color="yellow" variant="filled" size="sm">
+              📶 Offline
+            </Badge>
+          )}
         </Group>
         <Button leftSection={<FaPlus size={14} />} onClick={() => setOpened(true)}>
           Nova Sessão
