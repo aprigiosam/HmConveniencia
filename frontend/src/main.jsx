@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { MantineProvider, createTheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
+import { ModalsProvider } from '@mantine/modals';
 import App from './App';
 
 // Importar estilos do Mantine
@@ -32,8 +33,10 @@ const theme = createTheme({
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <MantineProvider theme={theme}>
-      <Notifications position="top-right" zIndex={1000} />
-      <App />
+      <ModalsProvider>
+        <Notifications position="top-right" zIndex={1000} />
+        <App />
+      </ModalsProvider>
     </MantineProvider>
   </React.StrictMode>,
 );

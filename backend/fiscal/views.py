@@ -50,7 +50,7 @@ class ImportarNFeEntradaView(APIView):
         except ImportNFeError as exc:
             logger.warning("Erro ao importar NF-e: %s", exc)
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             logger.exception("Falha inesperada na importação da NF-e")
             return Response(
                 {"detail": "Falha inesperada ao processar a NF-e."},

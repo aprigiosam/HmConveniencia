@@ -235,7 +235,9 @@ class NFeEntradaImporter:
             protocolo=protocolo.get("nProt", "") if protocolo else "",
             motivo_rejeicao=motivo or "",
             xml_assinado=xml_assinado,
-            emitente_documento=_clean_document((estrutura.get("emit") or {}).get("CNPJ") or (estrutura.get("emit") or {}).get("CPF")),
+            emitente_documento=_clean_document(
+                (estrutura.get("emit") or {}).get("CNPJ") or (estrutura.get("emit") or {}).get("CPF")
+            ),
             emitente_nome=(estrutura.get("emit") or {}).get("xNome", ""),
             destinatario_documento=_clean_document(dest.get("CNPJ") or dest.get("CPF")),
             destinatario_nome=dest.get("xNome", ""),
@@ -243,7 +245,8 @@ class NFeEntradaImporter:
             valor_total=_safe_decimal((estrutura.get("total") or {}).get("ICMSTot", {}).get("vNF", "0")),
             valor_descontos=_safe_decimal((estrutura.get("total") or {}).get("ICMSTot", {}).get("vDesc", "0")),
             data_emissao=parse_datetime(ide.get("dhEmi") or ""),
-            data_autorizacao=parse_datetime(protocolo.get("dhRecbto")) if protocolo and protocolo.get("dhRecbto") else None,
+            data_autorizacao=parse_datetime(protocolo.get("dhRecbto"))
+            if protocolo and protocolo.get("dhRecbto") else None,
             fornecedor=fornecedor,
             cliente=None,
         )

@@ -288,7 +288,7 @@ function InventarioDetalhe() {
 
     try {
       setExcluindoId(item.id);
-      await deleteInventarioItem(item.id);
+      await deleteInventarioItem(id, item.id);
       notifications.show({
         title: 'Item removido',
         message: 'A contagem foi excluída.',
