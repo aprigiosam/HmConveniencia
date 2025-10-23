@@ -5,7 +5,7 @@ Views da API - HMConveniencia
 import logging
 from django.core.management import call_command
 from django.contrib.auth import authenticate
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
@@ -83,6 +83,23 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
 
             instancia.finalizado_em = timezone.now()
             instancia.save(update_fields=["finalizado_em"])
+
+    def perform_destroy(self, instance):
+        """Permite deletar apenas sessões não finalizadas"""
+        if instance.status == "FINALIZADO":
+            raise serializers.ValidationError(
+                "Não é possível excluir uma sessão de inventário finalizada."
+            )
+
+        # Conta quantos itens serão excluídos junto com a sessão
+        total_itens = instance.itens.count()
+
+        logger.info(
+            f"Excluindo sessão de inventário {instance.titulo} "
+            f"(ID: {instance.id}) com {total_itens} itens"
+        )
+
+        instance.delete()
 
     def _obter_empresa(self) -> Empresa:
         empresa_id = (
