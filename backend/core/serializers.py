@@ -355,7 +355,7 @@ class InventarioItemSerializer(serializers.ModelSerializer):
         required=True,
     )
     diferenca = serializers.DecimalField(
-        max_digits=14, decimal_places=4, read_only=True, source="diferenca"
+        max_digits=14, decimal_places=4, read_only=True
     )
 
     class Meta:
