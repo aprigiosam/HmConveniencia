@@ -85,24 +85,30 @@ function Inventario() {
   };
 
   const handleDelete = (inventario) => {
-    if (inventario.status === 'FINALIZADO') {
-      notifications.show({
-        title: 'Não é possível excluir',
-        message: 'Sessões finalizadas não podem ser excluídas.',
-        color: 'orange',
-      });
-      return;
-    }
+    const isFinalizado = inventario.status === 'FINALIZADO';
 
     modals.openConfirmModal({
-      title: 'Excluir sessão de inventário',
+      title: isFinalizado ? '⚠️ Excluir sessão FINALIZADA' : 'Excluir sessão de inventário',
       children: (
-        <Text size="sm">
-          Tem certeza que deseja excluir a sessão <strong>{inventario.titulo}</strong>?
-          <br />
-          <br />
-          Esta ação não pode ser desfeita e todos os itens registrados serão perdidos.
-        </Text>
+        <Stack gap="sm">
+          <Text size="sm">
+            Tem certeza que deseja excluir a sessão <strong>{inventario.titulo}</strong>?
+          </Text>
+          {isFinalizado && (
+            <Paper withBorder p="sm" bg="red.0" style={{ borderColor: 'var(--mantine-color-red-6)' }}>
+              <Text size="sm" fw={700} c="red.9">
+                ⚠️ ATENÇÃO: Esta sessão está FINALIZADA!
+              </Text>
+              <Text size="xs" c="red.8" mt={4}>
+                Os ajustes de estoque já aplicados serão <strong>REVERTIDOS</strong> automaticamente.
+                Os produtos voltarão para o estoque anterior ao inventário.
+              </Text>
+            </Paper>
+          )}
+          <Text size="xs" c="dimmed">
+            Esta ação não pode ser desfeita e todos os itens registrados serão perdidos.
+          </Text>
+        </Stack>
       ),
       labels: { confirm: 'Excluir', cancel: 'Cancelar' },
       confirmProps: { color: 'red' },
@@ -112,7 +118,9 @@ function Inventario() {
           setInventarios((prev) => prev.filter((inv) => inv.id !== inventario.id));
           notifications.show({
             title: 'Sessão excluída',
-            message: 'A sessão de inventário foi removida com sucesso.',
+            message: isFinalizado
+              ? 'A sessão foi removida e os ajustes de estoque foram revertidos.'
+              : 'A sessão de inventário foi removida com sucesso.',
             color: 'green',
           });
         } catch (error) {
@@ -271,20 +279,21 @@ function Inventario() {
                     {inv.finalizado_em ? dayjs(inv.finalizado_em).format('DD/MM/YYYY HH:mm') : '-'}
                   </Table.Td>
                   <Table.Td ta="center">
-                    {inv.status !== 'FINALIZADO' && (
-                      <Tooltip label="Excluir sessão" position="left">
-                        <ActionIcon
-                          color="red"
-                          variant="light"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(inv);
-                          }}
-                        >
-                          <FaTrash size={14} />
-                        </ActionIcon>
-                      </Tooltip>
-                    )}
+                    <Tooltip
+                      label={inv.status === 'FINALIZADO' ? 'Excluir sessão finalizada (reverterá ajustes)' : 'Excluir sessão'}
+                      position="left"
+                    >
+                      <ActionIcon
+                        color="red"
+                        variant="light"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(inv);
+                        }}
+                      >
+                        <FaTrash size={14} />
+                      </ActionIcon>
+                    </Tooltip>
                   </Table.Td>
                 </Table.Tr>
               ))
