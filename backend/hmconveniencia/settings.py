@@ -27,7 +27,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config(
     "SECRET_KEY", default="django-insecure-dev-key-change-in-production"
 )
-DEBUG = config("DEBUG", default=True, cast=bool)
+# IMPORTANTE: DEBUG deve ser False por padrão para segurança
+DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = _split_env_list(
     config("ALLOWED_HOSTS", default="localhost,127.0.0.1")
 )

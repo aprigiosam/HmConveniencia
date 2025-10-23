@@ -102,29 +102,39 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
         dados = request.data.copy()
         dados["sessao"] = str(sessao.id)
 
-        produto = None
-        produto_id = dados.get("produto") or dados.get("produto_id")
-        if produto_id:
-            try:
-                produto = Produto.objects.get(id=produto_id)
-            except Produto.DoesNotExist:
-                return Response(
-                    {"detail": "Produto informado não encontrado."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        try:
+            produto = None
+            produto_id = dados.get("produto") or dados.get("produto_id")
+            if produto_id:
+                try:
+                    produto = Produto.objects.get(id=produto_id)
+                except Produto.DoesNotExist:
+                    return Response(
+                        {"detail": "Produto informado não encontrado."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
-        if produto and not dados.get("quantidade_sistema"):
-            dados["quantidade_sistema"] = str(produto.estoque or Decimal("0"))
+            if produto and not dados.get("quantidade_sistema"):
+                dados["quantidade_sistema"] = str(produto.estoque or Decimal("0"))
 
-        if produto and not dados.get("descricao"):
-            dados["descricao"] = produto.nome
+            if produto and not dados.get("descricao"):
+                dados["descricao"] = produto.nome
 
-        if produto and not dados.get("codigo_barras"):
-            dados["codigo_barras"] = produto.codigo_barras or ""
+            if produto and not dados.get("codigo_barras"):
+                dados["codigo_barras"] = produto.codigo_barras or ""
 
-        serializer = InventarioItemSerializer(data=dados)
-        serializer.is_valid(raise_exception=True)
-        item = serializer.save()
+            if not dados.get("descricao"):
+                dados["descricao"] = dados.get("codigo_barras") or "Item inventário"
+
+            serializer = InventarioItemSerializer(data=dados)
+            serializer.is_valid(raise_exception=True)
+            item = serializer.save()
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Erro ao adicionar item ao inventário")
+            return Response(
+                {"detail": "Falha ao registrar item no inventário.", "error": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         return Response(
             InventarioItemSerializer(item).data,
@@ -655,22 +665,24 @@ class VendaViewSet(viewsets.ModelViewSet):
         if cached_data:
             return Response(cached_data)
 
-        # Calcula todas as métricas usando métodos privados
-        estoque = self._calcular_estoque()
-        validade = self._calcular_produtos_validade(hoje)
+        # Usa transaction.atomic() para manter conexão aberta e melhorar performance
+        with transaction.atomic():
+            # Calcula todas as métricas usando métodos privados
+            estoque = self._calcular_estoque()
+            validade = self._calcular_produtos_validade(hoje)
 
-        dashboard_data = {
-            "vendas_hoje": self._calcular_vendas_hoje(hoje),
-            "lucro_hoje": self._calcular_lucro_hoje(hoje),
-            "estoque_baixo": estoque["baixo"],
-            "produtos_vencidos": validade["vencidos"],
-            "produtos_vencendo": validade["vencendo"],
-            "vendas_por_pagamento": self._calcular_vendas_por_pagamento(hoje),
-            "contas_receber": self._calcular_contas_receber(hoje),
-            "caixa": self._calcular_info_caixa(),
-            "data": hoje.isoformat(),
-            "cached": False,
-        }
+            dashboard_data = {
+                "vendas_hoje": self._calcular_vendas_hoje(hoje),
+                "lucro_hoje": self._calcular_lucro_hoje(hoje),
+                "estoque_baixo": estoque["baixo"],
+                "produtos_vencidos": validade["vencidos"],
+                "produtos_vencendo": validade["vencendo"],
+                "vendas_por_pagamento": self._calcular_vendas_por_pagamento(hoje),
+                "contas_receber": self._calcular_contas_receber(hoje),
+                "caixa": self._calcular_info_caixa(),
+                "data": hoje.isoformat(),
+                "cached": False,
+            }
 
         # Salva no cache por 2 minutos (120 segundos)
         cache.set(cache_key, dashboard_data, 120)
@@ -681,6 +693,8 @@ class VendaViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def cancelar(self, request, pk=None):
         """Cancela uma venda e devolve estoque atomicamente"""
+        from .services.lote_service import LoteService
+
         venda = self.get_object()
 
         if venda.status == "CANCELADA":
@@ -689,14 +703,27 @@ class VendaViewSet(viewsets.ModelViewSet):
             )
 
         if venda.status == "FINALIZADA":
-            # Devolve o estoque usando bulk_update para melhor performance
-            produtos_atualizar = []
+            # Devolve o estoque respeitando o sistema de lotes
             for item in venda.itens.select_related("produto"):
-                item.produto.estoque += item.quantidade
-                produtos_atualizar.append(item.produto)
+                produto = item.produto
+                quantidade = item.quantidade
 
-            if produtos_atualizar:
-                Produto.objects.bulk_update(produtos_atualizar, ["estoque"])
+                # Verifica se produto usa sistema de lotes
+                if LoteService.produto_usa_lotes(produto):
+                    # Devolve criando um lote de devolução
+                    LoteService.devolver_estoque(produto, quantidade)
+                    logger.info(
+                        f"Venda {venda.numero} cancelada: {quantidade} un de "
+                        f"{produto.nome} devolvida ao estoque via lote"
+                    )
+                else:
+                    # Produto sem lotes: devolve diretamente
+                    produto.estoque += quantidade
+                    produto.save(update_fields=["estoque", "updated_at"])
+                    logger.info(
+                        f"Venda {venda.numero} cancelada: {quantidade} un de "
+                        f"{produto.nome} devolvida ao estoque direto"
+                    )
 
         venda.status = "CANCELADA"
         venda.save()
