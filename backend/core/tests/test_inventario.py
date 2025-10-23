@@ -87,9 +87,13 @@ class InventarioSessaoDeleteTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(InventarioSessao.objects.filter(id=sessao.id).exists())
 
-    def test_delete_sessao_finalizada_falha(self):
-        """Não deve permitir excluir sessão com status FINALIZADO"""
+    def test_delete_sessao_finalizada_com_reversao_estoque(self):
+        """Deve permitir excluir sessão finalizada e reverter ajustes de estoque"""
         from django.utils import timezone
+
+        # Guarda estoque inicial dos produtos
+        estoque_inicial_p1 = self.produto1.estoque
+        estoque_inicial_p2 = self.produto2.estoque
 
         sessao = InventarioSessao.objects.create(
             titulo="Inventário Finalizado",
@@ -98,14 +102,87 @@ class InventarioSessaoDeleteTestCase(TestCase):
             empresa=self.empresa
         )
 
+        # Cria itens com diferenças
+        item1 = InventarioItem.objects.create(
+            sessao=sessao,
+            produto=self.produto1,
+            quantidade_sistema=Decimal("100"),
+            quantidade_contada=Decimal("95")  # Diferença: -5
+        )
+        item2 = InventarioItem.objects.create(
+            sessao=sessao,
+            produto=self.produto2,
+            quantidade_sistema=Decimal("50"),
+            quantidade_contada=Decimal("55")  # Diferença: +5
+        )
+
+        # Simula que o inventário foi finalizado e ajustou os estoques
+        self.produto1.estoque = Decimal("95")  # Ajustado para quantidade contada
+        self.produto1.save()
+        self.produto2.estoque = Decimal("55")  # Ajustado para quantidade contada
+        self.produto2.save()
+
+        # Agora exclui a sessão finalizada
         response = self.client.delete(f'/api/estoque/inventarios/{sessao.id}/')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-        # Verifica mensagem de erro
-        self.assertIn("Não é possível excluir", str(response.data))
+        # Verifica que a sessão foi excluída
+        self.assertFalse(InventarioSessao.objects.filter(id=sessao.id).exists())
 
-        # Verifica que a sessão ainda existe
-        self.assertTrue(InventarioSessao.objects.filter(id=sessao.id).exists())
+        # Verifica que os estoques foram revertidos
+        self.produto1.refresh_from_db()
+        self.produto2.refresh_from_db()
+
+        # Produto 1: estava em 95, diferença era -5, então reverte +5 = 100
+        self.assertEqual(self.produto1.estoque, estoque_inicial_p1)
+
+        # Produto 2: estava em 55, diferença era +5, então reverte -5 = 50
+        self.assertEqual(self.produto2.estoque, estoque_inicial_p2)
+
+    def test_delete_sessao_finalizada_deleta_movimentos_estoque(self):
+        """Verifica que movimentos de estoque relacionados são deletados"""
+        from django.utils import timezone
+        from fiscal.models import EstoqueMovimento, EstoqueOrigem
+
+        sessao = InventarioSessao.objects.create(
+            titulo="Inventário com Movimentos",
+            status="FINALIZADO",
+            finalizado_em=timezone.now(),
+            empresa=self.empresa
+        )
+
+        # Cria item com diferença
+        item = InventarioItem.objects.create(
+            sessao=sessao,
+            produto=self.produto1,
+            quantidade_sistema=Decimal("100"),
+            quantidade_contada=Decimal("90")
+        )
+
+        # Simula criação de movimento de estoque durante finalização
+        movimento = EstoqueMovimento.objects.create(
+            empresa=self.empresa,
+            produto=self.produto1,
+            quantidade=Decimal("-10"),
+            origem=EstoqueOrigem.AJUSTE,
+            observacao=f"Ajuste inventário {sessao.titulo} - Item contado: 90, Sistema: 100"
+        )
+
+        # Verifica que movimento existe
+        movimentos_antes = EstoqueMovimento.objects.filter(
+            observacao__contains=f"Ajuste inventário {sessao.titulo}"
+        ).count()
+        self.assertEqual(movimentos_antes, 1)
+
+        # Exclui a sessão
+        response = self.client.delete(f'/api/estoque/inventarios/{sessao.id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        # Verifica que movimentos foram deletados
+        movimentos_depois = EstoqueMovimento.objects.filter(
+            observacao__contains=f"Ajuste inventário {sessao.titulo}"
+        ).count()
+        self.assertEqual(movimentos_depois, 0)
 
     def test_delete_sessao_inexistente_404(self):
         """Deve retornar 404 ao tentar excluir sessão inexistente"""
