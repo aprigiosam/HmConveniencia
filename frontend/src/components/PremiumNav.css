@@ -53,36 +53,40 @@
     transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
 
-  /* Header do menu com gradiente */
+  /* Header do menu com gradiente - mais sutil */
   [data-mantine-navbar]::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 120px;
+    height: 80px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     z-index: 0;
   }
 
-  /* Espaçamento do conteúdo */
+  /* Espaçamento do conteúdo - corrigido */
   [data-mantine-navbar] > div {
     position: relative;
     z-index: 1;
-    padding-top: 80px !important;
+    padding-top: 16px !important;
   }
 
   /* Items do menu - Lista plana sem categorias */
   [data-mantine-navbar] .mantine-NavLink-root {
+    position: relative !important;
+    z-index: 10 !important;
     margin: 0 12px 8px 12px !important;
     padding: 14px 16px !important;
     border-radius: 12px !important;
-    background: transparent !important;
+    background: #ffffff !important;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     border: none !important;
     min-height: 56px !important;
     display: flex !important;
     align-items: center !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
   }
 
   /* Hover/Press effect */
@@ -122,14 +126,35 @@
     color: #667eea !important;
   }
 
-  /* Remove sub-items (tornando lista plana) */
-  [data-mantine-navbar] .mantine-NavLink-root .mantine-NavLink-root {
-    display: none;
-  }
-
   /* ScrollArea limpa */
   [data-mantine-navbar] .mantine-ScrollArea-viewport {
     padding-right: 8px !important;
+  }
+}
+
+/* Desktop - mantém estilo padrão do Mantine */
+@media (min-width: 769px) {
+  [data-mantine-header] {
+    background: white !important;
+  }
+
+  [data-mantine-header] .mantine-Text-root {
+    color: #FF6B35 !important;
+  }
+
+  [data-mantine-navbar]::before {
+    display: none !important;
+  }
+
+  [data-mantine-navbar] > div {
+    padding-top: inherit !important;
+  }
+
+  [data-mantine-navbar] .mantine-NavLink-root {
+    background: transparent !important;
+    margin: 0 !important;
+    padding: inherit !important;
+    min-height: auto !important;
   }
 }
 
