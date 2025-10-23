@@ -193,22 +193,23 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path=r"itens/(?P<item_id>[^/.]+)",
+    )
+    def remover_item(self, request, item_id, *args, **kwargs):
+        sessao = self.get_object()
+        try:
+            item = sessao.itens.get(id=item_id)
+        except InventarioItem.DoesNotExist as exc:
+            raise ValidationError("Item não encontrado na sessão.") from exc
 
-class InventarioItemViewSet(viewsets.ModelViewSet):
-    queryset = InventarioItem.objects.select_related("sessao", "produto")
-    serializer_class = InventarioItemSerializer
-    http_method_names = ["patch", "delete"]
-
-    def perform_update(self, serializer):
-        instancia = serializer.instance
-        if instancia.sessao.status == "FINALIZADO":
-            raise ValidationError("Itens de sessões finalizadas não podem ser editados.")
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        if instance.sessao.status == "FINALIZADO":
+        if sessao.status == "FINALIZADO":
             raise ValidationError("Itens de sessões finalizadas não podem ser removidos.")
-        instance.delete()
+
+        item.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     """ViewSet para Categorias de Produtos"""

@@ -15,7 +15,6 @@ from .views import (
     AlertaViewSet,
     LoteViewSet,
     InventarioSessaoViewSet,
-    InventarioItemViewSet,
     login,
     logout,
     me,
@@ -33,11 +32,6 @@ router.register("categorias", CategoriaViewSet, basename="categoria")
 router.register("alertas", AlertaViewSet, basename="alerta")
 router.register("lotes", LoteViewSet, basename="lote")
 router.register("estoque/inventarios", InventarioSessaoViewSet, basename="inventario")
-router.register(
-    "estoque/inventarios/itens",
-    InventarioItemViewSet,
-    basename="inventario-item",
-)
 
 urlpatterns = [
     path("", include(router.urls)),
