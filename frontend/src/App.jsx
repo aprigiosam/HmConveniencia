@@ -45,8 +45,50 @@ function PrivateRoute({ children }) {
   return token ? children : <Navigate to="/login" replace />;
 }
 
-// Lista plana de navegação - sem categorias expandíveis para melhor UX mobile
-const navLinks = [
+// Navegação com hierarquia (para desktop) e plana (para mobile)
+const navLinksHierarchical = [
+  { icon: <FaTachometerAlt />, label: 'Dashboard', path: '/' },
+  {
+    icon: <FaCashRegister />,
+    label: 'Caixa',
+    children: [
+      { label: 'Visão do Caixa', path: '/caixa', icon: <FaCashRegister /> },
+      { label: 'PDV', path: '/pdv', icon: <FaShoppingCart /> },
+      { label: 'Histórico de Caixas', path: '/caixa/historico', icon: <FaHistory /> },
+    ],
+  },
+  {
+    icon: <FaBoxOpen />,
+    label: 'Estoque',
+    children: [
+      { label: 'Visão Geral', path: '/estoque', icon: <FaBoxOpen /> },
+      { label: 'Inventário', path: '/estoque/inventario', icon: <FaClipboardList /> },
+      { label: 'Entrada de Estoque', path: '/estoque/entrada', icon: <FaTruck /> },
+      { label: 'Fornecedores', path: '/fornecedores', icon: <FaBuilding /> },
+    ],
+  },
+  {
+    icon: <FaUsers />,
+    label: 'Clientes',
+    children: [
+      { label: 'Clientes', path: '/clientes', icon: <FaUsers /> },
+      { label: 'Contas a Receber', path: '/contas-receber', icon: <FaFileInvoiceDollar /> },
+    ],
+  },
+  {
+    icon: <FaChartBar />,
+    label: 'Relatórios',
+    children: [
+      { label: 'Relatório de Lucro', path: '/relatorios/lucro', icon: <FaChartBar /> },
+      { label: 'Relatório de Fornecedores', path: '/relatorios/fornecedores', icon: <FaBuilding /> },
+      { label: 'Histórico de Vendas', path: '/vendas/historico', icon: <FaListAlt /> },
+      { label: 'Giro de Estoque', path: '/estoque/giro', icon: <FaSyncAlt /> },
+    ],
+  },
+];
+
+// Lista plana para mobile
+const navLinksFlat = [
   { icon: <FaTachometerAlt />, label: 'Dashboard', path: '/' },
   { icon: <FaShoppingCart />, label: 'PDV', path: '/pdv' },
   { icon: <FaCashRegister />, label: 'Caixa', path: '/caixa' },
@@ -168,18 +210,47 @@ function AppContent() {
 
       <AppShell.Navbar p={{ base: 'xs', sm: 'md' }}>
         <ScrollArea type="auto" style={{ height: '100%' }}>
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.path}
-              label={link.label}
-              leftSection={link.icon}
-              component={Link}
-              to={link.path}
-              active={location.pathname === link.path}
-              onClick={() => isMobile && close()}
-              className="nav-item-ripple"
-            />
-          ))}
+          {(isMobile ? navLinksFlat : navLinksHierarchical).map((link) => {
+            const hasChildren = Array.isArray(link.children) && link.children.length > 0;
+
+            if (!hasChildren) {
+              return (
+                <NavLink
+                  key={link.path}
+                  label={link.label}
+                  leftSection={link.icon}
+                  component={Link}
+                  to={link.path}
+                  active={location.pathname === link.path}
+                  onClick={() => isMobile && close()}
+                  className={isMobile ? "nav-item-ripple" : ""}
+                />
+              );
+            }
+
+            const childActive = link.children.some((child) => location.pathname === child.path);
+            return (
+              <NavLink
+                key={link.label}
+                label={link.label}
+                leftSection={link.icon}
+                active={childActive}
+                defaultOpened={childActive}
+              >
+                {link.children.map((child) => (
+                  <NavLink
+                    key={child.path}
+                    label={child.label}
+                    leftSection={child.icon}
+                    component={Link}
+                    to={child.path}
+                    active={location.pathname === child.path}
+                    onClick={() => isMobile && close()}
+                  />
+                ))}
+              </NavLink>
+            );
+          })}
         </ScrollArea>
       </AppShell.Navbar>
 

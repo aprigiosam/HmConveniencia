@@ -49,27 +49,20 @@
 @media (max-width: 768px) {
   [data-mantine-navbar] {
     background: #ffffff !important;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15) !important;
     transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
 
-  /* Header do menu com gradiente - mais sutil */
+  /* Remove gradiente - mantém simples e claro */
   [data-mantine-navbar]::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 80px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    z-index: 0;
+    display: none;
   }
 
-  /* Espaçamento do conteúdo - corrigido */
+  /* Espaçamento do conteúdo */
   [data-mantine-navbar] > div {
     position: relative;
     z-index: 1;
-    padding-top: 16px !important;
+    padding-top: 12px !important;
   }
 
   /* Items do menu - Lista plana sem categorias */
@@ -113,17 +106,17 @@
     justify-content: center !important;
   }
 
-  /* Labels mais legíveis */
+  /* Labels mais legíveis - contraste alto */
   [data-mantine-navbar] .mantine-NavLink-label {
-    font-size: 15px !important;
+    font-size: 16px !important;
     font-weight: 500 !important;
-    color: #2c3e50 !important;
+    color: #1a1a1a !important;
     letter-spacing: 0.2px !important;
   }
 
   [data-mantine-navbar] .mantine-NavLink-root[data-active="true"] .mantine-NavLink-label {
-    font-weight: 600 !important;
-    color: #667eea !important;
+    font-weight: 700 !important;
+    color: #228be6 !important;
   }
 
   /* ScrollArea limpa */
