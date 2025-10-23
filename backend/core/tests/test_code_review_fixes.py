@@ -20,7 +20,8 @@ class VendaCalcularTotalTestCase(TestCase):
 
     def setUp(self):
         self.empresa = Empresa.objects.create(
-            nome="Empresa Teste",
+            razao_social="Empresa Teste Ltda",
+            nome_fantasia="Empresa Teste",
             cnpj="12345678901234"
         )
         self.produto1 = Produto.objects.create(
@@ -94,7 +95,8 @@ class CancelamentoVendaComLotesTestCase(TestCase):
 
     def setUp(self):
         self.empresa = Empresa.objects.create(
-            nome="Empresa Teste",
+            razao_social="Empresa Teste Ltda",
+            nome_fantasia="Empresa Teste",
             cnpj="12345678901234"
         )
         self.fornecedor = Fornecedor.objects.create(
@@ -221,11 +223,13 @@ class CategoriaUniqueConstraintTestCase(TestCase):
 
     def setUp(self):
         self.empresa1 = Empresa.objects.create(
-            nome="Empresa 1",
+            razao_social="Empresa 1 Ltda",
+            nome_fantasia="Empresa 1",
             cnpj="11111111111111"
         )
         self.empresa2 = Empresa.objects.create(
-            nome="Empresa 2",
+            razao_social="Empresa 2 Ltda",
+            nome_fantasia="Empresa 2",
             cnpj="22222222222222"
         )
 
@@ -263,7 +267,8 @@ class ClienteSerializerOptimizationTestCase(TestCase):
 
     def setUp(self):
         self.empresa = Empresa.objects.create(
-            nome="Empresa Teste",
+            razao_social="Empresa Teste Ltda",
+            nome_fantasia="Empresa Teste",
             cnpj="12345678901234"
         )
         self.cliente = Cliente.objects.create(
@@ -325,7 +330,8 @@ class DashboardTransactionTestCase(TestCase):
 
     def setUp(self):
         self.empresa = Empresa.objects.create(
-            nome="Empresa Teste",
+            razao_social="Empresa Teste Ltda",
+            nome_fantasia="Empresa Teste",
             cnpj="12345678901234"
         )
         self.user = User.objects.create_user(
@@ -357,7 +363,8 @@ class VendaNumeroGenerationTestCase(TestCase):
 
     def setUp(self):
         self.empresa = Empresa.objects.create(
-            nome="Empresa Teste",
+            razao_social="Empresa Teste Ltda",
+            nome_fantasia="Empresa Teste",
             cnpj="12345678901234"
         )
 
