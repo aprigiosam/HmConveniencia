@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  ActionIcon,
   Badge,
   Button,
   Card,
@@ -27,9 +28,10 @@ import {
   addInventarioItem,
   finalizeInventario,
   searchOpenFoodProducts,
+  deleteInventarioItem,
 } from '../services/api';
 import BarcodeScanner from '../components/BarcodeScanner';
-import { FaArrowLeft, FaBarcode, FaCheck, FaClipboardList, FaSearch } from 'react-icons/fa';
+import { FaArrowLeft, FaBarcode, FaCheck, FaClipboardList, FaSearch, FaTrash } from 'react-icons/fa';
 
 function InventarioDetalhe() {
   const { id } = useParams();
@@ -41,6 +43,7 @@ function InventarioDetalhe() {
   const [scannerAberto, setScannerAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
+  const [excluindoId, setExcluindoId] = useState(null);
   const [form, setForm] = useState({
     produto: '',
     codigo_barras: '',
@@ -275,6 +278,33 @@ function InventarioDetalhe() {
       });
     } finally {
       setSalvando(false);
+    }
+  };
+
+  const handleExcluirItem = async (item) => {
+    if (sessaoFinalizada) return;
+    const confirmar = window.confirm(`Remover a contagem de ${item.produto_nome || item.descricao || 'este item'}?`);
+    if (!confirmar) return;
+
+    try {
+      setExcluindoId(item.id);
+      await deleteInventarioItem(item.id);
+      notifications.show({
+        title: 'Item removido',
+        message: 'A contagem foi excluída.',
+        color: 'green',
+      });
+      carregarDados();
+    } catch (error) {
+      console.error('Erro ao remover item do inventário:', error);
+      const detail = error.response?.data?.detail || 'Não foi possível remover o item.';
+      notifications.show({
+        title: 'Erro',
+        message: detail,
+        color: 'red',
+      });
+    } finally {
+      setExcluindoId(null);
     }
   };
 
@@ -547,12 +577,13 @@ function InventarioDetalhe() {
               <Table.Th ta="right">Contado</Table.Th>
               <Table.Th ta="right">Diferença</Table.Th>
               <Table.Th>Observações</Table.Th>
+              <Table.Th ta="center">Ações</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {itens.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={6}>
+                <Table.Td colSpan={7}>
                   <Text c="dimmed" ta="center">
                     Nenhum item foi contado ainda.
                   </Text>
@@ -595,6 +626,16 @@ function InventarioDetalhe() {
                         </Badge>
                       )}
                     </Stack>
+                  </Table.Td>
+                  <Table.Td ta="center">
+                    <ActionIcon
+                      color="red"
+                      variant="light"
+                      onClick={() => handleExcluirItem(item)}
+                      disabled={sessaoFinalizada || excluindoId === item.id}
+                    >
+                      {excluindoId === item.id ? <Loader size="xs" /> : <FaTrash size={14} />}
+                    </ActionIcon>
                   </Table.Td>
                 </Table.Tr>
               ))

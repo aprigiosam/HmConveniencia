@@ -83,6 +83,7 @@ export const getInventario = (id) => api.get(`/estoque/inventarios/${id}/`);
 export const deleteInventario = (id) => api.delete(`/estoque/inventarios/${id}/`);
 export const addInventarioItem = (id, data) => api.post(`/estoque/inventarios/${id}/adicionar-item/`, data);
 export const finalizeInventario = (id) => api.post(`/estoque/inventarios/${id}/finalizar/`);
+export const deleteInventarioItem = (itemId) => api.delete(`/estoque/inventarios/itens/${itemId}/`);
 
 // Vendas
 export const getVendas = (params = {}) => api.get('/vendas/', { params });
