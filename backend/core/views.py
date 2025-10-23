@@ -5,8 +5,9 @@ Views da API - HMConveniencia
 import logging
 from django.core.management import call_command
 from django.contrib.auth import authenticate
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny
@@ -83,6 +84,23 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
 
             instancia.finalizado_em = timezone.now()
             instancia.save(update_fields=["finalizado_em"])
+
+    def perform_destroy(self, instance):
+        """Permite deletar apenas sessões não finalizadas"""
+        if instance.status == "FINALIZADO":
+            raise serializers.ValidationError(
+                "Não é possível excluir uma sessão de inventário finalizada."
+            )
+
+        # Conta quantos itens serão excluídos junto com a sessão
+        total_itens = instance.itens.count()
+
+        logger.info(
+            f"Excluindo sessão de inventário {instance.titulo} "
+            f"(ID: {instance.id}) com {total_itens} itens"
+        )
+
+        instance.delete()
 
     def _obter_empresa(self) -> Empresa:
         empresa_id = (
@@ -175,6 +193,22 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+
+class InventarioItemViewSet(viewsets.ModelViewSet):
+    queryset = InventarioItem.objects.select_related("sessao", "produto")
+    serializer_class = InventarioItemSerializer
+    http_method_names = ["patch", "delete"]
+
+    def perform_update(self, serializer):
+        instancia = serializer.instance
+        if instancia.sessao.status == "FINALIZADO":
+            raise ValidationError("Itens de sessões finalizadas não podem ser editados.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.sessao.status == "FINALIZADO":
+            raise ValidationError("Itens de sessões finalizadas não podem ser removidos.")
+        instance.delete()
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     """ViewSet para Categorias de Produtos"""

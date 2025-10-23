@@ -352,7 +352,7 @@ class InventarioItemSerializer(serializers.ModelSerializer):
     sessao = serializers.PrimaryKeyRelatedField(
         queryset=InventarioSessao.objects.all(),
         write_only=True,
-        required=True,
+        required=False,
     )
     diferenca = serializers.DecimalField(
         max_digits=14, decimal_places=4, read_only=True

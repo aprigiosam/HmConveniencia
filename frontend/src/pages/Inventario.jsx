@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  ActionIcon,
   Badge,
   Button,
   Card,
@@ -14,11 +15,13 @@ import {
   TextInput,
   Textarea,
   Title,
+  Tooltip,
 } from '@mantine/core';
-import { FaClipboardList, FaPlus, FaSearch } from 'react-icons/fa';
+import { FaClipboardList, FaPlus, FaSearch, FaTrash } from 'react-icons/fa';
+import { modals } from '@mantine/modals';
 import dayjs from 'dayjs';
 import { notifications } from '@mantine/notifications';
-import { getInventarios, createInventario } from '../services/api';
+import { getInventarios, createInventario, deleteInventario } from '../services/api';
 
 function Inventario() {
   const [inventarios, setInventarios] = useState([]);
@@ -79,6 +82,50 @@ function Inventario() {
     } finally {
       setCriando(false);
     }
+  };
+
+  const handleDelete = (inventario) => {
+    if (inventario.status === 'FINALIZADO') {
+      notifications.show({
+        title: 'Não é possível excluir',
+        message: 'Sessões finalizadas não podem ser excluídas.',
+        color: 'orange',
+      });
+      return;
+    }
+
+    modals.openConfirmModal({
+      title: 'Excluir sessão de inventário',
+      children: (
+        <Text size="sm">
+          Tem certeza que deseja excluir a sessão <strong>{inventario.titulo}</strong>?
+          <br />
+          <br />
+          Esta ação não pode ser desfeita e todos os itens registrados serão perdidos.
+        </Text>
+      ),
+      labels: { confirm: 'Excluir', cancel: 'Cancelar' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await deleteInventario(inventario.id);
+          setInventarios((prev) => prev.filter((inv) => inv.id !== inventario.id));
+          notifications.show({
+            title: 'Sessão excluída',
+            message: 'A sessão de inventário foi removida com sucesso.',
+            color: 'green',
+          });
+        } catch (error) {
+          console.error('Erro ao excluir inventário:', error);
+          const detail = error.response?.data?.detail || error.response?.data?.non_field_errors?.[0] || 'Não foi possível excluir a sessão.';
+          notifications.show({
+            title: 'Erro',
+            message: detail,
+            color: 'red',
+          });
+        }
+      },
+    });
   };
 
   const inventariosFiltrados = inventarios.filter((inv) =>
@@ -166,12 +213,13 @@ function Inventario() {
               <Table.Th>Status</Table.Th>
               <Table.Th>Iniciado</Table.Th>
               <Table.Th>Finalizado</Table.Th>
+              <Table.Th ta="center">Ações</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {inventariosFiltrados.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={5}>
+                <Table.Td colSpan={6}>
                   <Text ta="center" c="dimmed">
                     Nenhuma sessão de inventário cadastrada ainda.
                   </Text>
@@ -179,12 +227,11 @@ function Inventario() {
               </Table.Tr>
             ) : (
               inventariosFiltrados.map((inv) => (
-                <Table.Tr
-                  key={inv.id}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/estoque/inventario/${inv.id}`)}
-                >
-                  <Table.Td>
+                <Table.Tr key={inv.id}>
+                  <Table.Td
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/estoque/inventario/${inv.id}`)}
+                  >
                     <Stack gap={2}>
                       <Group gap="xs" align="center">
                         <Text fw={600}>{inv.titulo}</Text>
@@ -197,14 +244,48 @@ function Inventario() {
                       )}
                     </Stack>
                   </Table.Td>
-                  <Table.Td>{inv.responsavel || '-'}</Table.Td>
-                  <Table.Td>
+                  <Table.Td
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/estoque/inventario/${inv.id}`)}
+                  >
+                    {inv.responsavel || '-'}
+                  </Table.Td>
+                  <Table.Td
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/estoque/inventario/${inv.id}`)}
+                  >
                     <Badge color={inv.status === 'FINALIZADO' ? 'green' : inv.status === 'EM_ANDAMENTO' ? 'blue' : 'orange'}>
                       {inv.status.replace('_', ' ')}
                     </Badge>
                   </Table.Td>
-                  <Table.Td>{inv.iniciado_em ? dayjs(inv.iniciado_em).format('DD/MM/YYYY HH:mm') : '-'}</Table.Td>
-                  <Table.Td>{inv.finalizado_em ? dayjs(inv.finalizado_em).format('DD/MM/YYYY HH:mm') : '-'}</Table.Td>
+                  <Table.Td
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/estoque/inventario/${inv.id}`)}
+                  >
+                    {inv.iniciado_em ? dayjs(inv.iniciado_em).format('DD/MM/YYYY HH:mm') : '-'}
+                  </Table.Td>
+                  <Table.Td
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/estoque/inventario/${inv.id}`)}
+                  >
+                    {inv.finalizado_em ? dayjs(inv.finalizado_em).format('DD/MM/YYYY HH:mm') : '-'}
+                  </Table.Td>
+                  <Table.Td ta="center">
+                    {inv.status !== 'FINALIZADO' && (
+                      <Tooltip label="Excluir sessão" position="left">
+                        <ActionIcon
+                          color="red"
+                          variant="light"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(inv);
+                          }}
+                        >
+                          <FaTrash size={14} />
+                        </ActionIcon>
+                      </Tooltip>
+                    )}
+                  </Table.Td>
                 </Table.Tr>
               ))
             )}
