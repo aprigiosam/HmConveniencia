@@ -86,21 +86,49 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
             instancia.save(update_fields=["finalizado_em"])
 
     def perform_destroy(self, instance):
-        """Permite deletar apenas sessões não finalizadas"""
-        if instance.status == "FINALIZADO":
-            raise serializers.ValidationError(
-                "Não é possível excluir uma sessão de inventário finalizada."
-            )
-
-        # Conta quantos itens serão excluídos junto com a sessão
+        """
+        Deleta uma sessão de inventário.
+        Se a sessão estiver finalizada, reverte os ajustes de estoque antes de deletar.
+        """
         total_itens = instance.itens.count()
 
-        logger.info(
-            f"Excluindo sessão de inventário {instance.titulo} "
-            f"(ID: {instance.id}) com {total_itens} itens"
-        )
+        with transaction.atomic():
+            if instance.status == "FINALIZADO":
+                logger.warning(
+                    f"Revertendo ajustes de estoque da sessão finalizada {instance.titulo} "
+                    f"(ID: {instance.id}) antes de excluir"
+                )
 
-        instance.delete()
+                # Reverte os ajustes de estoque
+                for item in instance.itens.select_related("produto"):
+                    if item.produto and item.diferenca != 0:
+                        # Reverte a diferença (faz o inverso do ajuste)
+                        diferenca_reversa = -item.diferenca
+                        produto = item.produto
+                        produto.estoque = (produto.estoque or Decimal("0")) + diferenca_reversa
+                        produto.save(update_fields=["estoque"])
+
+                        logger.info(
+                            f"Revertido ajuste de {item.diferenca} → {diferenca_reversa} "
+                            f"no produto {produto.nome} (ID: {produto.id})"
+                        )
+
+                # Deleta os movimentos de estoque relacionados a esta sessão
+                movimentos_deletados = EstoqueMovimento.objects.filter(
+                    observacao__contains=f"Ajuste inventário {instance.titulo}"
+                ).delete()
+
+                logger.info(
+                    f"Deletados {movimentos_deletados[0]} movimentos de estoque "
+                    f"relacionados à sessão {instance.titulo}"
+                )
+
+            logger.info(
+                f"Excluindo sessão de inventário {instance.titulo} "
+                f"(ID: {instance.id}, Status: {instance.status}) com {total_itens} itens"
+            )
+
+            instance.delete()
 
     def _obter_empresa(self) -> Empresa:
         empresa_id = (
