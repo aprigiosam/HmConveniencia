@@ -42,6 +42,7 @@ from .serializers import (
     LoteSerializer,
     OpenFoodFactsProductSerializer,
     InventarioSessaoSerializer,
+    InventarioItemSerializer,
 )
 from .services.alert_service import AlertService
 from .services import openfoodfacts
