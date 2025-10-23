@@ -88,11 +88,13 @@ if config("DATABASE_URL", default=""):
     import dj_database_url
 
     DATABASES = {"default": dj_database_url.config(default=config("DATABASE_URL"))}
-    # Otimizações para PostgreSQL em produção
-    DATABASES["default"]["CONN_MAX_AGE"] = 600  # Mantém conexão por 10 minutos
-    DATABASES["default"]["OPTIONS"] = {
-        "connect_timeout": 10,
-    }
+
+    # Otimizações apenas para PostgreSQL
+    if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
+        DATABASES["default"]["CONN_MAX_AGE"] = 600  # Mantém conexão por 10 minutos
+        DATABASES["default"]["OPTIONS"] = {
+            "connect_timeout": 10,
+        }
 else:
     # Development (SQLite)
     DATABASES = {
