@@ -189,7 +189,7 @@ class InventarioItemTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['produto'], str(self.produto.id))
+        self.assertEqual(response.data['produto'], self.produto.id)
         self.assertEqual(Decimal(response.data['quantidade_sistema']), Decimal("100"))
         self.assertEqual(Decimal(response.data['quantidade_contada']), Decimal("95"))
         self.assertEqual(Decimal(response.data['diferenca']), Decimal("-5"))
