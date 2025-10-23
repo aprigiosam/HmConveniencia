@@ -221,12 +221,6 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    def destroy(self, request, *args, **kwargs):
-        instancia = self.get_object()
-        if instancia.status == "FINALIZADO":
-            raise ValidationError("Não é possível excluir inventário finalizado.")
-        return super().destroy(request, *args, **kwargs)
-
     @action(
         detail=True,
         methods=["delete"],

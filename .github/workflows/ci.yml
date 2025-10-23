@@ -63,6 +63,15 @@ jobs:
         run: |
           python manage.py test core.tests.test_code_review_fixes.VendaCalcularTotalTestCase --verbosity=2
 
+      - name: Test inventario deletion with stock reversal
+        working-directory: backend
+        env:
+          DEBUG: 'False'
+          SECRET_KEY: 'test-secret-key-for-ci'
+          DATABASE_URL: 'sqlite:///db_test.sqlite3'
+        run: |
+          python manage.py test core.tests.test_inventario.InventarioSessaoDeleteTestCase --verbosity=2
+
   frontend:
     name: Frontend Tests & Build
     runs-on: ubuntu-latest
