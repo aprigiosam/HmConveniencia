@@ -33,7 +33,30 @@ jobs:
 
       - name: Run Django tests
         working-directory: backend
-        run: python manage.py test
+        env:
+          DEBUG: 'False'
+          SECRET_KEY: 'test-secret-key-for-ci'
+          DATABASE_URL: 'sqlite:///db_test.sqlite3'
+        run: |
+          python manage.py test --verbosity=2
+
+      - name: Run code review fixes tests
+        working-directory: backend
+        env:
+          DEBUG: 'False'
+          SECRET_KEY: 'test-secret-key-for-ci'
+          DATABASE_URL: 'sqlite:///db_test.sqlite3'
+        run: |
+          python manage.py test core.tests.test_code_review_fixes --verbosity=2
+
+      - name: Check for N+1 queries in critical endpoints
+        working-directory: backend
+        env:
+          DEBUG: 'False'
+          SECRET_KEY: 'test-secret-key-for-ci'
+          DATABASE_URL: 'sqlite:///db_test.sqlite3'
+        run: |
+          python manage.py test core.tests.test_code_review_fixes.VendaCalcularTotalTestCase --verbosity=2
 
   frontend:
     name: Frontend Build
@@ -47,10 +70,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install dependencies (with retry)
         working-directory: frontend
-        run: npm ci
+        run: |
+          npm ci --maxsockets 1 || npm ci --maxsockets 1 || npm ci --maxsockets 1
+        timeout-minutes: 10
 
       - name: Build frontend
         working-directory: frontend

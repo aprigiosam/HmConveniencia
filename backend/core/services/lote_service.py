@@ -224,3 +224,46 @@ class LoteService:
 
         # Produto sem validade e sem lotes = não usa lotes
         return False
+
+    @staticmethod
+    def devolver_estoque(produto, quantidade_devolver):
+        """
+        Devolve estoque ao produto, criando um novo lote genérico.
+        Usado principalmente em cancelamento de vendas.
+
+        Args:
+            produto: Instância do Produto
+            quantidade_devolver: Decimal - quantidade a ser devolvida
+
+        Returns:
+            Lote: Lote criado com a devolução
+
+        Raises:
+            ValueError: Se quantidade inválida
+        """
+        quantidade_devolver = Decimal(str(quantidade_devolver))
+
+        if quantidade_devolver <= 0:
+            raise ValueError("Quantidade de devolução deve ser maior que zero")
+
+        with transaction.atomic():
+            # Cria um lote genérico de devolução
+            lote = Lote.objects.create(
+                produto=produto,
+                numero_lote=f"DEV-{produto.id}",
+                quantidade=quantidade_devolver,
+                data_validade=produto.data_validade,  # Herda do produto se existir
+                observacoes="Devolução de cancelamento de venda",
+                ativo=True,
+            )
+
+            # Atualiza estoque do produto
+            produto.estoque += quantidade_devolver
+            produto.save(update_fields=["estoque", "updated_at"])
+
+            logger.info(
+                f"Estoque devolvido: Lote {lote.id} criado para produto {produto.nome} "
+                f"com {quantidade_devolver} unidades (devolução)"
+            )
+
+        return lote

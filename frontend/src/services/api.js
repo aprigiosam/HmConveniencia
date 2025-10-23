@@ -26,10 +26,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Previne loop infinito se /login retornar 401
+      const isLoginPage = window.location.pathname === '/login';
+
       // Token inválido ou expirado
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+
+      // Só redireciona se não estiver já na página de login
+      if (!isLoginPage) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

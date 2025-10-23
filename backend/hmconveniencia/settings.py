@@ -27,7 +27,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config(
     "SECRET_KEY", default="django-insecure-dev-key-change-in-production"
 )
-DEBUG = config("DEBUG", default=True, cast=bool)
+# IMPORTANTE: DEBUG deve ser False por padrão para segurança
+DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = _split_env_list(
     config("ALLOWED_HOSTS", default="localhost,127.0.0.1")
 )
@@ -87,11 +88,13 @@ if config("DATABASE_URL", default=""):
     import dj_database_url
 
     DATABASES = {"default": dj_database_url.config(default=config("DATABASE_URL"))}
-    # Otimizações para PostgreSQL em produção
-    DATABASES["default"]["CONN_MAX_AGE"] = 600  # Mantém conexão por 10 minutos
-    DATABASES["default"]["OPTIONS"] = {
-        "connect_timeout": 10,
-    }
+
+    # Otimizações apenas para PostgreSQL
+    if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
+        DATABASES["default"]["CONN_MAX_AGE"] = 600  # Mantém conexão por 10 minutos
+        DATABASES["default"]["OPTIONS"] = {
+            "connect_timeout": 10,
+        }
 else:
     # Development (SQLite)
     DATABASES = {

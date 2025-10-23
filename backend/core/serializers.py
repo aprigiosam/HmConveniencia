@@ -2,11 +2,14 @@
 Serializers para API - HMConveniencia
 """
 
+import logging
 from decimal import Decimal
 from django.db.models import Sum
 from django.db import transaction
 from rest_framework import serializers
 from fiscal.models import NotaFiscal
+
+logger = logging.getLogger(__name__)
 from .models import (
     Cliente,
     Fornecedor,
@@ -42,6 +45,10 @@ class ClienteSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_at", "saldo_devedor"]
 
     def get_saldo_devedor(self, obj):
+        # Otimizado: usa annotate se disponível (da view com_dividas)
+        if hasattr(obj, 'total_divida'):
+            return float(obj.total_divida or 0)
+        # Fallback para método do model
         return float(obj.saldo_devedor())
 
     def validate_cpf(self, value):
@@ -106,11 +113,21 @@ class FornecedorSerializer(serializers.ModelSerializer):
     def get_total_notas(self, obj):
         if hasattr(obj, "total_notas") and obj.total_notas is not None:
             return int(obj.total_notas)
+
+        logger.warning(
+            f"FornecedorSerializer: annotate 'total_notas' ausente para fornecedor {obj.id}. "
+            "Isso causa N+1 queries. Verifique get_queryset() da view."
+        )
         return NotaFiscal.objects.filter(fornecedor=obj).count()
 
     def get_valor_notas(self, obj):
         if hasattr(obj, "valor_notas") and obj.valor_notas is not None:
             return float(obj.valor_notas)
+
+        logger.warning(
+            f"FornecedorSerializer: annotate 'valor_notas' ausente para fornecedor {obj.id}. "
+            "Isso causa N+1 queries. Verifique get_queryset() da view."
+        )
         total = NotaFiscal.objects.filter(fornecedor=obj).aggregate(
             total=Sum("valor_total")
         )["total"]

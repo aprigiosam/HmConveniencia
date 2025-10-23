@@ -113,7 +113,7 @@ class Fornecedor(models.Model):
 class Categoria(models.Model):
     """Categorias de produtos"""
 
-    nome = models.CharField("Nome", max_length=100, unique=True)
+    nome = models.CharField("Nome", max_length=100)
     ativo = models.BooleanField("Ativo", default=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
@@ -129,6 +129,12 @@ class Categoria(models.Model):
         ordering = ["nome"]
         verbose_name = "Categoria"
         verbose_name_plural = "Categorias"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['nome', 'empresa'],
+                name='unique_categoria_por_empresa'
+            )
+        ]
 
     def __str__(self):
         return self.nome
@@ -353,12 +359,15 @@ class Venda(models.Model):
             from django.utils import timezone
 
             hoje = timezone.now()
-            self.numero = f'V{hoje.strftime("%Y%m%d%H%M%S")}'
+            # Formato: V2025012314-A3F2 (mais curto + previne colisões com UUID)
+            short_uuid = str(uuid.uuid4())[:4].upper()
+            self.numero = f'V{hoje.strftime("%Y%m%d%H")}-{short_uuid}'
         super().save(*args, **kwargs)
 
     def calcular_total(self):
         """Calcula o total da venda baseado nos itens"""
-        total = sum(item.subtotal for item in self.itens.all())
+        # Otimizado: usa aggregate para evitar N+1 queries
+        total = self.itens.aggregate(total=models.Sum('subtotal'))['total'] or Decimal('0.00')
         self.total = total - self.desconto
         self.save()
 
