@@ -1,13 +1,11 @@
 import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Center, Loader, ScrollArea } from '@mantine/core';
-import { useDisclosure, useMediaQuery } from '@mantine/hooks';
+import { useDisclosure } from '@mantine/hooks';
 import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBell, FaTruck, FaBuilding, FaClipboardList } from 'react-icons/fa';
 import { localDB } from './utils/db';
 import { syncManager } from './utils/syncManager';
 import { notificationManager } from './utils/notifications';
-import { useSwipeGesture, useEdgeSwipe } from './hooks/useSwipeGesture';
-import './components/PremiumNav.css';
 
 // Lazy loading das páginas para reduzir bundle inicial
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -30,7 +28,6 @@ const InventarioDetalhe = lazy(() => import('./pages/InventarioDetalhe'));
 const Login = lazy(() => import('./pages/Login'));
 const SyncStatus = lazy(() => import('./components/SyncStatus'));
 const OfflineIndicator = lazy(() => import('./components/OfflineIndicator'));
-const FloatingActionButton = lazy(() => import('./components/FloatingActionButton'));
 
 // Loading component para Suspense
 const PageLoader = () => (
@@ -45,8 +42,7 @@ function PrivateRoute({ children }) {
   return token ? children : <Navigate to="/login" replace />;
 }
 
-// Navegação com hierarquia (para desktop) e plana (para mobile)
-const navLinksHierarchical = [
+const navLinks = [
   { icon: <FaTachometerAlt />, label: 'Dashboard', path: '/' },
   {
     icon: <FaCashRegister />,
@@ -87,47 +83,10 @@ const navLinksHierarchical = [
   },
 ];
 
-// Lista plana para mobile
-const navLinksFlat = [
-  { icon: <FaTachometerAlt />, label: 'Dashboard', path: '/' },
-  { icon: <FaShoppingCart />, label: 'PDV', path: '/pdv' },
-  { icon: <FaCashRegister />, label: 'Caixa', path: '/caixa' },
-  { icon: <FaBoxOpen />, label: 'Estoque', path: '/estoque' },
-  { icon: <FaClipboardList />, label: 'Inventário', path: '/estoque/inventario' },
-  { icon: <FaTruck />, label: 'Entrada de Estoque', path: '/estoque/entrada' },
-  { icon: <FaBuilding />, label: 'Fornecedores', path: '/fornecedores' },
-  { icon: <FaUsers />, label: 'Clientes', path: '/clientes' },
-  { icon: <FaFileInvoiceDollar />, label: 'Contas a Receber', path: '/contas-receber' },
-  { icon: <FaHistory />, label: 'Histórico de Caixas', path: '/caixa/historico' },
-  { icon: <FaListAlt />, label: 'Histórico de Vendas', path: '/vendas/historico' },
-  { icon: <FaSyncAlt />, label: 'Giro de Estoque', path: '/estoque/giro' },
-  { icon: <FaChartBar />, label: 'Relatório de Lucro', path: '/relatorios/lucro' },
-  { icon: <FaBuilding />, label: 'Relatório de Fornecedores', path: '/relatorios/fornecedores' },
-];
-
 function AppContent() {
   const token = localStorage.getItem('token');
-  const [opened, { toggle, close, open }] = useDisclosure(false);
+  const [opened, { toggle }] = useDisclosure(false);
   const location = useLocation();
-  const isMobile = useMediaQuery('(max-width: 768px)');
-
-  // Suporte a gestos de swipe
-  useSwipeGesture({
-    onSwipeLeft: () => {
-      if (isMobile && opened) {
-        close();
-      }
-    },
-  });
-
-  useEdgeSwipe({
-    onSwipeFromLeft: () => {
-      if (isMobile && !opened) {
-        open();
-      }
-    },
-    edgeWidth: 30,
-  });
 
   useEffect(() => {
     localDB.init();
@@ -145,13 +104,6 @@ function AppContent() {
       }
     }
   }, []);
-
-  // Fecha o menu ao navegar no mobile
-  useEffect(() => {
-    if (isMobile && opened) {
-      close();
-    }
-  }, [location.pathname]);
 
   if (!token) {
     return (
@@ -171,25 +123,15 @@ function AppContent() {
   };
 
   return (
-    <>
-      {/* Overlay escuro para mobile quando menu está aberto */}
-      {isMobile && opened && (
-        <div
-          className="mobile-nav-overlay visible"
-          onClick={close}
-          style={{ zIndex: 199 }}
-        />
-      )}
-
-      <AppShell
-        header={{ height: 60 }}
-        navbar={{
-          width: 280,
-          breakpoint: 'sm',
-          collapsed: { mobile: !opened },
-        }}
-        padding={{ base: 'xs', sm: 'md' }}
-      >
+    <AppShell
+      header={{ height: 60 }}
+      navbar={{
+        width: 280,
+        breakpoint: 'sm',
+        collapsed: { mobile: !opened },
+      }}
+      padding={{ base: 'xs', sm: 'md' }}
+    >
       <AppShell.Header>
         <Group h="100%" px={{ base: 'xs', sm: 'md' }} justify="space-between">
           <Group gap="xs">
@@ -209,21 +151,20 @@ function AppContent() {
       </AppShell.Header>
 
       <AppShell.Navbar p={{ base: 'xs', sm: 'md' }}>
-        <ScrollArea type="auto" style={{ height: '100%' }}>
-          {(isMobile ? navLinksFlat : navLinksHierarchical).map((link) => {
+        <ScrollArea type="always" style={{ height: '100%' }}>
+          {navLinks.map((link) => {
             const hasChildren = Array.isArray(link.children) && link.children.length > 0;
-
             if (!hasChildren) {
               return (
                 <NavLink
-                  key={link.path}
+                  key={link.label}
                   label={link.label}
                   leftSection={link.icon}
                   component={Link}
                   to={link.path}
                   active={location.pathname === link.path}
-                  onClick={() => isMobile && close()}
-                  className={isMobile ? "nav-item-ripple" : ""}
+                  onClick={() => opened && toggle()}
+                  style={{ borderRadius: '6px', marginBottom: '4px' }}
                 />
               );
             }
@@ -236,6 +177,7 @@ function AppContent() {
                 leftSection={link.icon}
                 active={childActive}
                 defaultOpened={childActive}
+                style={{ borderRadius: '6px', marginBottom: '4px' }}
               >
                 {link.children.map((child) => (
                   <NavLink
@@ -245,7 +187,8 @@ function AppContent() {
                     component={Link}
                     to={child.path}
                     active={location.pathname === child.path}
-                    onClick={() => isMobile && close()}
+                    onClick={() => opened && toggle()}
+                    style={{ borderRadius: '6px', marginBottom: '4px' }}
                   />
                 ))}
               </NavLink>
@@ -258,7 +201,6 @@ function AppContent() {
         <Suspense fallback={<Center style={{ padding: '2rem' }}><Loader /></Center>}>
           <SyncStatus />
           <OfflineIndicator />
-          <FloatingActionButton />
           <Routes>
             <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
             <Route path="/alertas" element={<PrivateRoute><Alertas /></PrivateRoute>} />
@@ -282,7 +224,6 @@ function AppContent() {
         </Suspense>
       </AppShell.Main>
     </AppShell>
-    </>
   );
 }
 
