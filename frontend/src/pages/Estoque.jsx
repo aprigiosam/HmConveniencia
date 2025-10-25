@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias, searchOpenFoodProducts, createCategoria, getFornecedores, excluirTodosProdutos } from '../services/api';
 import { localDB } from '../utils/db';
@@ -35,7 +35,6 @@ function Estoque() {
   const [categorias, setCategorias] = useState([]);
   const [fornecedores, setFornecedores] = useState([]);
   const [busca, setBusca] = useState('');
-  const [loading, setLoading] = useState(true);
   const [opened, { open, close }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [excluirTodosModalOpened, { open: openExcluirTodosModal, close: closeExcluirTodosModal }] = useDisclosure(false);
@@ -44,19 +43,22 @@ function Estoque() {
   const [scannerAberto, setScannerAberto] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [deletingProduct, setDeletingProduct] = useState(null);
-  const initialFormData = {
-    nome: '',
-    marca: '',
-    preco: '',
-    preco_custo: '',
-    estoque: '',
-    categoria: '',
-    fornecedor: '',
-    codigo_barras: '',
-    conteudo_valor: '',
-    conteudo_unidade: '',
-    data_validade: null,
-  };
+  const initialFormData = useMemo(
+    () => ({
+      nome: '',
+      marca: '',
+      preco: '',
+      preco_custo: '',
+      estoque: '',
+      categoria: '',
+      fornecedor: '',
+      codigo_barras: '',
+      conteudo_valor: '',
+      conteudo_unidade: '',
+      data_validade: null,
+    }),
+    []
+  );
   const [formData, setFormData] = useState(initialFormData);
   const [openFoodQuery, setOpenFoodQuery] = useState('');
   const [openFoodResults, setOpenFoodResults] = useState([]);
@@ -84,7 +86,6 @@ function Estoque() {
     const cachedProdutos = await localDB.getCachedProdutos();
     if (cachedProdutos.length > 0) {
       setProdutos(cachedProdutos);
-      setLoading(false);
     }
 
     try {
@@ -103,10 +104,51 @@ function Estoque() {
       await localDB.cacheProdutos(produtosData);
     } catch (error) {
       console.error('Servidor offline, usando cache local');
-    } finally {
-      setLoading(false);
     }
   };
+
+  const resetForm = useCallback(() => {
+    setFormData({ ...initialFormData });
+    setEditingProduct(null);
+    setOpenFoodQuery('');
+    setOpenFoodResults([]);
+    setOpenFoodSelected(null);
+    setCategoriaSugestao('');
+    setNovaCategoriaNome('');
+    setCriandoCategoria(false);
+  }, [initialFormData]);
+
+  const handleOpenModal = useCallback(
+    (produto = null) => {
+      setOpenFoodQuery('');
+      setOpenFoodResults([]);
+      setOpenFoodSelected(null);
+      setCategoriaSugestao('');
+      setNovaCategoriaNome('');
+      setCriandoCategoria(false);
+
+      if (produto) {
+        setEditingProduct(produto);
+        setFormData({
+          nome: produto.nome,
+          marca: produto.marca || '',
+          preco: produto.preco,
+          preco_custo: produto.preco_custo || '',
+          estoque: produto.estoque,
+          categoria: produto.categoria?.toString() || '',
+          fornecedor: produto.fornecedor ? produto.fornecedor.toString() : '',
+          codigo_barras: produto.codigo_barras || '',
+          conteudo_valor: produto.conteudo_valor ?? '',
+          conteudo_unidade: produto.conteudo_unidade || '',
+          data_validade: produto.data_validade ? new Date(produto.data_validade) : null,
+        });
+      } else {
+        resetForm();
+      }
+      open();
+    },
+    [open, resetForm]
+  );
 
   useEffect(() => {
     if (pendingEditId && produtos.length > 0) {
@@ -116,47 +158,7 @@ function Estoque() {
         setPendingEditId(null);
       }
     }
-  }, [pendingEditId, produtos]);
-
-  const resetForm = () => {
-    setFormData({ ...initialFormData });
-    setEditingProduct(null);
-    setOpenFoodQuery('');
-    setOpenFoodResults([]);
-    setOpenFoodSelected(null);
-    setCategoriaSugestao('');
-    setNovaCategoriaNome('');
-    setCriandoCategoria(false);
-  };
-
-  const handleOpenModal = (produto = null) => {
-    setOpenFoodQuery('');
-    setOpenFoodResults([]);
-    setOpenFoodSelected(null);
-    setCategoriaSugestao('');
-    setNovaCategoriaNome('');
-    setCriandoCategoria(false);
-
-    if (produto) {
-      setEditingProduct(produto);
-      setFormData({
-        nome: produto.nome,
-        marca: produto.marca || '',
-        preco: produto.preco,
-        preco_custo: produto.preco_custo || '',
-        estoque: produto.estoque,
-        categoria: produto.categoria?.toString() || '',
-        fornecedor: produto.fornecedor ? produto.fornecedor.toString() : '',
-        codigo_barras: produto.codigo_barras || '',
-        conteudo_valor: produto.conteudo_valor ?? '',
-        conteudo_unidade: produto.conteudo_unidade || '',
-        data_validade: produto.data_validade ? new Date(produto.data_validade) : null,
-      });
-    } else {
-      resetForm();
-    }
-    open();
-  };
+  }, [pendingEditId, produtos, handleOpenModal]);
 
   const handleCloseModal = () => {
     close();

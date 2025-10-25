@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -58,14 +58,37 @@ const Alertas = () => {
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null);
   const alertasNotificadosRef = useRef(new Set());
 
-  useEffect(() => {
-    carregarAlertas();
-    // Auto-refresh a cada 2 minutos
-    const interval = setInterval(carregarAlertas, 120000);
-    return () => clearInterval(interval);
+  const notificarAlertas = useCallback((dados) => {
+    const enviados = alertasNotificadosRef.current;
+    if (!dados || !notificationManager.isSupported()) return;
+
+    ['CRITICA', 'ALTA'].forEach((prioridade) => {
+      const lista = dados[prioridade] || [];
+      lista.forEach(async (alerta) => {
+        if (alerta.resolvido || alerta.lido) {
+          enviados.add(alerta.id);
+          return;
+        }
+        if (enviados.has(alerta.id)) {
+          return;
+        }
+        enviados.add(alerta.id);
+        await notificationManager.send(alerta.titulo, {
+          body: alerta.mensagem,
+          tag: `alert-${alerta.id}`,
+          requireInteraction: prioridade === 'CRITICA',
+          data: {
+            type: 'alerta',
+            alerta_id: alerta.id,
+            url: '/alertas',
+          },
+          actions: [{ action: 'view', title: 'Abrir Alertas' }],
+        });
+      });
+    });
   }, []);
 
-  const carregarAlertas = async () => {
+  const carregarAlertas = useCallback(async () => {
     try {
       setLoading(true);
       const [resumoRes, alertasRes] = await Promise.all([
@@ -97,7 +120,13 @@ const Alertas = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [notificarAlertas]);
+
+  useEffect(() => {
+    carregarAlertas();
+    const interval = setInterval(carregarAlertas, 120000);
+    return () => clearInterval(interval);
+  }, [carregarAlertas]);
 
   const handleVerificar = async () => {
     try {
@@ -121,35 +150,6 @@ const Alertas = () => {
     }
   };
 
-  const notificarAlertas = (dados) => {
-    const enviados = alertasNotificadosRef.current;
-    if (!dados || !notificationManager.isSupported()) return;
-
-    ['CRITICA', 'ALTA'].forEach((prioridade) => {
-      const lista = dados[prioridade] || [];
-      lista.forEach(async (alerta) => {
-        if (alerta.resolvido || alerta.lido) {
-          enviados.add(alerta.id);
-          return;
-        }
-        if (enviados.has(alerta.id)) {
-          return;
-        }
-        enviados.add(alerta.id);
-        await notificationManager.send(alerta.titulo, {
-          body: alerta.mensagem,
-          tag: `alert-${alerta.id}`,
-          requireInteraction: prioridade === 'CRITICA',
-          data: {
-            type: 'alerta',
-            alerta_id: alerta.id,
-            url: '/alertas',
-          },
-          actions: [{ action: 'view', title: 'Abrir Alertas' }],
-        });
-      });
-    });
-  };
 
   const handleMarcarLido = async (id) => {
     try {

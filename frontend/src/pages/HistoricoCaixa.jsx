@@ -23,7 +23,6 @@ import './HistoricoCaixa.css';
 
 function HistoricoCaixa() {
   const [historico, setHistorico] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [detailModalOpened, setDetailModalOpened] = useState(false);
   const [selectedCaixa, setSelectedCaixa] = useState(null);
@@ -33,7 +32,6 @@ function HistoricoCaixa() {
   }, []);
 
   const loadHistorico = async () => {
-    setLoading(true);
     try {
       const response = await getHistoricoCaixa();
       setHistorico(response.data);
@@ -44,8 +42,6 @@ function HistoricoCaixa() {
         message: 'Não foi possível carregar o histórico de caixas',
         color: 'red',
       });
-    } finally {
-      setLoading(false);
     }
   };
 

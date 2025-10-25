@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProdutos, createVenda, getClientes, getCaixaStatus } from '../services/api';
 import { localDB } from '../utils/db';
 import { syncManager } from '../utils/syncManager';
-import { AppShell, Grid, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal, ScrollArea, Divider, Badge, Alert, Loader } from '@mantine/core';
+import { AppShell, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal, ScrollArea, Divider, Badge, Alert, Loader, Grid } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useHotkeys, useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -60,12 +60,6 @@ function PDV() {
     };
   }, []);
 
-  useEffect(() => {
-    if (caixaAberto) {
-      loadInitialData();
-    }
-  }, [caixaAberto]);
-
   const verificarCaixa = async () => {
     try {
       const response = await getCaixaStatus();
@@ -81,7 +75,7 @@ function PDV() {
     }
   };
 
-  const loadInitialData = async () => {
+  const loadInitialData = useCallback(async () => {
     if (!caixaAberto) return;
     // CACHE-FIRST: Carrega do cache imediatamente (PDV precisa ser rápido!)
     const [cachedProdutos, cachedClientes] = await Promise.all([
@@ -106,7 +100,17 @@ function PDV() {
       // Mantém dados do cache se servidor falhar
       console.warn('Servidor offline, usando cache local');
     }
-  };
+  }, [caixaAberto]);
+
+  useEffect(() => {
+    if (caixaAberto) {
+      loadInitialData();
+    }
+  }, [caixaAberto, loadInitialData]);
+
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
 
   const produtosFiltrados = produtos.filter(p =>
     p.nome.toLowerCase().includes(busca.toLowerCase()) || p.codigo_barras?.includes(busca)
@@ -400,15 +404,19 @@ function PDV() {
         withBorder
         shadow="xl"
         radius="lg"
-        padding="lg"
+        padding="xl"
         className="glass-card elevated-card cart-card"
       >
-        <Stack gap="md">
-          <Group justify="space-between" align="flex-start">
+        <Stack gap="md" className="card-stack">
+          <Group justify="space-between" align="flex-start" gap="lg" wrap="wrap" className="card-header">
             <div>
-              <Title order={4} className="section-title">Carrinho</Title>
+              <Title order={4} className="section-title">
+                Carrinho
+              </Title>
               <Text size="sm" c="dimmed" className="section-subtitle">
-                {totalItens === 0 ? 'Nenhum item selecionado' : `${totalItens} ${totalItens === 1 ? 'item' : 'itens'} no carrinho`}
+                {totalItens === 0
+                  ? 'Nenhum item selecionado'
+                  : `${totalItens} ${totalItens === 1 ? 'item' : 'itens'} no carrinho`}
               </Text>
             </div>
             {carrinho.length > 0 && (
@@ -424,9 +432,9 @@ function PDV() {
             )}
           </Group>
 
-          <ScrollArea h={isMobile ? 240 : 360} offsetScrollbars>
+          <ScrollArea h={isMobile ? 280 : 400} offsetScrollbars>
             {carrinho.length > 0 ? (
-              <Stack gap="sm">
+              <Stack gap="md" className="cart-list">
                 {carrinho.map((item) => (
                   <Paper
                     withBorder
@@ -435,50 +443,60 @@ function PDV() {
                     key={item.produto.id}
                     className="glass-card cart-item"
                   >
-                    <Group justify="space-between" align="flex-start" wrap="nowrap">
-                      <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-                        <Text size="sm" fw={600} truncate className="item-title">
-                          {item.produto.nome}
-                        </Text>
-                        <Group gap="xs">
-                          <Badge color="gray" variant="light" size="sm" className="badge-soft">
-                            R$ {parseFloat(item.produto.preco).toFixed(2)} un
-                          </Badge>
-                          <Badge color="blue" variant="light" size="sm" className="badge-soft">
-                            Estoque: {parseFloat(item.produto.estoque).toFixed(0)}
-                          </Badge>
+                    <Group
+                      justify="space-between"
+                      align="flex-start"
+                      gap="md"
+                      wrap="wrap"
+                      className="cart-item-row"
+                    >
+                      <Stack gap={6} style={{ flex: 1, minWidth: 0 }} className="cart-item-info">
+                        <Group justify="space-between" align="flex-start" wrap="nowrap">
+                          <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                            <Text size="sm" fw={600} truncate className="item-title">
+                              {item.produto.nome}
+                            </Text>
+                            <Group gap="xs">
+                              <Badge color="gray" variant="light" size="sm" className="badge-soft">
+                                R$ {parseFloat(item.produto.preco).toFixed(2)} un
+                              </Badge>
+                              <Badge color="blue" variant="light" size="sm" className="badge-soft">
+                                Estoque: {parseFloat(item.produto.estoque).toFixed(0)}
+                              </Badge>
+                            </Group>
+                          </Stack>
+                          <Group gap="sm" wrap="wrap" align="center" className="cart-actions">
+                            <NumberInput
+                              value={item.quantidade}
+                              onChange={(val) =>
+                                alterarQuantidade(
+                                  item.produto.id,
+                                  val === '' || val === null ? 0 : Number(val)
+                                )
+                              }
+                              w={80}
+                              min={0}
+                              size="sm"
+                              thousandSeparator="."
+                              decimalSeparator="," 
+                            />
+                            <Text fw={600} size="sm">
+                              R$ {(
+                                parseFloat(item.produto.preco) * item.quantidade
+                              ).toFixed(2)}
+                            </Text>
+                            <ActionIcon
+                              color="red"
+                              variant="subtle"
+                              size="lg"
+                              onClick={() => removerDoCarrinho(item.produto.id)}
+                              className="icon-action remove-action"
+                            >
+                              <FaTrash size={16} />
+                            </ActionIcon>
+                          </Group>
                         </Group>
                       </Stack>
-                      <Group gap="xs" wrap="nowrap" align="center">
-                        <NumberInput
-                          value={item.quantidade}
-                          onChange={(val) =>
-                            alterarQuantidade(
-                              item.produto.id,
-                              val === '' || val === null ? 0 : Number(val)
-                            )
-                          }
-                          w={80}
-                          min={0}
-                          size="sm"
-                          thousandSeparator="."
-                          decimalSeparator=","
-                        />
-                        <Text fw={600} size="sm">
-                          R$ {(
-                            parseFloat(item.produto.preco) * item.quantidade
-                          ).toFixed(2)}
-                        </Text>
-                        <ActionIcon
-                          color="red"
-                          variant="subtle"
-                          size="lg"
-                          onClick={() => removerDoCarrinho(item.produto.id)}
-                          className="icon-action"
-                        >
-                          <FaTrash size={16} />
-                        </ActionIcon>
-                      </Group>
                     </Group>
                   </Paper>
                 ))}
@@ -534,7 +552,7 @@ function PDV() {
                     size="md"
                     leftSection="R$"
                     thousandSeparator="."
-                    decimalSeparator=","
+                    decimalSeparator="," 
                     required
                   />
                   {troco > 0 && (
@@ -658,11 +676,11 @@ function PDV() {
       withBorder
       shadow="xl"
       radius="lg"
-      padding="lg"
+      padding="xl"
       className="glass-card elevated-card products-card"
     >
-      <Stack gap="md">
-        <Group justify="space-between" align="center">
+      <Stack gap="md" className="card-stack">
+        <Group justify="space-between" align="center" className="card-header" gap="lg" wrap="wrap">
           <div>
             <Title order={4} className="section-title">
               Produtos
@@ -676,7 +694,7 @@ function PDV() {
           </Badge>
         </Group>
 
-        <Group gap="xs" align="flex-end">
+        <Group gap="sm" align="flex-end" wrap="wrap" className="search-toolbar">
           <TextInput
             ref={buscaRef}
             placeholder="Buscar produto (F2)"
@@ -700,9 +718,9 @@ function PDV() {
           </ActionIcon>
         </Group>
 
-        <ScrollArea h={isMobile ? 300 : 520} offsetScrollbars>
+        <ScrollArea h={isMobile ? 340 : 560} offsetScrollbars>
           {produtosFiltrados.length > 0 ? (
-            <Stack gap="sm">
+            <Stack gap="md" className="products-list">
               {produtosFiltrados.slice(0, 20).map((produto) => (
                 <Paper
                   shadow="xl"
@@ -717,25 +735,44 @@ function PDV() {
                     ultimoProdutoAdicionado === produto.id ? 'produto-card--added' : ''
                   }`}
                 >
-                  <Group justify="space-between" align="center">
-                    <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-                      <Text size="sm" fw={600} truncate className="item-title">
-                        {produto.nome}
-                      </Text>
-                      <Group gap="xs">
-                        <Badge color="green" variant="light" size="sm" className="badge-soft">
-                          R$ {parseFloat(produto.preco).toFixed(2)}
-                        </Badge>
-                        {produto.estoque !== undefined && (
-                          <Badge color="blue" variant="light" size="sm" className="badge-soft">
-                            Estoque: {parseFloat(produto.estoque).toFixed(0)}
-                          </Badge>
-                        )}
+                  <Group
+                    justify="space-between"
+                    align="flex-start"
+                    gap="md"
+                    wrap="wrap"
+                    className="produto-card-row"
+                  >
+                    <Stack gap={6} style={{ flex: 1, minWidth: 0 }} className="produto-card-info">
+                      <Group justify="space-between" align="center">
+                        <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                          <Text size="sm" fw={600} truncate className="item-title">
+                            {produto.nome}
+                          </Text>
+                          <Group gap="xs">
+                            <Badge color="green" variant="light" size="sm" className="badge-soft">
+                              R$ {parseFloat(produto.preco).toFixed(2)}
+                            </Badge>
+                            {produto.estoque !== undefined && (
+                              <Badge color="blue" variant="light" size="sm" className="badge-soft">
+                                Estoque: {parseFloat(produto.estoque).toFixed(0)}
+                              </Badge>
+                            )}
+                          </Group>
+                        </Stack>
+                        <Button
+                          variant="gradient"
+                          size="sm"
+                          className="ghost-button add-button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            adicionarAoCarrinho(produto);
+                            if (isMobile) setSearchModalOpen(false);
+                          }}
+                        >
+                          Adicionar
+                        </Button>
                       </Group>
                     </Stack>
-                    <Button variant="gradient" size="sm" className="ghost-button">
-                      Adicionar
-                    </Button>
                   </Group>
                 </Paper>
               ))}
@@ -838,7 +875,7 @@ function PDV() {
         <div className="pdv-immersive-bg">
           <div className="pdv-content">
             {isMobile ? (
-              <Stack gap="md">
+              <Stack gap="lg" className="pdv-mobile-stack">
                 <Button
                   leftSection={<FaSearch size={18} />}
                   variant="gradient"
@@ -850,10 +887,16 @@ function PDV() {
                 {renderCart()}
               </Stack>
             ) : (
-              <Grid columns={12} gutter="xl">
-                <Grid.Col span={{ base: 12, lg: 7 }}>{renderProductSearch()}</Grid.Col>
-                <Grid.Col span={{ base: 12, lg: 5 }}>{renderCart()}</Grid.Col>
-              </Grid>
+              <>
+                <div className="pdv-grid">
+                  <div className="pdv-grid-col pdv-grid-col--products">{renderProductSearch()}</div>
+                  <div className="pdv-grid-col pdv-grid-col--cart">{renderCart()}</div>
+                </div>
+                <Grid columns={12} gutter="xl">
+                  <Grid.Col span={{ base: 12, lg: 7 }}>{renderProductSearch()}</Grid.Col>
+                  <Grid.Col span={{ base: 12, lg: 5 }}>{renderCart()}</Grid.Col>
+                </Grid>
+              </>
             )}
           </div>
         </div>
