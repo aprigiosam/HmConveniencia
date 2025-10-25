@@ -310,3 +310,61 @@ class InventarioItemTestCase(TestCase):
 
         # Diferença = 90 - 100 = -10
         self.assertEqual(item.diferenca, Decimal("-10"))
+
+    def test_finalizar_inventario_cria_produto_para_item_sem_cadastro(self):
+        """Itens sem produto devem gerar produto automático ao finalizar."""
+        item = InventarioItem.objects.create(
+            sessao=self.sessao,
+            descricao="Produto Novo Inventário",
+            codigo_barras="1231231231231",
+            quantidade_sistema=Decimal("0"),
+            quantidade_contada=Decimal("8"),
+            custo_informado=Decimal("4.50"),
+        )
+
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/finalizar/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        item.refresh_from_db()
+        self.assertIsNotNone(item.produto)
+        self.assertEqual(item.produto.nome, "Produto Novo Inventário")
+        self.assertEqual(item.produto.codigo_barras, "1231231231231")
+        self.assertEqual(item.produto.estoque, Decimal("8"))
+
+        from fiscal.models import EstoqueMovimento, EstoqueOrigem
+
+        movimento = EstoqueMovimento.objects.filter(
+            produto=item.produto,
+            origem=EstoqueOrigem.AJUSTE,
+        ).first()
+
+        self.assertIsNotNone(movimento)
+        self.assertEqual(movimento.quantidade, Decimal("8"))
+
+        self.sessao.refresh_from_db()
+        self.assertEqual(self.sessao.status, "FINALIZADO")
+
+    def test_finalizar_inventario_associa_produto_existente_por_codigo(self):
+        """Itens sem vínculo, mas com código conhecido, usam produto existente."""
+        item = InventarioItem.objects.create(
+            sessao=self.sessao,
+            codigo_barras=self.produto.codigo_barras,
+            descricao="Outro nome qualquer",
+            quantidade_sistema=Decimal("100"),
+            quantidade_contada=Decimal("120"),
+        )
+
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/finalizar/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        item.refresh_from_db()
+        self.assertEqual(item.produto_id, self.produto.id)
+
+        self.produto.refresh_from_db()
+        self.assertEqual(self.produto.estoque, Decimal("120"))

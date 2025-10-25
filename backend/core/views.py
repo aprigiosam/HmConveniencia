@@ -144,6 +144,65 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
             raise Empresa.DoesNotExist("Nenhuma empresa configurada.")
         return empresa
 
+    def _obter_ou_criar_produto_para_item(
+        self,
+        item: "InventarioItem",
+        empresa: Empresa,
+    ) -> Produto | None:
+        """Resolve o produto de um item (cria se necessário).
+
+        Preferimos identificar produtos existentes pelo código de barras
+        ou nome para evitar duplicidades. Caso não exista, criamos um
+        produto básico usando os dados informados no inventário para que
+        o ajuste de estoque possa ser aplicado.
+        """
+
+        if item.produto:
+            return item.produto
+
+        codigo = (item.codigo_barras or "").strip()
+        descricao = (item.descricao or "").strip()
+
+        queryset = Produto.objects.filter(empresa=empresa)
+
+        if codigo:
+            produto = queryset.filter(codigo_barras=codigo).first()
+            if produto:
+                return produto
+
+        if descricao:
+            produto = queryset.filter(nome__iexact=descricao).first()
+            if produto:
+                return produto
+
+        if not descricao:
+            if codigo:
+                descricao = codigo
+            else:
+                descricao = f"Item inventário {item.id}"
+
+        preco_base = item.custo_informado or Decimal("0.00")
+        if preco_base <= 0:
+            preco_base = Decimal("0.01")
+
+        produto = Produto.objects.create(
+            empresa=empresa,
+            nome=descricao[:200],
+            codigo_barras=codigo,
+            preco=preco_base,
+            preco_custo=item.custo_informado or Decimal("0.00"),
+            estoque=Decimal("0"),
+        )
+
+        logger.info(
+            "Produto '%s' criado automaticamente a partir do item %s do inventário %s",
+            produto.nome,
+            item.id,
+            item.sessao_id,
+        )
+
+        return produto
+
     @action(detail=True, methods=["post"], url_path="adicionar-item")
     def adicionar_item(self, request, *args, **kwargs):
         """
@@ -244,6 +303,16 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
 
             # Aplica ajustes de estoque
             for item in sessao.itens.select_related("produto"):
+                if not item.produto:
+                    produto_resolvido = self._obter_ou_criar_produto_para_item(item, sessao.empresa)
+                    if produto_resolvido:
+                        item.produto = produto_resolvido
+                        update_fields = ["produto"]
+                        if item.quantidade_sistema is None:
+                            item.quantidade_sistema = Decimal("0")
+                            update_fields.append("quantidade_sistema")
+                        item.save(update_fields=update_fields)
+
                 if not item.produto:
                     logger.warning(
                         f"Item {item.id} sem produto vinculado. Pulando ajuste."
