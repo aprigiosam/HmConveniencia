@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { getClientes, createCliente, updateCliente, deleteCliente } from '../services/api';
 import { localDB } from '../utils/db';
-import { Table, Button, Modal, TextInput, NumberInput, Group, Title, ActionIcon, Stack, Text, ScrollArea, Card, Loader, Center, Alert } from '@mantine/core';
+import { Table, Button, Modal, TextInput, NumberInput, Group, Title, ActionIcon, Stack, Text, ScrollArea, Card, Loader, Center, Alert, Pagination } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { FaEdit, FaTrash, FaUserPlus, FaExclamationTriangle, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaUserPlus, FaExclamationTriangle, FaCheck, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import './Clientes.css'; // Importa o CSS
 
 function Clientes() {
@@ -12,6 +12,9 @@ function Clientes() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [opened, { open, close }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [editingCliente, setEditingCliente] = useState(null);
@@ -19,29 +22,53 @@ function Clientes() {
   const [formData, setFormData] = useState({ nome: '', telefone: '', limite_credito: 0 });
 
   useEffect(() => {
-    loadClientes();
-  }, []);
+    loadClientes(page);
+  }, [page]);
 
-  const loadClientes = async () => {
+  const loadClientes = async (pageNum = 1) => {
     setLoading(true);
     setError(null);
 
-    // Carrega cache primeiro para resposta rápida
-    const cachedClientes = await localDB.getCachedClientes();
-    if (cachedClientes.length > 0) {
-      setClientes(cachedClientes);
-      setLoading(false);
+    // Carrega cache primeiro para resposta rápida (somente primeira página)
+    if (pageNum === 1) {
+      const cachedClientes = await localDB.getCachedClientes();
+      if (cachedClientes.length > 0) {
+        setClientes(cachedClientes);
+        setLoading(false);
+      }
     }
 
     try {
-      const response = await getClientes();
-      const clientesData = response.data.results || response.data;
-      setClientes(clientesData);
-      await localDB.cacheClientes(clientesData);
+      const response = await getClientes({ page: pageNum });
+
+      // Verifica se é resposta paginada
+      if (response.data.results) {
+        // Resposta paginada (DRF)
+        setClientes(response.data.results);
+        setTotalCount(response.data.count);
+
+        // Calcula total de páginas (assumindo 50 itens por página - padrão DRF)
+        const pageSize = 50;
+        setTotalPages(Math.ceil(response.data.count / pageSize));
+
+        // Cacheia apenas primeira página
+        if (pageNum === 1) {
+          await localDB.cacheClientes(response.data.results);
+        }
+      } else {
+        // Resposta não paginada (fallback)
+        setClientes(response.data);
+        setTotalCount(response.data.length);
+        setTotalPages(1);
+
+        if (pageNum === 1) {
+          await localDB.cacheClientes(response.data);
+        }
+      }
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
 
-      if (cachedClientes.length === 0) {
+      if (clientes.length === 0) {
         // Sem cache, mostra erro
         setError('Não foi possível carregar os clientes. Verifique sua conexão.');
         notifications.show({
@@ -134,7 +161,7 @@ function Clientes() {
         });
       }
       handleCloseModal();
-      loadClientes();
+      setPage(1); // Volta para primeira página após criar/editar
     } catch (error) {
       console.error('Erro ao salvar cliente:', error);
 
@@ -177,7 +204,7 @@ function Clientes() {
 
       closeDeleteModal();
       setDeletingCliente(null);
-      loadClientes();
+      setPage(1); // Volta para primeira página após deletar
     } catch (error) {
       console.error('Erro ao excluir cliente:', error);
 
@@ -388,6 +415,22 @@ function Clientes() {
           <Text c="dimmed" ta="center">Nenhum cliente cadastrado.</Text>
         )}
       </div>
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <Group justify="space-between" mt="xl" wrap="wrap">
+          <Text size="sm" c="dimmed">
+            Mostrando {clientes.length} de {totalCount} clientes
+          </Text>
+          <Pagination
+            total={totalPages}
+            value={page}
+            onChange={setPage}
+            size="md"
+            withEdges
+          />
+        </Group>
+      )}
     </>
   );
 }
