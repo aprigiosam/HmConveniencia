@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDashboard } from '../services/api';
-import { Card, Text, Grid, Title, Group, Center, Loader, Badge, Stack, Paper, Divider, Box, RingProgress } from '@mantine/core';
+import { Card, Text, Grid, Title, Group, Center, Loader, Badge, Stack, Paper, Divider, Box } from '@mantine/core';
 import {
   FaDollarSign,
   FaExclamationTriangle,
@@ -11,7 +11,6 @@ import {
   FaCalendarTimes,
   FaClock,
   FaBell,
-  FaTrendingUp,
   FaBoxes,
 } from 'react-icons/fa';
 import { useMediaQuery } from '@mantine/hooks';
@@ -222,7 +221,7 @@ function Dashboard() {
               'Vendas Hoje',
               formatCurrency(stats?.vendas_hoje?.total),
               `${stats?.vendas_hoje?.quantidade || 0} ${stats?.vendas_hoje?.quantidade === 1 ? 'venda' : 'vendas'}`,
-              FaTrendingUp,
+              FaDollarSign,
               '#667eea',
               '#764ba2'
             )}
