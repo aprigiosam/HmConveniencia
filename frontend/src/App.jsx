@@ -7,6 +7,7 @@ import { localDB } from './utils/db';
 import { syncManager } from './utils/syncManager';
 import { notificationManager } from './utils/notifications';
 import { getEmpresas } from './services/api';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy loading das páginas para reduzir bundle inicial
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -511,9 +512,11 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

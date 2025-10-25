@@ -52,7 +52,8 @@ describe('Página de Clientes', () => {
   test('Deve chamar a API para criar um novo cliente ao submeter o formulário', async () => {
     const { user } = render(<Clientes />);
 
-    const novoClienteBtn = screen.getByText('Novo Cliente');
+    // Espera o loading terminar e o botão aparecer
+    const novoClienteBtn = await screen.findByText('Novo Cliente');
     await user.click(novoClienteBtn);
 
     const modal = await screen.findByRole('dialog');

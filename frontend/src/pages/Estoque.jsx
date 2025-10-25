@@ -22,6 +22,8 @@ import {
   Image,
   Alert,
   Checkbox,
+  Pagination,
+  Center,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
@@ -35,6 +37,11 @@ function Estoque() {
   const [categorias, setCategorias] = useState([]);
   const [fornecedores, setFornecedores] = useState([]);
   const [busca, setBusca] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [opened, { open, close }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [excluirTodosModalOpened, { open: openExcluirTodosModal, close: closeExcluirTodosModal }] = useDisclosure(false);
@@ -76,6 +83,10 @@ function Estoque() {
   }, []);
 
   useEffect(() => {
+    loadProdutos(page);
+  }, [page]);
+
+  useEffect(() => {
     if (location.state?.editarProdutoId) {
       setPendingEditId(location.state.editarProdutoId);
       navigate('/estoque', { replace: true });
@@ -83,27 +94,76 @@ function Estoque() {
   }, [location.state, navigate]);
 
   const loadInitialData = async () => {
-    const cachedProdutos = await localDB.getCachedProdutos();
-    if (cachedProdutos.length > 0) {
-      setProdutos(cachedProdutos);
-    }
-
     try {
-      const [produtosRes, categoriasRes, fornecedoresRes] = await Promise.all([
-        getProdutos(),
+      const [categoriasRes, fornecedoresRes] = await Promise.all([
         getCategorias(),
         getFornecedores(),
       ]);
-      const produtosData = produtosRes.data.results || produtosRes.data;
       const categoriasData = categoriasRes.data.results || categoriasRes.data;
       const fornecedoresData = fornecedoresRes.data.results || fornecedoresRes.data;
 
-      setProdutos(produtosData);
       setCategorias(categoriasData);
       setFornecedores(fornecedoresData);
-      await localDB.cacheProdutos(produtosData);
     } catch (error) {
-      console.error('Servidor offline, usando cache local');
+      console.error('Erro ao carregar dados iniciais:', error);
+    }
+  };
+
+  const loadProdutos = async (pageNum = 1) => {
+    setLoading(true);
+    setError(null);
+
+    // Cache apenas para primeira página
+    if (pageNum === 1) {
+      const cachedProdutos = await localDB.getCachedProdutos();
+      if (cachedProdutos.length > 0) {
+        setProdutos(cachedProdutos);
+        setLoading(false);
+      }
+    }
+
+    try {
+      const response = await getProdutos({ page: pageNum });
+
+      if (response.data.results) {
+        setProdutos(response.data.results);
+        setTotalCount(response.data.count);
+        setTotalPages(Math.ceil(response.data.count / 50));
+
+        if (pageNum === 1) {
+          await localDB.cacheProdutos(response.data.results);
+        }
+      } else {
+        setProdutos(response.data);
+        setTotalCount(response.data.length);
+        setTotalPages(1);
+
+        if (pageNum === 1) {
+          await localDB.cacheProdutos(response.data);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar produtos:', error);
+
+      if (produtos.length === 0) {
+        setError('Não foi possível carregar os produtos. Verifique sua conexão.');
+        notifications.show({
+          title: 'Erro ao carregar',
+          message: 'Não foi possível carregar a lista de produtos',
+          color: 'red',
+          icon: <FaTimes />,
+        });
+      } else {
+        notifications.show({
+          title: 'Modo offline',
+          message: 'Exibindo dados em cache.',
+          color: 'yellow',
+          icon: <FaExclamationTriangle />,
+          autoClose: 5000,
+        });
+      }
+    } finally {
+      setLoading(false);
     }
   };
 

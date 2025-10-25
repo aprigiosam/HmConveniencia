@@ -103,7 +103,16 @@ class FornecedorSerializer(serializers.ModelSerializer):
         ]
 
     def get_total_lotes(self, obj):
-        return obj.total_lotes()
+        # Usa annotate se disponível (otimizado)
+        if hasattr(obj, "total_lotes") and isinstance(obj.total_lotes, int):
+            return obj.total_lotes
+
+        # Fallback (causa N+1 query, deve ser evitado)
+        logger.warning(
+            f"FornecedorSerializer: annotate 'total_lotes' ausente para fornecedor {obj.id}. "
+            "Isso causa N+1 queries. Verifique get_queryset() da view."
+        )
+        return obj.lotes.filter(ativo=True).count()
 
     def get_total_compras(self, obj):
         if hasattr(obj, "valor_notas") and obj.valor_notas is not None:
