@@ -389,7 +389,10 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
                         origem=EstoqueOrigem.AJUSTE,
                         quantidade=diferenca,
                         custo_unitario=(item.custo_informado or Decimal("0")),
-                        observacao=f"Ajuste inventário {sessao.titulo} - Item contado: {item.quantidade_contada}, Sistema: {item.quantidade_sistema}",
+                        observacao=(
+                            f"Ajuste inventário {sessao.titulo} - "
+                            f"Item contado: {item.quantidade_contada}, Sistema: {item.quantidade_sistema}"
+                        ),
                     )
 
             sessao.status = "FINALIZADO"

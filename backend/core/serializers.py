@@ -398,7 +398,6 @@ class InventarioItemSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "produto_nome", "categoria_nome", "diferenca", "lote_numero"]
 
-
     def validate_quantidade_contada(self, value):
         """Valida que quantidade contada deve ser zero ou positiva"""
         if value is not None and value < 0:

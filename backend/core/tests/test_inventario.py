@@ -490,8 +490,6 @@ class InventarioNovosFieldsTestCase(TestCase):
 
     def test_finalizar_propaga_categoria_para_produto(self):
         """Testa que categoria do item é propagada para produto na finalização"""
-        from django.utils import timezone
-
         # Produto sem categoria
         produto_sem_categoria = Produto.objects.create(
             nome="Produto Sem Categoria",
