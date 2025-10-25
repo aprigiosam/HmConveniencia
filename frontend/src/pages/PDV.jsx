@@ -7,7 +7,7 @@ import { AppShell, Card, TextInput, Stack, Paper, Group, Text, NumberInput, Acti
 import { DatePickerInput } from '@mantine/dates';
 import { useHotkeys, useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaKeyboard, FaCashRegister } from 'react-icons/fa';
+import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaKeyboard, FaCashRegister, FaClock } from 'react-icons/fa';
 import Comprovante from '../components/Comprovante';
 import BarcodeScanner from '../components/BarcodeScanner';
 import './PDV.css';
@@ -34,6 +34,7 @@ function PDV() {
   const buscaRef = useRef(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const feedbackTimeoutRef = useRef(null);
+  const isProcessingRef = useRef(false); // Proteção contra duplo envio
 
   useHotkeys([
     ['F2', () => buscaRef.current?.focus()],
@@ -230,6 +231,18 @@ function PDV() {
   };
 
   const finalizarVenda = async () => {
+    // Proteção contra duplo envio
+    if (isProcessingRef.current) {
+      notifications.show({
+        title: 'Aguarde',
+        message: 'Venda já está sendo processada...',
+        color: 'yellow',
+        icon: <FaClock />,
+        autoClose: 2000,
+      });
+      return;
+    }
+
     if (!caixaAberto) {
       notifications.show({
         title: 'Caixa fechado',
@@ -283,6 +296,8 @@ function PDV() {
       }
     }
 
+    // Marca como processando
+    isProcessingRef.current = true;
     setLoading(true);
 
     // Prepara data de vencimento
@@ -392,6 +407,7 @@ function PDV() {
       }
     } finally {
       setLoading(false);
+      isProcessingRef.current = false; // Libera para nova venda
     }
   };
 

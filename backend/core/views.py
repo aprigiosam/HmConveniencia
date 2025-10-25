@@ -294,6 +294,14 @@ class ClienteViewSet(viewsets.ModelViewSet):
         if search:
             queryset = queryset.filter(nome__icontains=search)
 
+        # Otimização: annotate saldo_devedor para evitar N+1 queries
+        queryset = queryset.annotate(
+            total_divida=Sum(
+                "vendas__total",
+                filter=Q(vendas__status="FINALIZADA", vendas__status_pagamento="PENDENTE")
+            )
+        )
+
         return queryset
 
     @action(detail=False, methods=["get"])
@@ -358,6 +366,7 @@ class FornecedorViewSet(viewsets.ModelViewSet):
         queryset = queryset.annotate(
             total_notas=Count("notas_fiscais", distinct=True),
             valor_notas=Sum("notas_fiscais__valor_total"),
+            total_lotes=Count("lotes", filter=Q(lotes__ativo=True), distinct=True),
             ultima_compra_data=Subquery(ultima_nf.values("data_emissao")[:1]),
             ultima_compra_valor=Subquery(ultima_nf.values("valor_total")[:1]),
             ultima_nota_chave=Subquery(ultima_nf.values("chave_acesso")[:1]),
