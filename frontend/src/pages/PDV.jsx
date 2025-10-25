@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getProdutos, createVenda, getClientes, getCaixaStatus } from '../services/api';
 import { localDB } from '../utils/db';
 import { syncManager } from '../utils/syncManager';
-import { AppShell, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal, ScrollArea, Divider, Badge, Alert, Loader, Grid } from '@mantine/core';
+import { AppShell, Card, TextInput, Stack, Paper, Group, Text, NumberInput, ActionIcon, Select, Button, Title, Center, Modal, ScrollArea, Divider, Badge, Alert, Loader, SimpleGrid } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useHotkeys, useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -799,6 +799,36 @@ function PDV() {
     </Card>
   );
 
+  const renderMainContent = () => {
+    if (isMobile) {
+      return (
+        <Stack gap="lg" className="pdv-mobile-stack">
+          <Button
+            leftSection={<FaSearch size={18} />}
+            variant="gradient"
+            onClick={() => setSearchModalOpen(true)}
+            className="primary-action"
+          >
+            Buscar produtos
+          </Button>
+          {renderCart()}
+        </Stack>
+      );
+    }
+
+    return (
+      <SimpleGrid
+        cols={2}
+        spacing="xl"
+        className="pdv-desktop-grid"
+        breakpoints={[{ maxWidth: 1280, cols: 1 }]}
+      >
+        <div className="pdv-grid-col pdv-grid-col--products">{renderProductSearch()}</div>
+        <div className="pdv-grid-col pdv-grid-col--cart">{renderCart()}</div>
+      </SimpleGrid>
+    );
+  };
+
   if (verificandoCaixa) {
     return (
       <Center style={{ height: '100%' }}>
@@ -874,30 +904,7 @@ function PDV() {
       <AppShell.Main className="pdv-main">
         <div className="pdv-immersive-bg">
           <div className="pdv-content">
-            {isMobile ? (
-              <Stack gap="lg" className="pdv-mobile-stack">
-                <Button
-                  leftSection={<FaSearch size={18} />}
-                  variant="gradient"
-                  onClick={() => setSearchModalOpen(true)}
-                  className="primary-action"
-                >
-                  Buscar produtos
-                </Button>
-                {renderCart()}
-              </Stack>
-            ) : (
-              <>
-                <div className="pdv-grid">
-                  <div className="pdv-grid-col pdv-grid-col--products">{renderProductSearch()}</div>
-                  <div className="pdv-grid-col pdv-grid-col--cart">{renderCart()}</div>
-                </div>
-                <Grid columns={12} gutter="xl">
-                  <Grid.Col span={{ base: 12, lg: 7 }}>{renderProductSearch()}</Grid.Col>
-                  <Grid.Col span={{ base: 12, lg: 5 }}>{renderCart()}</Grid.Col>
-                </Grid>
-              </>
-            )}
+            {renderMainContent()}
           </div>
         </div>
       </AppShell.Main>
