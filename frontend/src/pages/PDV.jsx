@@ -401,8 +401,14 @@ function PDV() {
         padding="xl"
         className="glass-card elevated-card cart-card"
       >
-        <Stack gap="lg">
-          <Group justify="space-between" align="flex-start" gap="lg">
+        <Stack gap="xl" className="card-stack">
+          <Group
+            justify="space-between"
+            align="flex-start"
+            gap="lg"
+            wrap="wrap"
+            className="card-header"
+          >
             <div>
               <Title order={4} className="section-title">Carrinho</Title>
               <Text size="sm" c="dimmed" className="section-subtitle">
@@ -422,7 +428,7 @@ function PDV() {
             )}
           </Group>
 
-          <ScrollArea h={isMobile ? 260 : 380} offsetScrollbars>
+          <ScrollArea h={isMobile ? 280 : 400} offsetScrollbars>
             {carrinho.length > 0 ? (
               <Stack gap="md" className="cart-list">
                 {carrinho.map((item) => (
@@ -433,8 +439,14 @@ function PDV() {
                     key={item.produto.id}
                     className="glass-card cart-item"
                   >
-                    <Group justify="space-between" align="flex-start" gap="md" wrap="nowrap">
-                      <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                    <Group
+                      justify="space-between"
+                      align="flex-start"
+                      gap="md"
+                      wrap="wrap"
+                      className="cart-item-row"
+                    >
+                      <Stack gap={6} style={{ flex: 1, minWidth: 0 }} className="cart-item-info">
                         <Text size="sm" fw={600} truncate className="item-title">
                           {item.produto.nome}
                         </Text>
@@ -447,7 +459,7 @@ function PDV() {
                           </Badge>
                         </Group>
                       </Stack>
-                      <Group gap="sm" wrap="nowrap" align="center" className="cart-actions">
+                      <Group gap="sm" wrap="wrap" align="center" className="cart-actions">
                         <NumberInput
                           value={item.quantidade}
                           onChange={(val) =>
@@ -659,8 +671,8 @@ function PDV() {
       padding="xl"
       className="glass-card elevated-card products-card"
     >
-      <Stack gap="lg">
-        <Group justify="space-between" align="center" gap="lg">
+      <Stack gap="xl" className="card-stack">
+        <Group justify="space-between" align="center" gap="lg" wrap="wrap" className="card-header">
           <div>
             <Title order={4} className="section-title">
               Produtos
@@ -674,7 +686,7 @@ function PDV() {
           </Badge>
         </Group>
 
-        <Group gap="sm" align="flex-end" wrap="nowrap" className="search-toolbar">
+        <Group gap="sm" align="flex-end" wrap="wrap" className="search-toolbar">
           <TextInput
             ref={buscaRef}
             placeholder="Buscar produto (F2)"
@@ -698,7 +710,7 @@ function PDV() {
           </ActionIcon>
         </Group>
 
-        <ScrollArea h={isMobile ? 320 : 540} offsetScrollbars>
+        <ScrollArea h={isMobile ? 340 : 560} offsetScrollbars>
           {produtosFiltrados.length > 0 ? (
             <Stack gap="md" className="products-list">
               {produtosFiltrados.slice(0, 20).map((produto) => (
@@ -715,8 +727,14 @@ function PDV() {
                     ultimoProdutoAdicionado === produto.id ? 'produto-card--added' : ''
                   }`}
                 >
-                  <Group justify="space-between" align="center" gap="md" wrap="nowrap">
-                    <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                  <Group
+                    justify="space-between"
+                    align="flex-start"
+                    gap="md"
+                    wrap="wrap"
+                    className="produto-card-row"
+                  >
+                    <Stack gap={6} style={{ flex: 1, minWidth: 0 }} className="produto-card-info">
                       <Text size="sm" fw={600} truncate className="item-title">
                         {produto.nome}
                       </Text>

@@ -64,8 +64,8 @@
 
 .pdv-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
-  gap: clamp(2rem, 3vw, 3.25rem);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: clamp(2.25rem, 4vw, 3.5rem);
   align-items: start;
 }
 
@@ -122,34 +122,85 @@
 
 .products-card .mantine-Stack-root,
 .cart-card .mantine-Stack-root {
-  gap: clamp(1.5rem, 2.5vw, 2.5rem);
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
+.card-stack {
+  gap: clamp(1.75rem, 3vw, 2.75rem) !important;
+}
+
+.card-header {
+  gap: clamp(1rem, 2vw, 1.5rem) !important;
+}
+
 .search-toolbar {
   margin-top: 0.25rem;
+  width: 100%;
+}
+
+.search-toolbar .mantine-Group-root {
+  width: 100%;
 }
 
 .search-toolbar .mantine-TextInput-input {
   min-height: 48px;
 }
 
+.search-toolbar .mantine-TextInput-root {
+  flex: 1 1 280px;
+  min-width: min(320px, 100%);
+}
+
+.search-toolbar .mantine-ActionIcon-root {
+  flex: 0 0 auto;
+}
+
 .products-list .mantine-Paper-root {
   padding: clamp(1rem, 2vw, 1.5rem) !important;
+}
+
+.produto-card-row {
+  width: 100%;
+  align-items: center;
+}
+
+.produto-card-info {
+  gap: 0.35rem !important;
+}
+
+.produto-card .add-button {
+  min-width: clamp(120px, 18vw, 140px);
 }
 
 .cart-list .mantine-Paper-root {
   padding: clamp(0.9rem, 1.8vw, 1.35rem) !important;
 }
 
+.cart-item-row {
+  width: 100%;
+  align-items: center;
+}
+
+.cart-item-info {
+  gap: 0.35rem !important;
+}
+
 .cart-actions .mantine-NumberInput-root {
-  min-width: 92px;
+  min-width: clamp(96px, 12vw, 120px);
 }
 
 .cart-actions .mantine-NumberInput-input {
   text-align: center;
+}
+
+.cart-actions {
+  justify-content: flex-end;
+}
+
+.cart-actions > * {
+  flex: 0 0 auto;
 }
 
 .add-button,
