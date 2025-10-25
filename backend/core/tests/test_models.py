@@ -114,7 +114,7 @@ class ProdutoModelTestCase(TestCase):
 
     def test_esta_vencido(self):
         """Testa produto vencido"""
-        ontem = timezone.now().date() - timezone.timedelta(days=1)
+        ontem = timezone.localdate() - timezone.timedelta(days=1)
         self.produto.data_validade = ontem
         self.produto.save()
 
@@ -122,7 +122,7 @@ class ProdutoModelTestCase(TestCase):
 
     def test_nao_esta_vencido(self):
         """Testa produto não vencido"""
-        amanha = timezone.now().date() + timezone.timedelta(days=1)
+        amanha = timezone.localdate() + timezone.timedelta(days=1)
         self.produto.data_validade = amanha
         self.produto.save()
 
@@ -130,7 +130,7 @@ class ProdutoModelTestCase(TestCase):
 
     def test_dias_para_vencer(self):
         """Testa cálculo de dias para vencer"""
-        daqui_5_dias = timezone.now().date() + timezone.timedelta(days=5)
+        daqui_5_dias = timezone.localdate() + timezone.timedelta(days=5)
         self.produto.data_validade = daqui_5_dias
         self.produto.save()
 
@@ -138,7 +138,7 @@ class ProdutoModelTestCase(TestCase):
 
     def test_proximo_vencimento(self):
         """Testa produto próximo ao vencimento (até 7 dias)"""
-        daqui_5_dias = timezone.now().date() + timezone.timedelta(days=5)
+        daqui_5_dias = timezone.localdate() + timezone.timedelta(days=5)
         self.produto.data_validade = daqui_5_dias
         self.produto.save()
 
@@ -146,7 +146,7 @@ class ProdutoModelTestCase(TestCase):
 
     def test_nao_proximo_vencimento(self):
         """Testa produto não próximo ao vencimento"""
-        daqui_15_dias = timezone.now().date() + timezone.timedelta(days=15)
+        daqui_15_dias = timezone.localdate() + timezone.timedelta(days=15)
         self.produto.data_validade = daqui_15_dias
         self.produto.save()
 
