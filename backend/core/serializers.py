@@ -462,6 +462,13 @@ class CaixaSerializer(serializers.ModelSerializer):
             "status",
             "observacoes",
             "movimentacoes",
+            # Detalhamento por forma de pagamento
+            "total_dinheiro",
+            "total_debito",
+            "total_credito",
+            "total_pix",
+            "total_fiado",
+            "total_vendas",
         ]
         read_only_fields = [
             "data_abertura",
@@ -470,6 +477,12 @@ class CaixaSerializer(serializers.ModelSerializer):
             "diferenca",
             "status",
             "movimentacoes",
+            "total_dinheiro",
+            "total_debito",
+            "total_credito",
+            "total_pix",
+            "total_fiado",
+            "total_vendas",
         ]
 
 

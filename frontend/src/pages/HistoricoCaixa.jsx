@@ -10,16 +10,23 @@ import {
   Stack,
   Group,
   Button,
-  ActionIcon
+  ActionIcon,
+  Modal,
+  Paper,
+  Divider,
+  Collapse
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
-import { FaTrash } from 'react-icons/fa';
+import { FaTrash, FaChevronDown, FaChevronUp, FaMoneyBill, FaCreditCard, FaQrcode, FaFileInvoice } from 'react-icons/fa';
 import './HistoricoCaixa.css';
 
 function HistoricoCaixa() {
   const [historico, setHistorico] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedRows, setExpandedRows] = useState(new Set());
+  const [detailModalOpened, setDetailModalOpened] = useState(false);
+  const [selectedCaixa, setSelectedCaixa] = useState(null);
 
   useEffect(() => {
     loadHistorico();
@@ -55,6 +62,16 @@ function HistoricoCaixa() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const toggleRow = (id) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+    }
+    setExpandedRows(newExpanded);
   };
 
   const handleDeletarCaixa = (caixa) => {
@@ -111,7 +128,6 @@ function HistoricoCaixa() {
       labels: { confirm: 'Excluir Todos', cancel: 'Cancelar' },
       confirmProps: { color: 'red' },
       onConfirm: async () => {
-        // Segunda confirmação
         const confirmar = window.prompt('Digite "CONFIRMAR" para excluir todos os caixas:');
         if (confirmar !== 'CONFIRMAR') {
           notifications.show({
@@ -142,59 +158,182 @@ function HistoricoCaixa() {
     });
   };
 
+  const renderDetalhamento = (caixa) => {
+    const temDetalhamento = caixa.total_vendas !== null && caixa.total_vendas !== undefined;
+
+    if (!temDetalhamento) {
+      return (
+        <Text size="sm" c="dimmed" ta="center" py="md">
+          Caixa fechado antes da implementação do detalhamento
+        </Text>
+      );
+    }
+
+    return (
+      <Paper p="md" radius="md" bg="gray.0">
+        <Stack gap="md">
+          {/* Detalhamento por forma de pagamento */}
+          <div>
+            <Text fw={700} size="sm" mb="sm">📊 Vendas por Forma de Pagamento</Text>
+            <Stack gap="xs">
+              <Group justify="space-between">
+                <Group gap="xs">
+                  <FaMoneyBill color="green" size={14} />
+                  <Text size="sm">Dinheiro</Text>
+                </Group>
+                <Text size="sm" fw={600}>{formatCurrency(caixa.total_dinheiro)}</Text>
+              </Group>
+              <Group justify="space-between">
+                <Group gap="xs">
+                  <FaCreditCard color="blue" size={14} />
+                  <Text size="sm">Débito</Text>
+                </Group>
+                <Text size="sm" fw={600}>{formatCurrency(caixa.total_debito)}</Text>
+              </Group>
+              <Group justify="space-between">
+                <Group gap="xs">
+                  <FaCreditCard color="purple" size={14} />
+                  <Text size="sm">Crédito</Text>
+                </Group>
+                <Text size="sm" fw={600}>{formatCurrency(caixa.total_credito)}</Text>
+              </Group>
+              <Group justify="space-between">
+                <Group gap="xs">
+                  <FaQrcode color="teal" size={14} />
+                  <Text size="sm">PIX</Text>
+                </Group>
+                <Text size="sm" fw={600}>{formatCurrency(caixa.total_pix)}</Text>
+              </Group>
+              <Group justify="space-between">
+                <Group gap="xs">
+                  <FaFileInvoice color="orange" size={14} />
+                  <Text size="sm">Fiado</Text>
+                </Group>
+                <Text size="sm" fw={600}>{formatCurrency(caixa.total_fiado)}</Text>
+              </Group>
+              <Divider my="xs" />
+              <Group justify="space-between">
+                <Text size="sm" fw={700}>TOTAL DE VENDAS</Text>
+                <Badge color="blue">{formatCurrency(caixa.total_vendas)}</Badge>
+              </Group>
+            </Stack>
+          </div>
+
+          {/* Resumo do caixa físico */}
+          <div>
+            <Text fw={700} size="sm" mb="sm">💰 Caixa Físico</Text>
+            <Stack gap="xs">
+              <Group justify="space-between">
+                <Text size="sm">Valor Inicial</Text>
+                <Text size="sm">{formatCurrency(caixa.valor_inicial)}</Text>
+              </Group>
+              <Group justify="space-between">
+                <Text size="sm">Esperado (Sistema)</Text>
+                <Text size="sm" fw={600} c="blue">{formatCurrency(caixa.valor_final_sistema)}</Text>
+              </Group>
+              <Group justify="space-between">
+                <Text size="sm">Contado</Text>
+                <Text size="sm" fw={600}>{formatCurrency(caixa.valor_final_informado)}</Text>
+              </Group>
+              <Divider my="xs" />
+              <Group justify="space-between">
+                <Text size="sm" fw={700}>Diferença</Text>
+                <Badge color={parseFloat(caixa.diferenca) < 0 ? 'red' : parseFloat(caixa.diferenca) > 0 ? 'green' : 'gray'}>
+                  {formatCurrency(caixa.diferenca)}
+                </Badge>
+              </Group>
+            </Stack>
+          </div>
+        </Stack>
+      </Paper>
+    );
+  };
+
   const rows = historico.map((caixa) => {
     const diferenca = parseFloat(caixa.diferenca);
-    const corDiferenca = diferenca < 0 ? 'red' : 'green';
+    const corDiferenca = diferenca < 0 ? 'red' : diferenca > 0 ? 'green' : 'gray';
+    const isExpanded = expandedRows.has(caixa.id);
+
     return (
-      <Table.Tr key={caixa.id}>
-        <Table.Td>{formatDateTime(caixa.data_abertura)}</Table.Td>
-        <Table.Td>{formatDateTime(caixa.data_fechamento)}</Table.Td>
-        <Table.Td>{formatCurrency(caixa.valor_inicial)}</Table.Td>
-        <Table.Td>{formatCurrency(caixa.valor_final_sistema)}</Table.Td>
-        <Table.Td>{formatCurrency(caixa.valor_final_informado)}</Table.Td>
-        <Table.Td>
-          <Badge color={corDiferenca} variant="filled">
-            {formatCurrency(caixa.diferenca)}
-          </Badge>
-        </Table.Td>
-        <Table.Td>
-          <ActionIcon
-            color="red"
-            variant="light"
-            onClick={() => handleDeletarCaixa(caixa)}
-            title="Excluir caixa"
-          >
-            <FaTrash size={16} />
-          </ActionIcon>
-        </Table.Td>
-      </Table.Tr>
+      <>
+        <Table.Tr key={caixa.id}>
+          <Table.Td>
+            <ActionIcon
+              variant="subtle"
+              onClick={() => toggleRow(caixa.id)}
+              title="Ver detalhes"
+            >
+              {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+            </ActionIcon>
+          </Table.Td>
+          <Table.Td>{formatDateTime(caixa.data_abertura)}</Table.Td>
+          <Table.Td>{formatDateTime(caixa.data_fechamento)}</Table.Td>
+          <Table.Td>{formatCurrency(caixa.valor_inicial)}</Table.Td>
+          <Table.Td>{formatCurrency(caixa.total_vendas || caixa.valor_final_sistema)}</Table.Td>
+          <Table.Td>
+            <Badge color={corDiferenca} variant="filled">
+              {formatCurrency(caixa.diferenca)}
+            </Badge>
+          </Table.Td>
+          <Table.Td>
+            <ActionIcon
+              color="red"
+              variant="light"
+              onClick={() => handleDeletarCaixa(caixa)}
+              title="Excluir caixa"
+            >
+              <FaTrash size={16} />
+            </ActionIcon>
+          </Table.Td>
+        </Table.Tr>
+        {isExpanded && (
+          <Table.Tr>
+            <Table.Td colSpan={7} style={{ padding: 0 }}>
+              <Collapse in={isExpanded}>
+                <div style={{ padding: '1rem' }}>
+                  {renderDetalhamento(caixa)}
+                </div>
+              </Collapse>
+            </Table.Td>
+          </Table.Tr>
+        )}
+      </>
     );
   });
 
   const cards = historico.map((caixa) => {
     const diferenca = parseFloat(caixa.diferenca);
-    const corDiferenca = diferenca < 0 ? 'red' : 'green';
+    const corDiferenca = diferenca < 0 ? 'red' : diferenca > 0 ? 'green' : 'gray';
+
     return (
       <Card withBorder radius="md" p="sm" key={caixa.id} className="caixa-card">
         <Group justify="space-between" mb="sm">
           <Text fw={500}>Fechado em: {formatDateTime(caixa.data_fechamento)}</Text>
-          <ActionIcon
-            color="red"
-            variant="light"
-            onClick={() => handleDeletarCaixa(caixa)}
-            title="Excluir caixa"
-          >
-            <FaTrash size={16} />
-          </ActionIcon>
+          <Group gap="xs">
+            <Button
+              size="xs"
+              variant="light"
+              onClick={() => {
+                setSelectedCaixa(caixa);
+                setDetailModalOpened(true);
+              }}
+            >
+              Detalhes
+            </Button>
+            <ActionIcon
+              color="red"
+              variant="light"
+              onClick={() => handleDeletarCaixa(caixa)}
+              title="Excluir caixa"
+            >
+              <FaTrash size={16} />
+            </ActionIcon>
+          </Group>
         </Group>
         <Stack gap="xs">
           <Group justify="space-between">
-            <Text size="sm" c="dimmed">Valor Sistema:</Text>
-            <Text size="sm">{formatCurrency(caixa.valor_final_sistema)}</Text>
-          </Group>
-          <Group justify="space-between">
-            <Text size="sm" c="dimmed">Valor Informado:</Text>
-            <Text size="sm">{formatCurrency(caixa.valor_final_informado)}</Text>
+            <Text size="sm" c="dimmed">Total de Vendas:</Text>
+            <Text size="sm" fw={600}>{formatCurrency(caixa.total_vendas || caixa.valor_final_sistema)}</Text>
           </Group>
           <Group justify="space-between">
             <Text size="sm" c="dimmed">Diferença:</Text>
@@ -228,11 +367,11 @@ function HistoricoCaixa() {
           <Table striped highlightOnHover withBorder withColumnBorders>
             <Table.Thead>
               <Table.Tr>
+                <Table.Th style={{ width: '50px' }}></Table.Th>
                 <Table.Th>Abertura</Table.Th>
                 <Table.Th>Fechamento</Table.Th>
                 <Table.Th>Valor Inicial</Table.Th>
-                <Table.Th>Valor Sistema</Table.Th>
-                <Table.Th>Valor Informado</Table.Th>
+                <Table.Th>Total Vendas</Table.Th>
                 <Table.Th>Diferença</Table.Th>
                 <Table.Th>Ações</Table.Th>
               </Table.Tr>
@@ -253,6 +392,24 @@ function HistoricoCaixa() {
           <Text c="dimmed" ta="center">Nenhum caixa fechado ainda.</Text>
         )}
       </div>
+
+      {/* Modal de Detalhes (Mobile) */}
+      <Modal
+        opened={detailModalOpened}
+        onClose={() => setDetailModalOpened(false)}
+        title="Detalhes do Caixa"
+        size="lg"
+      >
+        {selectedCaixa && (
+          <Stack gap="md">
+            <div>
+              <Text size="sm" c="dimmed">Fechado em</Text>
+              <Text fw={600}>{formatDateTime(selectedCaixa.data_fechamento)}</Text>
+            </div>
+            {renderDetalhamento(selectedCaixa)}
+          </Stack>
+        )}
+      </Modal>
     </>
   );
 }
