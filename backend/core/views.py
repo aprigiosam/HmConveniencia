@@ -192,6 +192,10 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
             preco=preco_base,
             preco_custo=item.custo_informado or Decimal("0.00"),
             estoque=Decimal("0"),
+            marca=item.marca or '',
+            conteudo_valor=item.conteudo_valor,
+            conteudo_unidade=item.conteudo_unidade or '',
+            categoria=item.categoria,
         )
 
         logger.info(
@@ -255,6 +259,17 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
             if not dados.get("descricao"):
                 dados["descricao"] = dados.get("codigo_barras") or "Item inventário"
 
+            lote_id = dados.get("lote")
+            if lote_id:
+                try:
+                    lote = Lote.objects.get(id=lote_id)
+                    dados["lote"] = lote.id
+                except Lote.DoesNotExist:
+                    return Response(
+                        {"detail": "Lote informado não encontrado."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
             serializer = InventarioItemSerializer(data=dados)
             serializer.is_valid(raise_exception=True)
             item = serializer.save()
@@ -302,7 +317,7 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
                 )
 
             # Aplica ajustes de estoque
-            for item in sessao.itens.select_related("produto"):
+            for item in sessao.itens.select_related("produto", "categoria", "lote"):
                 if not item.produto:
                     produto_resolvido = self._obter_ou_criar_produto_para_item(item, sessao.empresa)
                     if produto_resolvido:
@@ -319,6 +334,53 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
                     )
                     continue
 
+                # Propaga dados enriquecidos do inventário para o produto
+                produto_atualizado = False
+                produto_update_fields = []
+
+                # Atualiza categoria se informada e produto não tem
+                if item.categoria and not item.produto.categoria:
+                    item.produto.categoria = item.categoria
+                    produto_update_fields.append("categoria")
+                    produto_atualizado = True
+
+                # Atualiza marca se informada e produto não tem
+                if item.marca and not item.produto.marca:
+                    item.produto.marca = item.marca
+                    produto_update_fields.append("marca")
+                    produto_atualizado = True
+
+                # Atualiza conteúdo valor/unidade se informado e produto não tem
+                if item.conteudo_valor and not item.produto.conteudo_valor:
+                    item.produto.conteudo_valor = item.conteudo_valor
+                    produto_update_fields.append("conteudo_valor")
+                    produto_atualizado = True
+
+                if item.conteudo_unidade and not item.produto.conteudo_unidade:
+                    item.produto.conteudo_unidade = item.conteudo_unidade
+                    produto_update_fields.append("conteudo_unidade")
+                    produto_atualizado = True
+
+                # Atualiza data de validade se informada e produto não tem
+                if item.validade_informada and not item.produto.data_validade:
+                    item.produto.data_validade = item.validade_informada
+                    produto_update_fields.append("data_validade")
+                    produto_atualizado = True
+
+                # Atualiza custo se informado e diferente
+                if item.custo_informado and item.custo_informado > 0:
+                    if not item.produto.preco_custo or item.produto.preco_custo != item.custo_informado:
+                        item.produto.preco_custo = item.custo_informado
+                        produto_update_fields.append("preco_custo")
+                        produto_atualizado = True
+
+                if produto_atualizado:
+                    item.produto.save(update_fields=produto_update_fields)
+                    logger.info(
+                        f"Produto {item.produto.id} atualizado com dados do inventário: "
+                        f"{', '.join(produto_update_fields)}"
+                    )
+
                 diferenca = item.ajustar_produto()
                 if diferenca:
                     EstoqueMovimento.objects.create(
@@ -327,7 +389,10 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
                         origem=EstoqueOrigem.AJUSTE,
                         quantidade=diferenca,
                         custo_unitario=(item.custo_informado or Decimal("0")),
-                        observacao=f"Ajuste inventário {sessao.titulo}",
+                        observacao=(
+                            f"Ajuste inventário {sessao.titulo} - "
+                            f"Item contado: {item.quantidade_contada}, Sistema: {item.quantidade_sistema}"
+                        ),
                     )
 
             sessao.status = "FINALIZADO"

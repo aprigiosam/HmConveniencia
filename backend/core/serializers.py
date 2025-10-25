@@ -362,6 +362,7 @@ class OpenFoodFactsProductSerializer(serializers.Serializer):
 
 class InventarioItemSerializer(serializers.ModelSerializer):
     produto_nome = serializers.CharField(source="produto.nome", read_only=True)
+    categoria_nome = serializers.CharField(source="categoria.nome", read_only=True, allow_null=True)
     sessao = serializers.PrimaryKeyRelatedField(
         queryset=InventarioSessao.objects.all(),
         write_only=True,
@@ -370,6 +371,7 @@ class InventarioItemSerializer(serializers.ModelSerializer):
     diferenca = serializers.DecimalField(
         max_digits=14, decimal_places=4, read_only=True
     )
+    lote_numero = serializers.CharField(source="lote.numero_lote", read_only=True, allow_null=True)
 
     class Meta:
         model = InventarioItem
@@ -380,14 +382,21 @@ class InventarioItemSerializer(serializers.ModelSerializer):
             "produto_nome",
             "codigo_barras",
             "descricao",
+            "marca",
+            "conteudo_valor",
+            "conteudo_unidade",
+            "categoria",
+            "categoria_nome",
             "quantidade_sistema",
             "quantidade_contada",
             "custo_informado",
             "validade_informada",
+            "lote",
+            "lote_numero",
             "observacao",
             "diferenca",
         ]
-        read_only_fields = ["id", "produto_nome", "diferenca"]
+        read_only_fields = ["id", "produto_nome", "categoria_nome", "diferenca", "lote_numero"]
 
     def validate_quantidade_contada(self, value):
         """Valida que quantidade contada deve ser zero ou positiva"""

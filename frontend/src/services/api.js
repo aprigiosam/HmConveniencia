@@ -134,7 +134,7 @@ export const entradaEstoque = (data) => api.post('/lotes/entrada_estoque/', data
 export const baixarEstoqueLote = (id, quantidade) => api.post(`/lotes/${id}/baixar_estoque/`, { quantidade });
 export const getLotesVencidos = () => api.get('/lotes/vencidos/');
 export const getLotesProximosVencimento = () => api.get('/lotes/proximos_vencimento/');
-export const getLotesPorProduto = (produtoId) => api.get(`/lotes/por_produto/?produto_id=${produtoId}`);
+export const getLotesPorProduto = (produtoId) => api.get(`/lotes/?produto_id=${produtoId}`);
 export const getLotesNaoConferidos = () => api.get('/lotes/nao_conferidos/');
 export const marcarLoteConferido = (id, data = {}) => api.post(`/lotes/${id}/marcar_conferido/`, data);
 
