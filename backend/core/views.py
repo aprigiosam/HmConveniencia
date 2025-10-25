@@ -146,7 +146,19 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="adicionar-item")
     def adicionar_item(self, request, *args, **kwargs):
+        """
+        Adiciona item ao inventário.
+        Auto-transiciona status de ABERTO → EM_ANDAMENTO no primeiro item.
+        """
         sessao = self.get_object()
+
+        # Validação: não permite adicionar itens em sessão finalizada
+        if sessao.status == "FINALIZADO":
+            return Response(
+                {"detail": "Não é possível adicionar itens a uma sessão finalizada."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         dados = request.data.copy()
         dados["sessao"] = str(sessao.id)
 
@@ -159,6 +171,16 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
                 except Produto.DoesNotExist:
                     return Response(
                         {"detail": "Produto informado não encontrado."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Verifica se produto já existe nesta sessão (previne duplicatas)
+                if sessao.itens.filter(produto=produto).exists():
+                    return Response(
+                        {
+                            "detail": f"Produto '{produto.nome}' já foi adicionado a esta sessão. "
+                            "Edite o item existente ao invés de criar um novo."
+                        },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
@@ -177,6 +199,15 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
             serializer = InventarioItemSerializer(data=dados)
             serializer.is_valid(raise_exception=True)
             item = serializer.save()
+
+            # Auto-transição: ABERTO → EM_ANDAMENTO quando adicionar primeiro item
+            if sessao.status == "ABERTO" and sessao.itens.count() == 1:
+                from django.utils import timezone
+                sessao.status = "EM_ANDAMENTO"
+                sessao.iniciado_em = timezone.now()
+                sessao.save(update_fields=["status", "iniciado_em"])
+                logger.info(f"Inventário {sessao.id} transicionado para EM_ANDAMENTO")
+
         except Exception as exc:  # noqa: BLE001
             logger.exception("Erro ao adicionar item ao inventário")
             return Response(
@@ -191,19 +222,36 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="finalizar")
     def finalizar(self, request, *args, **kwargs):
-        sessao = self.get_object()
-        if sessao.status == "FINALIZADO":
-            return Response(
-                {"detail": "Essa sessão já está finalizada."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
+        """
+        Finaliza sessão de inventário e aplica ajustes no estoque.
+        Usa select_for_update() para prevenir race conditions.
+        """
         from django.utils import timezone
 
         with transaction.atomic():
+            # Lock da sessão para prevenir dupla finalização
+            sessao = (
+                InventarioSessao.objects
+                .select_for_update()
+                .get(pk=self.kwargs['pk'])
+            )
+
+            if sessao.status == "FINALIZADO":
+                return Response(
+                    {"detail": "Essa sessão já está finalizada."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Aplica ajustes de estoque
             for item in sessao.itens.select_related("produto"):
+                if not item.produto:
+                    logger.warning(
+                        f"Item {item.id} sem produto vinculado. Pulando ajuste."
+                    )
+                    continue
+
                 diferenca = item.ajustar_produto()
-                if diferenca and item.produto:
+                if diferenca:
                     EstoqueMovimento.objects.create(
                         empresa=sessao.empresa,
                         produto=item.produto,
@@ -216,6 +264,11 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
             sessao.status = "FINALIZADO"
             sessao.finalizado_em = timezone.now()
             sessao.save(update_fields=["status", "finalizado_em"])
+
+            logger.info(
+                f"Inventário {sessao.id} finalizado por {request.user}. "
+                f"{sessao.itens.count()} itens processados."
+            )
 
         return Response(
             InventarioSessaoSerializer(sessao).data,

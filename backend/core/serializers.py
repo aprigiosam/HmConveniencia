@@ -389,6 +389,34 @@ class InventarioItemSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "produto_nome", "diferenca"]
 
+    def validate_quantidade_contada(self, value):
+        """Valida que quantidade contada deve ser zero ou positiva"""
+        if value is not None and value < 0:
+            raise serializers.ValidationError(
+                "Quantidade contada não pode ser negativa. "
+                "Use 0 (zero) para indicar item não encontrado."
+            )
+        return value
+
+    def validate_custo_informado(self, value):
+        """Valida que custo informado deve ser positivo"""
+        if value is not None and value < 0:
+            raise serializers.ValidationError(
+                "Custo informado não pode ser negativo."
+            )
+        return value
+
+    def validate(self, data):
+        """Validações cruzadas"""
+        # Se quantidade_contada foi informada mas quantidade_sistema não,
+        # tenta buscar do produto
+        if data.get("quantidade_contada") is not None and not data.get("quantidade_sistema"):
+            produto = data.get("produto")
+            if produto:
+                data["quantidade_sistema"] = produto.estoque or Decimal("0")
+
+        return data
+
 
 class InventarioSessaoSerializer(serializers.ModelSerializer):
     itens = InventarioItemSerializer(many=True, read_only=True)
