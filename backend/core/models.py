@@ -865,6 +865,24 @@ class InventarioItem(models.Model):
     )
     codigo_barras = models.CharField(max_length=50, blank=True)
     descricao = models.CharField(max_length=200, blank=True)
+    marca = models.CharField(max_length=120, blank=True)
+    conteudo_valor = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    conteudo_unidade = models.CharField(
+        max_length=10,
+        blank=True,
+    )
+    categoria = models.ForeignKey(
+        Categoria,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="inventario_itens",
+    )
     quantidade_sistema = models.DecimalField(
         max_digits=14, decimal_places=4, default=Decimal("0")
     )
@@ -875,6 +893,14 @@ class InventarioItem(models.Model):
         max_digits=10, decimal_places=2, default=Decimal("0")
     )
     validade_informada = models.DateField(null=True, blank=True)
+    lote = models.ForeignKey(
+        Lote,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="inventarios",
+        verbose_name="Lote",
+    )
     observacao = models.CharField(max_length=255, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 

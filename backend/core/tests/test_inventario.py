@@ -368,3 +368,285 @@ class InventarioItemTestCase(TestCase):
 
         self.produto.refresh_from_db()
         self.assertEqual(self.produto.estoque, Decimal("120"))
+
+
+class InventarioNovosFieldsTestCase(TestCase):
+    """Testes para novos campos: lote, categoria, marca, conteúdo"""
+
+    def setUp(self):
+        from core.models import Categoria, Lote
+
+        self.empresa = Empresa.objects.create(
+            razao_social="Empresa Teste Ltda",
+            nome_fantasia="Empresa Teste",
+            cnpj="12345678901234"
+        )
+        self.user = User.objects.create_user(
+            username="testuser",
+            password="testpass"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+        self.categoria = Categoria.objects.create(
+            nome="Bebidas",
+            empresa=self.empresa
+        )
+
+        self.produto = Produto.objects.create(
+            nome="Refrigerante Coca-Cola",
+            preco=Decimal("5.50"),
+            estoque=Decimal("100"),
+            codigo_barras="7891234567890",
+            empresa=self.empresa
+        )
+
+        self.lote = Lote.objects.create(
+            produto=self.produto,
+            numero_lote="LOTE001",
+            quantidade=Decimal("50"),
+            data_validade="2025-12-31",
+            preco_custo_lote=Decimal("3.00"),
+            empresa=self.empresa
+        )
+
+        self.sessao = InventarioSessao.objects.create(
+            titulo="Inventário com Novos Campos",
+            status="ABERTO",
+            empresa=self.empresa
+        )
+
+    def test_adicionar_item_com_lote(self):
+        """Testa adicionar item ao inventário com lote vinculado"""
+        data = {
+            "produto": str(self.produto.id),
+            "lote": str(self.lote.id),
+            "quantidade_contada": "45"
+        }
+
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/adicionar-item/',
+            data=data
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['lote'], self.lote.id)
+        self.assertEqual(response.data['lote_numero'], self.lote.numero_lote)
+
+    def test_adicionar_item_com_categoria(self):
+        """Testa adicionar item com categoria"""
+        data = {
+            "produto": str(self.produto.id),
+            "categoria": str(self.categoria.id),
+            "quantidade_contada": "100"
+        }
+
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/adicionar-item/',
+            data=data
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['categoria'], self.categoria.id)
+        self.assertEqual(response.data['categoria_nome'], self.categoria.nome)
+
+    def test_adicionar_item_com_marca_e_conteudo(self):
+        """Testa adicionar item com marca e conteúdo"""
+        data = {
+            "produto": str(self.produto.id),
+            "marca": "Coca-Cola Company",
+            "conteudo_valor": "350",
+            "conteudo_unidade": "ML",
+            "quantidade_contada": "100"
+        }
+
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/adicionar-item/',
+            data=data
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['marca'], "Coca-Cola Company")
+        self.assertEqual(str(response.data['conteudo_valor']), "350.00")
+        self.assertEqual(response.data['conteudo_unidade'], "ML")
+
+    def test_adicionar_item_lote_invalido_retorna_erro(self):
+        """Testa que lote inválido retorna erro 400"""
+        fake_lote_id = 999999  # ID de lote que não existe
+
+        data = {
+            "produto": str(self.produto.id),
+            "lote": str(fake_lote_id),
+            "quantidade_contada": "50"
+        }
+
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/adicionar-item/',
+            data=data
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Lote informado não encontrado", response.data['detail'])
+
+    def test_finalizar_propaga_categoria_para_produto(self):
+        """Testa que categoria do item é propagada para produto na finalização"""
+        from django.utils import timezone
+
+        # Produto sem categoria
+        produto_sem_categoria = Produto.objects.create(
+            nome="Produto Sem Categoria",
+            preco=Decimal("10.00"),
+            estoque=Decimal("50"),
+            empresa=self.empresa
+        )
+
+        # Adiciona item com categoria
+        InventarioItem.objects.create(
+            sessao=self.sessao,
+            produto=produto_sem_categoria,
+            categoria=self.categoria,
+            quantidade_sistema=Decimal("50"),
+            quantidade_contada=Decimal("50")
+        )
+
+        # Finaliza inventário
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/finalizar/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Verifica que categoria foi propagada
+        produto_sem_categoria.refresh_from_db()
+        self.assertEqual(produto_sem_categoria.categoria_id, self.categoria.id)
+
+    def test_finalizar_propaga_marca_para_produto(self):
+        """Testa que marca do item é propagada para produto na finalização"""
+        # Produto sem marca
+        produto_sem_marca = Produto.objects.create(
+            nome="Produto Sem Marca",
+            preco=Decimal("10.00"),
+            estoque=Decimal("30"),
+            empresa=self.empresa
+        )
+
+        # Adiciona item com marca
+        InventarioItem.objects.create(
+            sessao=self.sessao,
+            produto=produto_sem_marca,
+            marca="Marca Teste",
+            quantidade_sistema=Decimal("30"),
+            quantidade_contada=Decimal("30")
+        )
+
+        # Finaliza
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/finalizar/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Verifica propagação
+        produto_sem_marca.refresh_from_db()
+        self.assertEqual(produto_sem_marca.marca, "Marca Teste")
+
+    def test_finalizar_propaga_conteudo_para_produto(self):
+        """Testa que conteúdo_valor e conteudo_unidade são propagados"""
+        produto_sem_conteudo = Produto.objects.create(
+            nome="Produto Sem Conteúdo",
+            preco=Decimal("8.00"),
+            estoque=Decimal("20"),
+            empresa=self.empresa
+        )
+
+        InventarioItem.objects.create(
+            sessao=self.sessao,
+            produto=produto_sem_conteudo,
+            conteudo_valor=Decimal("500"),
+            conteudo_unidade="ML",
+            quantidade_sistema=Decimal("20"),
+            quantidade_contada=Decimal("20")
+        )
+
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/finalizar/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        produto_sem_conteudo.refresh_from_db()
+        self.assertEqual(produto_sem_conteudo.conteudo_valor, Decimal("500"))
+        self.assertEqual(produto_sem_conteudo.conteudo_unidade, "ML")
+
+    def test_finalizar_atualiza_custo_se_informado(self):
+        """Testa que custo informado no inventário atualiza o produto"""
+        produto = Produto.objects.create(
+            nome="Produto Teste Custo",
+            preco=Decimal("10.00"),
+            preco_custo=Decimal("5.00"),
+            estoque=Decimal("10"),
+            empresa=self.empresa
+        )
+
+        # Item com custo diferente
+        InventarioItem.objects.create(
+            sessao=self.sessao,
+            produto=produto,
+            custo_informado=Decimal("6.50"),
+            quantidade_sistema=Decimal("10"),
+            quantidade_contada=Decimal("10")
+        )
+
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/finalizar/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        produto.refresh_from_db()
+        self.assertEqual(produto.preco_custo, Decimal("6.50"))
+
+    def test_finalizar_nao_sobrescreve_dados_existentes(self):
+        """Testa que dados existentes no produto não são sobrescritos"""
+        from core.models import Categoria
+
+        produto_completo = Produto.objects.create(
+            nome="Produto Completo",
+            preco=Decimal("15.00"),
+            estoque=Decimal("25"),
+            marca="Marca Original",
+            conteudo_valor=Decimal("1000"),
+            conteudo_unidade="G",
+            categoria=self.categoria,
+            empresa=self.empresa
+        )
+
+        # Item com dados diferentes
+        outra_categoria = Categoria.objects.create(
+            nome="Outra Categoria",
+            empresa=self.empresa
+        )
+
+        InventarioItem.objects.create(
+            sessao=self.sessao,
+            produto=produto_completo,
+            marca="Marca Nova",  # Não deve sobrescrever
+            categoria=outra_categoria,  # Não deve sobrescrever
+            conteudo_valor=Decimal("500"),  # Não deve sobrescrever
+            conteudo_unidade="ML",  # Não deve sobrescrever
+            quantidade_sistema=Decimal("25"),
+            quantidade_contada=Decimal("25")
+        )
+
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/finalizar/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Verifica que dados originais foram mantidos
+        produto_completo.refresh_from_db()
+        self.assertEqual(produto_completo.marca, "Marca Original")
+        self.assertEqual(produto_completo.categoria_id, self.categoria.id)
+        self.assertEqual(produto_completo.conteudo_valor, Decimal("1000"))
+        self.assertEqual(produto_completo.conteudo_unidade, "G")

@@ -10,6 +10,14 @@ import { notifications } from '@mantine/notifications';
 import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaKeyboard, FaCashRegister, FaClock } from 'react-icons/fa';
 import Comprovante from '../components/Comprovante';
 import BarcodeScanner from '../components/BarcodeScanner';
+import {
+  loadingMessages,
+  successMessages,
+  errorMessages,
+  warningMessages,
+  confirmMessages,
+  getRandomMessage
+} from '../utils/messages';
 import './PDV.css';
 
 function PDV() {
@@ -125,10 +133,21 @@ function PDV() {
     // Validação de estoque em tempo real
     if (novaQuantidade > produto.estoque) {
       notifications.show({
-        title: 'Estoque insuficiente',
-        message: `${produto.nome} - Disponível: ${produto.estoque}`,
+        message: `${errorMessages.vendas.estoqueInsuficiente}\n${produto.nome} - Disponível: ${produto.estoque}`,
         color: 'red',
         icon: <FaTimes />,
+        autoClose: 4000,
+      });
+      return;
+    }
+
+    // Validação: produto inativo
+    if (!produto.ativo) {
+      notifications.show({
+        message: errorMessages.vendas.produtoInativo,
+        color: 'orange',
+        icon: <FaTimes />,
+        autoClose: 3000,
       });
       return;
     }
@@ -140,8 +159,7 @@ function PDV() {
     }
 
     notifications.show({
-      title: 'Produto adicionado',
-      message: `${produto.nome} adicionado ao carrinho`,
+      message: `✅ ${produto.nome} no carrinho!`,
       color: 'green',
       icon: <FaCheck />,
       autoClose: 2000,
@@ -196,10 +214,10 @@ function PDV() {
   const abrirScanner = () => {
     if (!caixaAberto) {
       notifications.show({
-        title: 'Caixa fechado',
-        message: 'Abra o caixa antes de usar o leitor.',
+        message: '🔒 Caixa fechado! Abra o caixa antes de escanear.',
         color: 'orange',
         icon: <FaTimes />,
+        autoClose: 3000,
       });
       return;
     }
@@ -213,16 +231,14 @@ function PDV() {
     if (produto) {
       adicionarAoCarrinho(produto);
       notifications.show({
-        title: 'Produto encontrado!',
-        message: `${produto.nome} adicionado ao carrinho`,
+        message: `🎯 Produto encontrado! ${produto.nome}`,
         color: 'green',
         icon: <FaCheck />,
         autoClose: 3000,
       });
     } else {
       notifications.show({
-        title: 'Produto não encontrado',
-        message: `Código ${codigoBarras} não cadastrado`,
+        message: `🔍 Código ${codigoBarras} não cadastrado! Cadastre o produto primeiro.`,
         color: 'orange',
         icon: <FaTimes />,
         autoClose: 4000,
@@ -234,8 +250,7 @@ function PDV() {
     // Proteção contra duplo envio
     if (isProcessingRef.current) {
       notifications.show({
-        title: 'Aguarde',
-        message: 'Venda já está sendo processada...',
+        message: '⏳ Aguarde! Venda já está sendo processada...',
         color: 'yellow',
         icon: <FaClock />,
         autoClose: 2000,
@@ -245,20 +260,20 @@ function PDV() {
 
     if (!caixaAberto) {
       notifications.show({
-        title: 'Caixa fechado',
-        message: 'Abra o caixa para registrar vendas no PDV.',
+        message: '🔒 Caixa fechado! Abra o caixa antes de vender.',
         color: 'red',
         icon: <FaTimes />,
+        autoClose: 3000,
       });
       return;
     }
 
     if (carrinho.length === 0) {
       notifications.show({
-        title: 'Carrinho vazio',
-        message: 'Adicione produtos ao carrinho antes de finalizar',
+        message: errorMessages.vendas.carrinhoVazio,
         color: 'orange',
         icon: <FaTimes />,
+        autoClose: 3000,
       });
       return;
     }
@@ -266,10 +281,10 @@ function PDV() {
     if (formaPagamento === 'DINHEIRO') {
       if (valorRecebido === null || Number(valorRecebido) < calcularTotal()) {
         notifications.show({
-          title: 'Valor insuficiente',
-          message: 'O valor recebido deve ser maior ou igual ao total da venda',
+          message: '💵 Valor insuficiente! Precisa receber pelo menos R$ ' + calcularTotal().toFixed(2),
           color: 'orange',
           icon: <FaTimes />,
+          autoClose: 4000,
         });
         return;
       }
@@ -278,21 +293,40 @@ function PDV() {
     if (formaPagamento === 'FIADO') {
       if (!clienteId) {
         notifications.show({
-          title: 'Cliente não selecionado',
-          message: 'Selecione um cliente para venda fiado',
+          message: errorMessages.vendas.semCliente,
           color: 'orange',
           icon: <FaTimes />,
+          autoClose: 4000,
         });
         return;
       }
       if (!dataVencimento) {
         notifications.show({
-          title: 'Data de vencimento obrigatória',
-          message: 'Informe a data de vencimento para venda fiado',
+          message: '📅 Faltou a data! Quando o cliente vai pagar?',
           color: 'orange',
           icon: <FaTimes />,
+          autoClose: 3000,
         });
         return;
+      }
+
+      // Validação: limite de crédito do cliente
+      const cliente = clientes.find(c => c.id === parseInt(clienteId));
+      if (cliente && cliente.limite_credito > 0) {
+        const saldoDevedor = cliente.saldo_devedor || 0;
+        const novoSaldo = saldoDevedor + calcularTotal();
+        if (novoSaldo > cliente.limite_credito) {
+          const confirmar = window.confirm(
+            `⚠️ ATENÇÃO! Limite de crédito será excedido!\n\n` +
+            `Cliente: ${cliente.nome}\n` +
+            `Limite: R$ ${cliente.limite_credito.toFixed(2)}\n` +
+            `Dívida atual: R$ ${saldoDevedor.toFixed(2)}\n` +
+            `Esta venda: R$ ${calcularTotal().toFixed(2)}\n` +
+            `Novo saldo: R$ ${novoSaldo.toFixed(2)}\n\n` +
+            `Continuar mesmo assim?`
+          );
+          if (!confirmar) return;
+        }
       }
     }
 
@@ -346,8 +380,7 @@ function PDV() {
       setComprovanteAberto(true);
 
       notifications.show({
-        title: 'Venda finalizada!',
-        message: `Venda de R$ ${calcularTotal().toFixed(2)} registrada com sucesso`,
+        message: getRandomMessage(successMessages.vendas.finalizada) + ` R$ ${calcularTotal().toFixed(2)}`,
         color: 'green',
         icon: <FaCheck />,
         autoClose: 4000,
@@ -370,8 +403,7 @@ function PDV() {
           || 'Erro ao processar venda';
 
         notifications.show({
-          title: 'Erro ao finalizar venda',
-          message: errorMsg,
+          message: `❌ Erro ao finalizar! ${errorMsg}`,
           color: 'red',
           icon: <FaTimes />,
           autoClose: 8000,
@@ -382,8 +414,7 @@ function PDV() {
         setTimeout(() => syncManager.syncAll(), 1000);
 
         notifications.show({
-          title: 'Venda salva offline',
-          message: 'Sem conexão! Venda será sincronizada automaticamente quando houver internet',
+          message: errorMessages.geral.semInternet,
           color: 'blue',
           icon: <FaCheck />,
           autoClose: 6000,
