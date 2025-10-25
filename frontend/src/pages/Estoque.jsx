@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias, searchOpenFoodProducts, createCategoria, getFornecedores } from '../services/api';
+import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias, searchOpenFoodProducts, createCategoria, getFornecedores, excluirTodosProdutos } from '../services/api';
 import { localDB } from '../utils/db';
 import {
   Table,
@@ -20,11 +20,13 @@ import {
   ThemeIcon,
   Loader,
   Image,
+  Alert,
+  Checkbox,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes, FaExclamationTriangle, FaSearch, FaTag } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus, FaBarcode, FaCheck, FaTimes, FaExclamationTriangle, FaSearch, FaTag, FaBomb } from 'react-icons/fa';
 import BarcodeScanner from '../components/BarcodeScanner';
 import './Estoque.css';
 
@@ -36,6 +38,9 @@ function Estoque() {
   const [loading, setLoading] = useState(true);
   const [opened, { open, close }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
+  const [excluirTodosModalOpened, { open: openExcluirTodosModal, close: closeExcluirTodosModal }] = useDisclosure(false);
+  const [confirmacaoExcluirTodos, setConfirmacaoExcluirTodos] = useState(false);
+  const [excluindoTodos, setExcluindoTodos] = useState(false);
   const [scannerAberto, setScannerAberto] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [deletingProduct, setDeletingProduct] = useState(null);
@@ -268,6 +273,44 @@ function Estoque() {
   const handleCancelDelete = () => {
     closeDeleteModal();
     setDeletingProduct(null);
+  };
+
+  const handleExcluirTodos = async () => {
+    if (!confirmacaoExcluirTodos) {
+      notifications.show({
+        title: 'Confirmação necessária',
+        message: 'Você precisa marcar a caixa de confirmação antes de prosseguir',
+        color: 'red',
+        icon: <FaExclamationTriangle />,
+      });
+      return;
+    }
+
+    try {
+      setExcluindoTodos(true);
+      const response = await excluirTodosProdutos();
+
+      notifications.show({
+        title: 'Produtos excluídos com sucesso',
+        message: `${response.data.produtos_excluidos} produtos, ${response.data.lotes_excluidos} lotes e ${response.data.itens_venda_excluidos} itens de venda excluídos`,
+        color: 'green',
+        icon: <FaCheck />,
+      });
+
+      closeExcluirTodosModal();
+      setConfirmacaoExcluirTodos(false);
+      await loadInitialData();
+    } catch (error) {
+      console.error('Erro ao excluir produtos:', error);
+      notifications.show({
+        title: 'Erro ao excluir produtos',
+        message: error.response?.data?.detail || 'Não foi possível excluir os produtos',
+        color: 'red',
+        icon: <FaTimes />,
+      });
+    } finally {
+      setExcluindoTodos(false);
+    }
   };
 
   const handleScan = (codigoBarras) => {
@@ -672,9 +715,20 @@ function Estoque() {
     <>
       <Group justify="space-between" mb="md" wrap="wrap" gap="xs">
         <Title order={2}>Estoque</Title>
-        <Button leftSection={<FaPlus />} onClick={() => handleOpenModal()} size="md">
-          Novo Produto
-        </Button>
+        <Group gap="xs">
+          <Button
+            leftSection={<FaBomb />}
+            onClick={openExcluirTodosModal}
+            size="md"
+            color="red"
+            variant="light"
+          >
+            Excluir Todos
+          </Button>
+          <Button leftSection={<FaPlus />} onClick={() => handleOpenModal()} size="md">
+            Novo Produto
+          </Button>
+        </Group>
       </Group>
 
       <TextInput
@@ -1032,6 +1086,64 @@ function Estoque() {
           <Text c="dimmed" ta="center">Nenhum produto cadastrado.</Text>
         )}
       </div>
+
+      {/* Modal de Confirmação para Excluir Todos os Produtos */}
+      <Modal
+        opened={excluirTodosModalOpened}
+        onClose={() => {
+          closeExcluirTodosModal();
+          setConfirmacaoExcluirTodos(false);
+        }}
+        title="⚠️ EXCLUIR TODOS OS PRODUTOS"
+        centered
+        size="md"
+      >
+        <Stack gap="md">
+          <Alert color="red" icon={<FaExclamationTriangle />} title="ATENÇÃO: OPERAÇÃO IRREVERSÍVEL">
+            Esta ação irá EXCLUIR PERMANENTEMENTE:
+            <ul style={{ marginTop: '8px', marginBottom: 0 }}>
+              <li><strong>TODOS os produtos cadastrados</strong></li>
+              <li><strong>TODOS os lotes vinculados</strong></li>
+              <li><strong>TODOS os movimentos de estoque</strong></li>
+              <li><strong>TODOS os itens de vendas passadas</strong></li>
+            </ul>
+          </Alert>
+
+          <Alert color="orange" title="Esta ação NÃO PODE ser desfeita">
+            Você perderá permanentemente TODOS os produtos e históricos relacionados.
+            O sistema ficará COMPLETAMENTE VAZIO de produtos.
+          </Alert>
+
+          <Checkbox
+            label="Eu entendo que esta ação é IRREVERSÍVEL e aceito EXCLUIR TODOS OS PRODUTOS"
+            checked={confirmacaoExcluirTodos}
+            onChange={(event) => setConfirmacaoExcluirTodos(event.currentTarget.checked)}
+            color="red"
+          />
+
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="default"
+              onClick={() => {
+                closeExcluirTodosModal();
+                setConfirmacaoExcluirTodos(false);
+              }}
+              disabled={excluindoTodos}
+            >
+              Cancelar
+            </Button>
+            <Button
+              color="red"
+              onClick={handleExcluirTodos}
+              loading={excluindoTodos}
+              disabled={!confirmacaoExcluirTodos}
+              leftSection={<FaBomb />}
+            >
+              EXCLUIR TODOS OS PRODUTOS
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </>
   );
 }

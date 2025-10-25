@@ -2,7 +2,7 @@
 Serviço de Detecção e Criação de Alertas
 """
 
-from datetime import date, timedelta
+from datetime import timedelta
 from django.utils import timezone
 from core.models import Alerta, Cliente, Produto, Venda, Caixa
 from core.notifications.whatsapp import WhatsappNotifier
@@ -164,7 +164,7 @@ class AlertService:
 
         alertas_criados = []
 
-        hoje = date.today()
+        hoje = timezone.localdate()
         daqui_3_dias = hoje + timedelta(days=3)
 
         # Busca lotes ativos que vencerão nos próximos 3 dias
@@ -217,7 +217,7 @@ class AlertService:
 
         alertas_criados = []
 
-        hoje = date.today()
+        hoje = timezone.localdate()
 
         # Busca lotes ativos que já venceram
         lotes = Lote.objects.filter(
@@ -335,7 +335,7 @@ class AlertService:
         """
         alertas_criados = []
 
-        hoje = date.today()
+        hoje = timezone.localdate()
         limite = hoje - timedelta(days=7)
 
         vendas = Venda.objects.filter(

@@ -175,7 +175,7 @@ class FornecedorSerializer(serializers.ModelSerializer):
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
-        fields = ["id", "nome", "ativo", "created_at"]
+        fields = ["id", "nome", "ativo", "validade_dias_padrao", "created_at"]
         read_only_fields = ["created_at"]
 
 
@@ -205,6 +205,9 @@ class LoteSerializer(serializers.ModelSerializer):
             "preco_custo_lote",
             "observacoes",
             "ativo",
+            "validade_estimada",
+            "conferido",
+            "conferido_em",
             "created_at",
             "updated_at",
             "esta_vencido",
@@ -214,6 +217,7 @@ class LoteSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "created_at",
             "updated_at",
+            "conferido_em",
             "esta_vencido",
             "dias_para_vencer",
             "proximo_vencimento",

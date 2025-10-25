@@ -40,7 +40,7 @@ class AlertServiceTestCase(TestCase):
         Lote.objects.create(
             produto=self.produto,
             quantidade=Decimal("3.00"),
-            data_validade=timezone.now().date() + timedelta(days=2),
+            data_validade=timezone.localdate() + timedelta(days=2),
         )
 
         alertas = AlertService.verificar_produtos_vencendo()
@@ -52,7 +52,7 @@ class AlertServiceTestCase(TestCase):
         Lote.objects.create(
             produto=self.produto,
             quantidade=Decimal("2.00"),
-            data_validade=timezone.now().date() - timedelta(days=1),
+            data_validade=timezone.localdate() - timedelta(days=1),
         )
 
         alertas = AlertService.verificar_produtos_vencidos()

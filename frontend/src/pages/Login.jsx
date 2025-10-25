@@ -17,10 +17,19 @@ function Login() {
     setLoading(true);
     try {
       const response = await loginApi(username, password);
-      const { token, user } = response.data;
+      const { token, user, empresa, empresa_required: empresaRequired } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-      navigate('/');
+      if (empresa) {
+        localStorage.setItem('empresa', JSON.stringify(empresa));
+      } else {
+        localStorage.removeItem('empresa');
+      }
+      if (empresaRequired) {
+        navigate('/setup/empresa');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Erro ao fazer login. Verifique suas credenciais.');
     } finally {

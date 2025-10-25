@@ -20,6 +20,7 @@ from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.core.cache import cache
 from fiscal.models import NotaFiscal, Empresa, EstoqueMovimento, EstoqueOrigem
+from fiscal.serializers import EmpresaSerializer
 from .models import (
     Cliente,
     Fornecedor,
@@ -523,6 +524,78 @@ class ProdutoViewSet(viewsets.ModelViewSet):
 
         return Response(results)
 
+    @action(detail=False, methods=["post"], url_path="excluir-todos")
+    def excluir_todos(self, request):
+        """
+        Exclui TODOS OS PRODUTOS do sistema (OPERAÇÃO CRÍTICA E IRREVERSÍVEL).
+        Também remove todos os lotes, vendas e movimentações relacionadas.
+        Requer confirmação explícita via parâmetro 'confirmar=true'.
+        """
+        confirmar = request.data.get("confirmar", False)
+
+        if not confirmar or str(confirmar).lower() != "true":
+            return Response(
+                {
+                    "detail": "Esta operação requer confirmação explícita. Envie 'confirmar: true' no body.",
+                    "warning": (
+                        "ATENÇÃO: Esta operação irá EXCLUIR TODOS OS PRODUTOS E DADOS RELACIONADOS. "
+                        "Esta ação é IRREVERSÍVEL!"
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            with transaction.atomic():
+                # Conta os registros antes
+                total_produtos = Produto.objects.count()
+                total_lotes = Lote.objects.count()
+
+                from core.models import ItemVenda
+                total_itens_venda = ItemVenda.objects.count()
+
+                logger.warning(
+                    f"[OPERAÇÃO CRÍTICA] EXCLUINDO {total_produtos} produtos, "
+                    f"{total_lotes} lotes e {total_itens_venda} itens de venda. "
+                    f"Usuário: {request.user}"
+                )
+
+                # Exclui todos os itens de venda primeiro (para evitar constraint)
+                ItemVenda.objects.all().delete()
+
+                # Exclui todos os lotes (CASCADE vai deletar os EstoqueMovimento relacionados)
+                Lote.objects.all().delete()
+
+                # Exclui todos os produtos
+                Produto.objects.all().delete()
+
+                # Limpa o cache
+                cache.delete("produtos_baixo_estoque")
+                cache.delete("produtos_mais_lucrativos")
+
+                logger.warning(
+                    f"[OPERAÇÃO CRÍTICA] Exclusão completa realizada com sucesso. "
+                    f"{total_produtos} produtos, {total_lotes} lotes e {total_itens_venda} itens de venda excluídos."
+                )
+
+                return Response(
+                    {
+                        "detail": "Todos os produtos foram excluídos com sucesso",
+                        "produtos_excluidos": total_produtos,
+                        "lotes_excluidos": total_lotes,
+                        "itens_venda_excluidos": total_itens_venda,
+                        "warning": "TODOS os produtos e dados relacionados foram permanentemente excluídos."
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+        except Exception as e:
+            logger.exception("[OPERAÇÃO CRÍTICA] Erro ao excluir todos os produtos")
+            return Response(
+                {"detail": f"Erro ao excluir produtos: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class VendaViewSet(viewsets.ModelViewSet):
     """ViewSet para Vendas"""
@@ -1016,6 +1089,9 @@ def login(request):
     # Cria ou recupera o token
     token, created = Token.objects.get_or_create(user=user)
 
+    empresa = Empresa.objects.order_by("created_at").first()
+    empresa_data = EmpresaSerializer(empresa).data if empresa else None
+
     return Response(
         {
             "token": token.key,
@@ -1026,6 +1102,8 @@ def login(request):
                 "first_name": user.first_name,
                 "last_name": user.last_name,
             },
+            "empresa": empresa_data,
+            "empresa_required": empresa_data is None,
         }
     )
 
@@ -1395,6 +1473,38 @@ class LoteViewSet(viewsets.ModelViewSet):
             data_validade__lt=timezone.now().date(), ativo=True
         )
         serializer = self.get_serializer(lotes_vencidos, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def marcar_conferido(self, request, pk=None):
+        """Marca o lote como conferido fisicamente"""
+        lote = self.get_object()
+
+        # Atualiza dados se fornecidos
+        data_validade = request.data.get("data_validade")
+        numero_lote = request.data.get("numero_lote")
+
+        if data_validade:
+            lote.data_validade = data_validade
+        if numero_lote:
+            lote.numero_lote = numero_lote
+
+        # Marca como conferido
+        lote.marcar_conferido()
+
+        logger.info(f"Lote {lote.id} marcado como conferido")
+
+        serializer = self.get_serializer(lote)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def nao_conferidos(self, request):
+        """Retorna lotes que ainda não foram conferidos"""
+        lotes_nao_conferidos = self.get_queryset().filter(
+            conferido=False, ativo=True
+        ).select_related("produto", "fornecedor")
+
+        serializer = self.get_serializer(lotes_nao_conferidos, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])

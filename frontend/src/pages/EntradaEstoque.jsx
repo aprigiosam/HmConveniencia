@@ -267,19 +267,33 @@ const EntradaEstoque = () => {
   };
 
   const getBadgeValidade = (lote) => {
+    const badges = [];
+
     if (!lote.data_validade) {
-      return <Badge color="gray">Sem validade</Badge>;
-    }
-
-    const dias = getDiasParaVencer(lote.data_validade);
-
-    if (dias < 0) {
-      return <Badge color="red">Vencido</Badge>;
-    } else if (dias <= 7) {
-      return <Badge color="yellow">{dias} dias</Badge>;
+      badges.push(<Badge key="sem-validade" color="gray">Sem validade</Badge>);
     } else {
-      return <Badge color="green">{dias} dias</Badge>;
+      const dias = getDiasParaVencer(lote.data_validade);
+
+      if (dias < 0) {
+        badges.push(<Badge key="vencido" color="red">Vencido</Badge>);
+      } else if (dias <= 7) {
+        badges.push(<Badge key="dias" color="yellow">{dias} dias</Badge>);
+      } else {
+        badges.push(<Badge key="dias" color="green">{dias} dias</Badge>);
+      }
     }
+
+    // Badge de validade estimada
+    if (lote.validade_estimada) {
+      badges.push(<Badge key="estimada" color="orange" variant="light">ESTIMADA</Badge>);
+    }
+
+    // Badge de não conferido
+    if (!lote.conferido) {
+      badges.push(<Badge key="conferir" color="blue" variant="light">Conferir</Badge>);
+    }
+
+    return <Group gap="xs">{badges}</Group>;
   };
 
   const produtosOptions = produtos.map(p => ({

@@ -1,6 +1,25 @@
 from rest_framework import serializers
 
-from fiscal.models import NotaFiscal, NotaItem
+from fiscal.models import Empresa, NotaFiscal, NotaItem
+
+
+class EmpresaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Empresa
+        fields = [
+            "id",
+            "razao_social",
+            "nome_fantasia",
+            "cnpj",
+            "inscricao_estadual",
+            "inscricao_municipal",
+            "ambiente",
+            "email_contato",
+            "telefone_contato",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class NotaItemSerializer(serializers.ModelSerializer):
@@ -27,7 +46,7 @@ class NotaItemSerializer(serializers.ModelSerializer):
 
 class NotaFiscalSerializer(serializers.ModelSerializer):
     itens = NotaItemSerializer(many=True, read_only=True)
-    fornecedor_nome = serializers.CharField(source="fornecedor.nome", read_only=True)
+    fornecedor_nome = serializers.CharField(source="fornecedor.nome", read_only=True, allow_null=True)
 
     class Meta:
         model = NotaFiscal
@@ -49,6 +68,8 @@ class NotaFiscalSerializer(serializers.ModelSerializer):
             "data_autorizacao",
             "fornecedor",
             "fornecedor_nome",
+            "emitente_nome",
+            "emitente_documento",
             "created_at",
             "updated_at",
             "itens",

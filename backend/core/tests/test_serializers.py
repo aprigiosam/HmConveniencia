@@ -5,6 +5,7 @@ Testes para Serializers - Validações e transformações de dados
 from decimal import Decimal
 from datetime import date, timedelta
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from core.models import Cliente, Produto, Venda, Categoria
 from core.serializers import ClienteSerializer, ProdutoSerializer, VendaCreateSerializer
@@ -51,7 +52,7 @@ class ProdutoSerializerTestCase(TestCase):
             preco_custo=Decimal("5.00"),
             estoque=Decimal("50"),
             categoria=self.categoria,
-            data_validade=date.today() + timedelta(days=5),
+            data_validade=timezone.localdate() + timedelta(days=5),
         )
 
     def test_margem_lucro_serializada(self):

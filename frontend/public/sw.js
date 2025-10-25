@@ -53,8 +53,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Estratégia para a API: Network-First, com fallback para cache
-  if (url.pathname.startsWith('/api/')) {
+  const sameOrigin = url.origin === self.location.origin;
+
+  // Estratégia para a API (apenas quando a chamada é no mesmo domínio do frontend)
+  if (sameOrigin && url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request)
         .then((response) => {

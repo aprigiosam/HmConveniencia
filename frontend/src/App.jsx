@@ -1,11 +1,12 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Center, Loader, ScrollArea } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBell, FaTruck, FaBuilding, FaClipboardList } from 'react-icons/fa';
+import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBell, FaBuilding, FaClipboardList, FaCheckCircle } from 'react-icons/fa';
 import { localDB } from './utils/db';
 import { syncManager } from './utils/syncManager';
 import { notificationManager } from './utils/notifications';
+import { getEmpresas } from './services/api';
 
 // Lazy loading das páginas para reduzir bundle inicial
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -20,14 +21,16 @@ const GiroEstoque = lazy(() => import('./pages/GiroEstoque'));
 const RelatorioLucro = lazy(() => import('./pages/RelatorioLucro'));
 const Categorias = lazy(() => import('./pages/Categorias'));
 const Alertas = lazy(() => import('./pages/Alertas'));
-const EntradaEstoque = lazy(() => import('./pages/EntradaEstoque'));
 const Fornecedores = lazy(() => import('./pages/Fornecedores'));
 const RelatorioFornecedores = lazy(() => import('./pages/RelatorioFornecedores'));
 const Inventario = lazy(() => import('./pages/Inventario'));
 const InventarioDetalhe = lazy(() => import('./pages/InventarioDetalhe'));
+const ConferenciaLotes = lazy(() => import('./pages/ConferenciaLotes'));
+const NotasFiscais = lazy(() => import('./pages/NotasFiscais'));
 const Login = lazy(() => import('./pages/Login'));
 const SyncStatus = lazy(() => import('./components/SyncStatus'));
 const OfflineIndicator = lazy(() => import('./components/OfflineIndicator'));
+const EmpresaSetup = lazy(() => import('./pages/EmpresaSetup'));
 
 // Loading component para Suspense
 const PageLoader = () => (
@@ -58,8 +61,10 @@ const navLinks = [
     label: 'Estoque',
     children: [
       { label: 'Visão Geral', path: '/estoque', icon: <FaBoxOpen /> },
+      { label: 'Categorias', path: '/categorias', icon: <FaListAlt /> },
       { label: 'Inventário', path: '/estoque/inventario', icon: <FaClipboardList /> },
-      { label: 'Entrada de Estoque', path: '/estoque/entrada', icon: <FaTruck /> },
+      { label: 'Notas Fiscais', path: '/estoque/notas', icon: <FaFileInvoiceDollar /> },
+      { label: 'Conferência de Lotes', path: '/estoque/conferencia', icon: <FaCheckCircle /> },
       { label: 'Fornecedores', path: '/fornecedores', icon: <FaBuilding /> },
     ],
   },
@@ -81,18 +86,70 @@ const navLinks = [
       { label: 'Giro de Estoque', path: '/estoque/giro', icon: <FaSyncAlt /> },
     ],
   },
+  { icon: <FaBuilding />, label: 'Dados da Empresa', path: '/setup/empresa' },
 ];
 
 function AppContent() {
   const token = localStorage.getItem('token');
   const [opened, { toggle }] = useDisclosure(false);
   const location = useLocation();
+  const [empresa, setEmpresa] = useState(() => {
+    const stored = localStorage.getItem('empresa');
+    if (!stored) return null;
+    try {
+      return JSON.parse(stored);
+    } catch {
+      localStorage.removeItem('empresa');
+      return null;
+    }
+  });
+  const [empresaLoading, setEmpresaLoading] = useState(false);
 
   useEffect(() => {
     localDB.init();
     syncManager.init();
     return () => syncManager.stop();
   }, []);
+
+  useEffect(() => {
+    if (!token || empresa) {
+      return;
+    }
+
+    let cancelled = false;
+    setEmpresaLoading(true);
+
+    getEmpresas()
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+        const payload = response.data?.results ?? response.data;
+        const empresaEncontrada = Array.isArray(payload) ? payload[0] : payload;
+        if (empresaEncontrada) {
+          localStorage.setItem('empresa', JSON.stringify(empresaEncontrada));
+          setEmpresa(empresaEncontrada);
+        }
+      })
+      .catch((error) => {
+        console.warn('Não foi possível carregar a empresa automaticamente', error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setEmpresaLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, empresa]);
+
+  const handleEmpresaSaved = (empresaData) => {
+    if (!empresaData) return;
+    localStorage.setItem('empresa', JSON.stringify(empresaData));
+    setEmpresa(empresaData);
+  };
 
   useEffect(() => {
     if (notificationManager.isSupported()) {
@@ -116,9 +173,27 @@ function AppContent() {
     );
   }
 
+  if (token && empresaLoading && !empresa) {
+    return <PageLoader />;
+  }
+
+  const needsEmpresa = token && !empresa;
+
+  if (needsEmpresa) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/setup/empresa" element={<PrivateRoute><EmpresaSetup onSuccess={handleEmpresaSaved} /></PrivateRoute>} />
+          <Route path="*" element={<Navigate to="/setup/empresa" replace />} />
+        </Routes>
+      </Suspense>
+    );
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('empresa');
     window.location.href = '/login'; // Força o recarregamento para limpar o estado
   };
 
@@ -209,7 +284,9 @@ function AppContent() {
             <Route path="/estoque/inventario" element={<PrivateRoute><Inventario /></PrivateRoute>} />
             <Route path="/estoque/inventario/:id" element={<PrivateRoute><InventarioDetalhe /></PrivateRoute>} />
             <Route path="/produtos" element={<Navigate to="/estoque" replace />} />
-            <Route path="/estoque/entrada" element={<PrivateRoute><EntradaEstoque /></PrivateRoute>} />
+            <Route path="/estoque/entrada" element={<Navigate to="/estoque/notas" replace />} />
+            <Route path="/estoque/conferencia" element={<PrivateRoute><ConferenciaLotes /></PrivateRoute>} />
+            <Route path="/estoque/notas" element={<PrivateRoute><NotasFiscais /></PrivateRoute>} />
             <Route path="/fornecedores" element={<PrivateRoute><Fornecedores /></PrivateRoute>} />
             <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
             <Route path="/contas-receber" element={<PrivateRoute><ContasReceber /></PrivateRoute>} />
@@ -220,6 +297,7 @@ function AppContent() {
             <Route path="/relatorios/lucro" element={<PrivateRoute><RelatorioLucro /></PrivateRoute>} />
             <Route path="/relatorios/fornecedores" element={<PrivateRoute><RelatorioFornecedores /></PrivateRoute>} />
             <Route path="/categorias" element={<PrivateRoute><Categorias /></PrivateRoute>} />
+            <Route path="/setup/empresa" element={<PrivateRoute><EmpresaSetup onSuccess={handleEmpresaSaved} /></PrivateRoute>} />
           </Routes>
         </Suspense>
       </AppShell.Main>
@@ -227,34 +305,43 @@ function AppContent() {
   );
 }
 
+const shouldRegisterSW = import.meta.env.PROD;
+
 function App() {
   useEffect(() => {
-    // Registra o Service Worker para PWA
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker
-          .register('/sw.js')
-          .then((registration) => {
-            console.log('[PWA] Service Worker registrado com sucesso:', registration.scope);
-
-            // Escuta mensagens do Service Worker
-            navigator.serviceWorker.addEventListener('message', (event) => {
-              if (event.data.type === 'SYNC_VENDAS') {
-                console.log('[PWA] Recebida solicitação de sincronização de vendas');
-                syncManager.syncAll();
-              }
-            });
-
-            // Verifica atualizações periodicamente
-            setInterval(() => {
-              registration.update();
-            }, 60000); // Verifica a cada 1 minuto
-          })
-          .catch((error) => {
-            console.error('[PWA] Falha ao registrar Service Worker:', error);
-          });
-      });
+    // Registra o Service Worker para PWA apenas em builds (evita interferência no ambiente local)
+    if (!shouldRegisterSW || !('serviceWorker' in navigator)) {
+      return;
     }
+
+    const onLoad = () => {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((registration) => {
+          console.log('[PWA] Service Worker registrado com sucesso:', registration.scope);
+
+          // Escuta mensagens do Service Worker
+          navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data.type === 'SYNC_VENDAS') {
+              console.log('[PWA] Recebida solicitação de sincronização de vendas');
+              syncManager.syncAll();
+            }
+          });
+
+          // Verifica atualizações periodicamente
+          setInterval(() => {
+            registration.update();
+          }, 60000); // Verifica a cada 1 minuto
+        })
+        .catch((error) => {
+          console.error('[PWA] Falha ao registrar Service Worker:', error);
+        });
+    };
+
+    window.addEventListener('load', onLoad);
+    return () => {
+      window.removeEventListener('load', onLoad);
+    };
   }, []);
 
   return (
