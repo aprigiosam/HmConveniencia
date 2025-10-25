@@ -1061,6 +1061,131 @@ class CaixaViewSet(viewsets.ViewSet):
         serializer = CaixaSerializer(caixas, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["delete"])
+    @transaction.atomic
+    def deletar(self, request, pk=None):
+        """Deleta um caixa FECHADO específico (com proteção contra caixa aberto)"""
+        try:
+            caixa = Caixa.objects.get(pk=pk)
+        except Caixa.DoesNotExist:
+            return Response(
+                {"error": "Caixa não encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Proteção: não deletar caixa aberto
+        if caixa.status == "ABERTO":
+            return Response(
+                {"error": "Não é possível deletar um caixa aberto"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Log de auditoria antes de deletar
+        logger.warning(
+            f"Caixa deletado - ID: {caixa.id}, Data: {caixa.data_abertura}, "
+            f"Usuário: {request.user.username}"
+        )
+
+        caixa.delete()
+
+        return Response(
+            {"message": "Caixa deletado com sucesso"},
+            status=status.HTTP_204_NO_CONTENT,
+        )
+
+    @action(detail=False, methods=["post"])
+    @transaction.atomic
+    def deletar_periodo(self, request):
+        """Deleta caixas FECHADOS em um período específico"""
+        data_inicio = request.data.get("data_inicio")
+        data_fim = request.data.get("data_fim")
+
+        if not data_inicio or not data_fim:
+            return Response(
+                {"error": "data_inicio e data_fim são obrigatórios"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Parse das datas
+            from datetime import datetime
+
+            dt_inicio = datetime.fromisoformat(data_inicio.replace("Z", "+00:00"))
+            dt_fim = datetime.fromisoformat(data_fim.replace("Z", "+00:00"))
+
+            # Busca apenas caixas FECHADOS no período
+            caixas = Caixa.objects.filter(
+                status="FECHADO", data_abertura__gte=dt_inicio, data_abertura__lte=dt_fim
+            )
+
+            total = caixas.count()
+
+            if total == 0:
+                return Response(
+                    {"message": "Nenhum caixa fechado encontrado no período"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Log de auditoria
+            logger.warning(
+                f"Deletando {total} caixas do período {data_inicio} a {data_fim} - "
+                f"Usuário: {request.user.username}"
+            )
+
+            caixas.delete()
+
+            return Response(
+                {"message": f"{total} caixa(s) deletado(s) com sucesso", "total": total},
+                status=status.HTTP_200_OK,
+            )
+
+        except ValueError as e:
+            return Response(
+                {"error": f"Formato de data inválido: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=False, methods=["post"])
+    @transaction.atomic
+    def deletar_todos(self, request):
+        """Deleta TODOS os caixas FECHADOS (CUIDADO!)"""
+        # Requer confirmação explícita
+        confirmacao = request.data.get("confirmar")
+
+        if confirmacao != "SIM_DELETAR_TODOS":
+            return Response(
+                {
+                    "error": "Confirmação necessária",
+                    "message": 'Envie {"confirmar": "SIM_DELETAR_TODOS"} para confirmar',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Busca apenas caixas FECHADOS
+        caixas = Caixa.objects.filter(status="FECHADO")
+        total = caixas.count()
+
+        if total == 0:
+            return Response(
+                {"message": "Nenhum caixa fechado para deletar"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Log de auditoria crítico
+        logger.critical(
+            f"DELETANDO TODOS OS {total} CAIXAS FECHADOS - Usuário: {request.user.username}"
+        )
+
+        caixas.delete()
+
+        return Response(
+            {
+                "message": f"TODOS os {total} caixas fechados foram deletados",
+                "total": total,
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 # ========== AUTENTICAÇÃO ==========
 
