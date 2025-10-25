@@ -11,7 +11,6 @@ import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaKeybo
 import Comprovante from '../components/Comprovante';
 import BarcodeScanner from '../components/BarcodeScanner';
 import './PDV.css';
-import './PDV-modern.css';
 
 function PDV() {
   const navigate = useNavigate();
