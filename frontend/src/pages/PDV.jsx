@@ -60,6 +60,12 @@ function PDV() {
     };
   }, []);
 
+  useEffect(() => {
+    if (caixaAberto) {
+      loadInitialData();
+    }
+  }, [caixaAberto]);
+
   const verificarCaixa = async () => {
     try {
       const response = await getCaixaStatus();
@@ -409,6 +415,11 @@ function PDV() {
             wrap="wrap"
             className="card-header"
           >
+        padding="lg"
+        className="glass-card elevated-card cart-card"
+      >
+        <Stack gap="md">
+          <Group justify="space-between" align="flex-start">
             <div>
               <Title order={4} className="section-title">Carrinho</Title>
               <Text size="sm" c="dimmed" className="section-subtitle">
@@ -447,6 +458,8 @@ function PDV() {
                       className="cart-item-row"
                     >
                       <Stack gap={6} style={{ flex: 1, minWidth: 0 }} className="cart-item-info">
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                      <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
                         <Text size="sm" fw={600} truncate className="item-title">
                           {item.produto.nome}
                         </Text>
@@ -485,6 +498,7 @@ function PDV() {
                           size="lg"
                           onClick={() => removerDoCarrinho(item.produto.id)}
                           className="icon-action remove-action"
+                          className="icon-action"
                         >
                           <FaTrash size={16} />
                         </ActionIcon>
@@ -673,6 +687,11 @@ function PDV() {
     >
       <Stack gap="xl" className="card-stack">
         <Group justify="space-between" align="center" gap="lg" wrap="wrap" className="card-header">
+      padding="lg"
+      className="glass-card elevated-card products-card"
+    >
+      <Stack gap="md">
+        <Group justify="space-between" align="center">
           <div>
             <Title order={4} className="section-title">
               Produtos
@@ -713,6 +732,7 @@ function PDV() {
         <ScrollArea h={isMobile ? 340 : 560} offsetScrollbars>
           {produtosFiltrados.length > 0 ? (
             <Stack gap="md" className="products-list">
+            <Stack gap="sm">
               {produtosFiltrados.slice(0, 20).map((produto) => (
                 <Paper
                   shadow="xl"
@@ -735,6 +755,8 @@ function PDV() {
                     className="produto-card-row"
                   >
                     <Stack gap={6} style={{ flex: 1, minWidth: 0 }} className="produto-card-info">
+                  <Group justify="space-between" align="center">
+                    <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
                       <Text size="sm" fw={600} truncate className="item-title">
                         {produto.nome}
                       </Text>
@@ -750,6 +772,7 @@ function PDV() {
                       </Group>
                     </Stack>
                     <Button variant="gradient" size="sm" className="ghost-button add-button">
+                    <Button variant="gradient" size="sm" className="ghost-button">
                       Adicionar
                     </Button>
                   </Group>
@@ -855,6 +878,7 @@ function PDV() {
           <div className="pdv-content">
             {isMobile ? (
               <Stack gap="lg" className="pdv-mobile-stack">
+              <Stack gap="md">
                 <Button
                   leftSection={<FaSearch size={18} />}
                   variant="gradient"
@@ -870,6 +894,10 @@ function PDV() {
                 <div className="pdv-grid-col pdv-grid-col--products">{renderProductSearch()}</div>
                 <div className="pdv-grid-col pdv-grid-col--cart">{renderCart()}</div>
               </div>
+              <Grid columns={12} gutter="xl">
+                <Grid.Col span={{ base: 12, lg: 7 }}>{renderProductSearch()}</Grid.Col>
+                <Grid.Col span={{ base: 12, lg: 5 }}>{renderCart()}</Grid.Col>
+              </Grid>
             )}
           </div>
         </div>
