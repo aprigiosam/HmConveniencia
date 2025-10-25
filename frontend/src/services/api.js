@@ -57,6 +57,7 @@ export const createProduto = (data) => api.post('/produtos/', data);
 export const updateProduto = (id, data) => api.put(`/produtos/${id}/`, data);
 export const deleteProduto = (id) => api.delete(`/produtos/${id}/`);
 export const getProdutosMaisLucrativos = () => api.get('/produtos/mais_lucrativos/');
+export const excluirTodosProdutos = () => api.post('/produtos/excluir-todos/', { confirmar: true }); // Excluir todos os produtos
 export const searchOpenFoodProducts = (params = {}) =>
   api.get('/produtos/buscar-openfood/', { params });
 
@@ -130,8 +131,13 @@ export const baixarEstoqueLote = (id, quantidade) => api.post(`/lotes/${id}/baix
 export const getLotesVencidos = () => api.get('/lotes/vencidos/');
 export const getLotesProximosVencimento = () => api.get('/lotes/proximos_vencimento/');
 export const getLotesPorProduto = (produtoId) => api.get(`/lotes/por_produto/?produto_id=${produtoId}`);
+export const getLotesNaoConferidos = () => api.get('/lotes/nao_conferidos/');
+export const marcarLoteConferido = (id, data = {}) => api.post(`/lotes/${id}/marcar_conferido/`, data);
 
 // NF-e de entrada
+export const getNotasFiscais = (params = {}) => api.get('/fiscal/notas/', { params });
+export const getNotaFiscal = (id) => api.get(`/fiscal/notas/${id}/`);
+export const deleteNotaFiscal = (id) => api.delete(`/fiscal/notas/${id}/`);
 export const importarNFe = (file, extraFields = {}) => {
   const formData = new FormData();
   formData.append('xml', file);
@@ -145,5 +151,10 @@ export const importarNFe = (file, extraFields = {}) => {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
+
+// Empresa
+export const getEmpresas = () => api.get('/fiscal/empresas/');
+export const createEmpresa = (data) => api.post('/fiscal/empresas/', data);
+export const updateEmpresa = (id, data) => api.put(`/fiscal/empresas/${id}/`, data);
 
 export default api;

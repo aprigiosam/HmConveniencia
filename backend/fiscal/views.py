@@ -1,13 +1,17 @@
 import logging
 
-from rest_framework import status
+from django.db import transaction
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
-from fiscal.models import Empresa
-from fiscal.serializers import NotaFiscalSerializer
+from fiscal.models import Empresa, NotaFiscal, EstoqueMovimento
+from fiscal.serializers import EmpresaSerializer, NotaFiscalSerializer
 from fiscal.services.nfe_importer import ImportNFeError, NFeEntradaImporter
+from core.models import Lote
 
 logger = logging.getLogger(__name__)
 
@@ -73,3 +77,115 @@ class ImportarNFeEntradaView(APIView):
         if not empresa:
             raise Empresa.DoesNotExist
         return empresa
+
+
+class NotaFiscalViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet para listar e gerenciar notas fiscais importadas.
+    Permite apenas leitura e exclusão (com reversão de estoque).
+    """
+    queryset = NotaFiscal.objects.all()
+    serializer_class = NotaFiscalSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filtra por empresa
+        empresa_id = (
+            self.request.headers.get("X-Empresa-Id")
+            or self.request.query_params.get("empresa_id")
+        )
+        if empresa_id:
+            queryset = queryset.filter(empresa_id=empresa_id)
+        else:
+            empresa = Empresa.objects.first()
+            if empresa:
+                queryset = queryset.filter(empresa=empresa)
+
+        # Filtra por tipo (NFE ou NFCE)
+        tipo = self.request.query_params.get("tipo")
+        if tipo:
+            queryset = queryset.filter(tipo=tipo)
+
+        # Filtra por status
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+
+        # Filtra por fornecedor
+        fornecedor_id = self.request.query_params.get("fornecedor_id")
+        if fornecedor_id:
+            queryset = queryset.filter(fornecedor_id=fornecedor_id)
+
+        return queryset.select_related("empresa", "fornecedor").prefetch_related("itens__produto")
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Exclui a nota fiscal e reverte todas as alterações de estoque.
+        Similar ao inventário, desfaz tudo que foi feito.
+        """
+        nota = self.get_object()
+
+        with transaction.atomic():
+            # Busca todos os lotes criados por esta nota
+            lotes = Lote.objects.filter(
+                numero_lote__startswith=f"NFE-{nota.numero}-"
+            )
+
+            total_lotes = lotes.count()
+
+            logger.warning(
+                f"Excluindo NF-e {nota.numero}/{nota.serie} (ID: {nota.id}). "
+                f"Revertendo {total_lotes} lote(s) e movimentações de estoque."
+            )
+
+            # Para cada lote, reverte o estoque do produto
+            for lote in lotes:
+                produto = lote.produto
+                quantidade_lote = lote.quantidade
+
+                # Remove a quantidade do estoque total
+                produto.estoque -= quantidade_lote
+                if produto.estoque < 0:
+                    produto.estoque = 0
+                produto.save(update_fields=["estoque", "updated_at"])
+
+                logger.info(
+                    f"Lote #{lote.id} ({produto.nome}): -{quantidade_lote} un "
+                    f"(estoque agora: {produto.estoque})"
+                )
+
+            # Deleta os lotes (CASCADE vai deletar os EstoqueMovimento relacionados)
+            lotes.delete()
+
+            # Deleta a nota (CASCADE vai deletar itens e XMLs)
+            nota.delete()
+
+            logger.info(f"NF-e {nota.numero}/{nota.serie} excluída com sucesso")
+
+        return Response(
+            {
+                "detail": f"NF-e {nota.numero}/{nota.serie} excluída com sucesso. "
+                         f"{total_lotes} lote(s) removido(s) e estoque revertido."
+            },
+            status=status.HTTP_200_OK
+        )
+class EmpresaViewSet(viewsets.ModelViewSet):
+    """
+    Permite cadastrar e gerenciar a empresa que utiliza o sistema.
+    Normalmente haverá apenas um registro.
+    """
+
+    queryset = Empresa.objects.all().order_by("created_at")
+    serializer_class = EmpresaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        empresa_id = (
+            self.request.headers.get("X-Empresa-Id")
+            or self.request.query_params.get("empresa_id")
+        )
+        if empresa_id:
+            queryset = queryset.filter(id=empresa_id)
+        return queryset
