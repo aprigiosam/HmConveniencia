@@ -260,7 +260,7 @@ class Produto(models.Model):
             return False
         from django.utils import timezone
 
-        return self.data_validade < timezone.now().date()
+        return self.data_validade < timezone.localdate()
 
     @property
     def dias_para_vencer(self):
@@ -269,7 +269,7 @@ class Produto(models.Model):
             return None
         from django.utils import timezone
 
-        delta = self.data_validade - timezone.now().date()
+        delta = self.data_validade - timezone.localdate()
         return delta.days
 
     @property
@@ -744,7 +744,7 @@ class Lote(models.Model):
             return False
         from django.utils import timezone
 
-        return self.data_validade < timezone.now().date()
+        return self.data_validade < timezone.localdate()
 
     @property
     def dias_para_vencer(self):
@@ -753,7 +753,7 @@ class Lote(models.Model):
             return None
         from django.utils import timezone
 
-        delta = self.data_validade - timezone.now().date()
+        delta = self.data_validade - timezone.localdate()
         return delta.days
 
     @property
