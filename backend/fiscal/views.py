@@ -2,13 +2,12 @@ import logging
 
 from django.db import transaction
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
-from fiscal.models import Empresa, NotaFiscal, EstoqueMovimento
+from fiscal.models import Empresa, NotaFiscal
 from fiscal.serializers import EmpresaSerializer, NotaFiscalSerializer
 from fiscal.services.nfe_importer import ImportNFeError, NFeEntradaImporter
 from core.models import Lote
@@ -165,11 +164,15 @@ class NotaFiscalViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response(
             {
-                "detail": f"NF-e {nota.numero}/{nota.serie} excluída com sucesso. "
-                         f"{total_lotes} lote(s) removido(s) e estoque revertido."
+                "detail": (
+                    f"NF-e {nota.numero}/{nota.serie} excluída com sucesso. "
+                    f"{total_lotes} lote(s) removido(s) e estoque revertido."
+                )
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
+
+
 class EmpresaViewSet(viewsets.ModelViewSet):
     """
     Permite cadastrar e gerenciar a empresa que utiliza o sistema.

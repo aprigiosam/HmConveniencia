@@ -537,7 +537,10 @@ class ProdutoViewSet(viewsets.ModelViewSet):
             return Response(
                 {
                     "detail": "Esta operação requer confirmação explícita. Envie 'confirmar: true' no body.",
-                    "warning": "ATENÇÃO: Esta operação irá EXCLUIR TODOS OS PRODUTOS E DADOS RELACIONADOS. Esta ação é IRREVERSÍVEL!"
+                    "warning": (
+                        "ATENÇÃO: Esta operação irá EXCLUIR TODOS OS PRODUTOS E DADOS RELACIONADOS. "
+                        "Esta ação é IRREVERSÍVEL!"
+                    ),
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )

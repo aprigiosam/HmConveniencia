@@ -587,22 +587,105 @@ class NFeEntradaImporter:
         return None
 
     def _identificar_categoria(self, prod: dict) -> Optional[Categoria]:
+        """
+        Identifica ou cria categoria baseada no NCM do produto.
+        Agora com validade padrão automática!
+        """
         ncm = str(prod.get("NCM", "")).strip()
         if not ncm:
             return None
 
-        categoria_nome = None
-        if ncm == "24022000":
-            categoria_nome = "Cigarros"
+        # Mapeamento NCM → (Categoria, Validade Padrão em dias)
+        ncm_map = {
+            # Bebidas
+            "22021000": ("Refrigerantes", 180),  # Refrigerantes
+            "22029900": ("Bebidas", 180),  # Outras bebidas não alcoólicas
+            "22030000": ("Cervejas", 180),  # Cervejas
 
-        if not categoria_nome:
+            # Laticínios
+            "04012010": ("Leite", 15),  # Leite UHT
+            "04012090": ("Leite", 15),  # Outros leites
+            "04061000": ("Queijos", 30),  # Queijos frescos
+            "04069000": ("Queijos", 60),  # Outros queijos
+            "04051000": ("Manteiga", 60),  # Manteiga
+            "04031000": ("Iogurte", 30),  # Iogurtes
+
+            # Carnes e Frios
+            "02013000": ("Carne Bovina", 90),  # Carne bovina fresca
+            "02023000": ("Carne Bovina", 90),  # Carne bovina congelada
+            "01012100": ("Carne Suína", 90),  # Carne suína
+            "02071100": ("Aves", 90),  # Carne de frango
+            "16010000": ("Embutidos", 60),  # Linguiças e similares
+            "16020000": ("Embutidos", 60),  # Outras preparações de carne
+
+            # Panificação e Massas
+            "19059090": ("Biscoitos", 90),  # Biscoitos e bolachas
+            "19052000": ("Biscoitos", 120),  # Biscoitos tipo wafer
+            "19053100": ("Biscoitos", 90),  # Biscoitos tipo cookie
+            "19021100": ("Massas", 365),  # Massas secas
+            "19022000": ("Massas", 30),  # Massas recheadas
+
+            # Congelados
+            "21069090": ("Congelados", 365),  # Alimentos preparados congelados
+            "19041000": ("Cereais", 365),  # Cereais preparados
+
+            # Doces e Chocolates
+            "17049000": ("Doces", 180),  # Balas e confeitos
+            "18063100": ("Chocolates", 180),  # Chocolates recheados
+            "18069000": ("Chocolates", 180),  # Outros chocolates
+
+            # Tabaco
+            "24022000": ("Cigarros", 365),  # Cigarros
+
+            # Higiene e Limpeza
+            "33074100": ("Higiene Pessoal", 1095),  # Perfumes e águas de colônia (3 anos)
+            "34011100": ("Limpeza", 730),  # Sabões (2 anos)
+            "34022000": ("Limpeza", 730),  # Detergentes (2 anos)
+
+            # Snacks e Salgadinhos
+            "20052000": ("Snacks", 180),  # Batata chips
+            "19059010": ("Snacks", 120),  # Salgadinhos
+        }
+
+        categoria_info = ncm_map.get(ncm)
+
+        if not categoria_info:
+            # Se NCM não mapeado, tenta identificar pelo grupo (2 primeiros dígitos)
+            grupo_ncm = ncm[:2]
+            grupo_map = {
+                "22": ("Bebidas", 180),
+                "04": ("Laticínios", 30),
+                "02": ("Carnes", 90),
+                "19": ("Alimentos Secos", 180),
+                "21": ("Alimentos Preparados", 90),
+                "17": ("Açúcares e Doces", 180),
+                "33": ("Perfumaria", 730),
+                "34": ("Limpeza", 730),
+            }
+            categoria_info = grupo_map.get(grupo_ncm)
+
+        if not categoria_info:
             return None
 
-        categoria, _ = Categoria.objects.get_or_create(
+        categoria_nome, validade_dias = categoria_info
+
+        categoria, created = Categoria.objects.get_or_create(
             empresa=self.empresa,
             nome=categoria_nome,
-            defaults={"ativo": True},
+            defaults={
+                "ativo": True,
+                "validade_dias_padrao": validade_dias
+            },
         )
+
+        # Se categoria já existe mas não tem validade padrão, atualiza
+        if not created and not categoria.validade_dias_padrao:
+            categoria.validade_dias_padrao = validade_dias
+            categoria.save(update_fields=["validade_dias_padrao"])
+            logger.info(f"Categoria {categoria_nome} atualizada com validade padrão: {validade_dias} dias")
+        elif created:
+            logger.info(f"Categoria {categoria_nome} criada com validade padrão: {validade_dias} dias")
+
         return categoria
 
     def _obter_codigo_barras(self, prod: dict) -> str:
@@ -610,10 +693,50 @@ class NFeEntradaImporter:
         return str(codigo).strip()
 
     def _criar_movimentacao_estoque(self, nota: NotaFiscal, itens: List[NotaItem]) -> None:
+        """
+        Cria movimentação de estoque e lotes com validade estimada (se aplicável)
+        Sistema Híbrido: calcula validade baseado na categoria ou deixa None
+        """
+        from core.models import Lote
+        from datetime import date, timedelta
+
         for item in itens:
             produto = item.produto
             quantidade = item.quantidade
 
+            # Calcula data de validade estimada baseada na categoria
+            data_validade_estimada = None
+            validade_estimada = False
+            observacoes_lote = f"Lote criado via NF-e {nota.numero}/{nota.serie}"
+
+            if produto.categoria and produto.categoria.validade_dias_padrao:
+                data_validade_estimada = date.today() + timedelta(
+                    days=produto.categoria.validade_dias_padrao
+                )
+                validade_estimada = True
+                observacoes_lote += (
+                    f" - Validade ESTIMADA ({produto.categoria.validade_dias_padrao} dias). "
+                    "CONFERIR embalagem física!"
+                )
+            else:
+                observacoes_lote += " - SEM validade estimada. CONFERIR e atualizar!"
+
+            # Cria o lote
+            lote = Lote.objects.create(
+                produto=produto,
+                numero_lote=f"NFE-{nota.numero}-{item.codigo_produto[:20]}",
+                quantidade=quantidade,
+                data_validade=data_validade_estimada,
+                fornecedor=nota.fornecedor,
+                preco_custo_lote=item.valor_unitario,
+                observacoes=observacoes_lote,
+                empresa=self.empresa,
+                ativo=True,
+                validade_estimada=validade_estimada,
+                conferido=False,  # Precisa conferir
+            )
+
+            # Registra movimentação de estoque
             EstoqueMovimento.objects.create(
                 empresa=self.empresa,
                 produto=produto,
@@ -621,11 +744,17 @@ class NFeEntradaImporter:
                 origem=EstoqueOrigem.ENTRADA,
                 quantidade=quantidade,
                 custo_unitario=item.valor_unitario,
-                observacao=f"Entrada NF-e {nota.chave_acesso}",
+                observacao=f"Entrada NF-e {nota.chave_acesso} - Lote #{lote.id}",
             )
 
+            # Atualiza estoque total do produto
             produto.estoque = (produto.estoque or Decimal("0")) + quantidade
             produto.save(update_fields=["estoque", "updated_at"])
+
+            logger.info(
+                f"NF-e {nota.numero}: Lote #{lote.id} criado para {produto.nome} "
+                f"({quantidade} un, validade: {'ESTIMADA' if validade_estimada else 'NÃO DEFINIDA'})"
+            )
 
     def _armazenar_xml(
         self,
