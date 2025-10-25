@@ -49,7 +49,7 @@ function Dashboard() {
     return 'ok';
   };
 
-  const renderCardPrincipal = (title, value, subtitle, Icon, gradientFrom, gradientTo) => (
+  const renderCardPrincipal = (title, value, subtitle, Icon, gradientFrom, gradientTo, onClick) => (
     <Card
       className="glass-stat-card"
       p={isMobile ? "md" : "lg"}
@@ -64,6 +64,7 @@ function Dashboard() {
         position: 'relative',
         overflow: 'hidden',
       }}
+      onClick={onClick}
     >
       <Box
         style={{
@@ -223,7 +224,8 @@ function Dashboard() {
               `${stats?.vendas_hoje?.quantidade || 0} ${stats?.vendas_hoje?.quantidade === 1 ? 'venda' : 'vendas'}`,
               FaDollarSign,
               '#667eea',
-              '#764ba2'
+              '#764ba2',
+              () => navigate('/vendas')
             )}
           </Grid.Col>
 
@@ -234,7 +236,8 @@ function Dashboard() {
               'Margem Bruta',
               FaChartLine,
               '#11998e',
-              '#38ef7d'
+              '#38ef7d',
+              () => navigate('/vendas')
             )}
           </Grid.Col>
 
@@ -247,7 +250,8 @@ function Dashboard() {
                 : 'Tudo em dia',
               FaReceipt,
               stats?.contas_receber?.vencidas?.quantidade > 0 ? '#fa709a' : '#FF6B35',
-              stats?.contas_receber?.vencidas?.quantidade > 0 ? '#fee140' : '#FF8E53'
+              stats?.contas_receber?.vencidas?.quantidade > 0 ? '#fee140' : '#FF8E53',
+              () => navigate('/contas-receber')
             )}
           </Grid.Col>
 
@@ -255,10 +259,15 @@ function Dashboard() {
             {renderCardPrincipal(
               'Caixa Atual',
               stats?.caixa?.valor_atual ? formatCurrency(stats.caixa.valor_atual) : 'Fechado',
-              stats?.caixa ? `Inicial: ${formatCurrency(stats.caixa.valor_inicial)}` : 'Sem movimentação',
+              stats?.caixa?.vendas_dinheiro
+                ? `Vendas dinheiro: ${formatCurrency(stats.caixa.vendas_dinheiro)}`
+                : stats?.caixa
+                  ? `Inicial: ${formatCurrency(stats.caixa.valor_inicial)}`
+                  : 'Sem movimentação',
               FaCashRegister,
               '#4facfe',
-              '#00f2fe'
+              '#00f2fe',
+              () => navigate('/caixa')
             )}
           </Grid.Col>
         </Grid>
