@@ -258,7 +258,7 @@ function Dashboard() {
           <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
             {renderCardPrincipal(
               'Caixa Atual',
-              stats?.caixa?.valor_atual ? formatCurrency(stats.caixa.valor_atual) : 'Fechado',
+              stats?.caixa ? formatCurrency(stats.caixa.valor_atual) : 'Fechado',
               stats?.caixa?.vendas_dinheiro
                 ? `Vendas dinheiro: ${formatCurrency(stats.caixa.vendas_dinheiro)}`
                 : stats?.caixa
