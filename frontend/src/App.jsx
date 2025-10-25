@@ -199,34 +199,185 @@ function AppContent() {
 
   return (
     <AppShell
-      header={{ height: 60 }}
+      header={{ height: 70 }}
       navbar={{
-        width: 280,
+        width: 300,
         breakpoint: 'sm',
         collapsed: { mobile: !opened },
       }}
       padding={{ base: 'xs', sm: 'md' }}
+      style={{
+        '--header-bg': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      }}
     >
-      <AppShell.Header>
-        <Group h="100%" px={{ base: 'xs', sm: 'md' }} justify="space-between">
-          <Group gap="xs">
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <img src="/logo.jpeg" alt="HM Conveniência" style={{ height: '36px', borderRadius: '4px' }} />
-            <Text fw={500} size="lg" style={{ color: '#FF6B35' }} visibleFrom="xs">HM Conveniência</Text>
+      <style>
+        {`
+          .app-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
+          }
+
+          .app-navbar {
+            background: linear-gradient(180deg, #f5f7fa 0%, #e8ecf1 100%);
+            border-right: 1px solid rgba(102, 126, 234, 0.15);
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
+          }
+
+          .logo-container {
+            background: rgba(255, 255, 255, 0.25);
+            padding: 6px 10px;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+          }
+
+          .logo-container:hover {
+            background: rgba(255, 255, 255, 0.35);
+            transform: scale(1.05);
+          }
+
+          .brand-text {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+          }
+
+          .user-menu-button {
+            background: rgba(255, 255, 255, 0.2) !important;
+            border: 2px solid rgba(255, 255, 255, 0.3) !important;
+            transition: all 0.3s ease !important;
+          }
+
+          .user-menu-button:hover {
+            background: rgba(255, 255, 255, 0.3) !important;
+            transform: scale(1.05);
+          }
+
+          .nav-link-item {
+            border-radius: 12px;
+            margin-bottom: 6px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+          }
+
+          .nav-link-item:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            transform: translateX(5px);
+            border-color: rgba(102, 126, 234, 0.2);
+          }
+
+          .nav-link-item[data-active="true"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            border-color: rgba(255, 255, 255, 0.3);
+          }
+
+          .nav-link-item[data-active="true"] svg {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+          }
+
+          .app-main-content {
+            min-height: calc(100vh - 70px);
+          }
+
+          @keyframes slideIn {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          .route-enter {
+            animation: slideIn 0.3s ease-out;
+          }
+        `}
+      </style>
+
+      <AppShell.Header className="app-header">
+        <Group h="100%" px={{ base: 'md', sm: 'xl' }} justify="space-between">
+          <Group gap="md">
+            <Burger
+              opened={opened}
+              onClick={toggle}
+              hiddenFrom="sm"
+              size="md"
+              color="white"
+              style={{
+                filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))',
+              }}
+            />
+            <div className="logo-container">
+              <img
+                src="/logo.jpeg"
+                alt="HM Conveniência"
+                style={{
+                  height: '42px',
+                  borderRadius: '6px',
+                  display: 'block',
+                }}
+              />
+            </div>
+            <Text
+              className="brand-text"
+              size="xl"
+              visibleFrom="xs"
+            >
+              HM Conveniência
+            </Text>
           </Group>
-          <Menu shadow="md" width={200}>
+          <Menu shadow="xl" width={220} position="bottom-end">
             <Menu.Target>
-              <Button variant="subtle" color="gray" size="sm"><FaUserCircle size={20} /></Button>
+              <Button
+                className="user-menu-button"
+                size="md"
+                leftSection={<FaUserCircle size={22} />}
+                style={{
+                  color: 'white',
+                  fontWeight: 600,
+                }}
+              >
+                <Text visibleFrom="xs">Minha Conta</Text>
+              </Button>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item leftSection={<FaSignOutAlt />} onClick={handleLogout}>Sair</Menu.Item>
+              <Menu.Item
+                leftSection={<FaSignOutAlt />}
+                onClick={handleLogout}
+                color="red"
+                style={{
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                }}
+              >
+                Sair do Sistema
+              </Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p={{ base: 'xs', sm: 'md' }}>
-        <ScrollArea type="always" style={{ height: '100%' }}>
+      <AppShell.Navbar p={{ base: 'md', sm: 'lg' }} className="app-navbar">
+        <ScrollArea type="scroll" style={{ height: '100%' }}>
+          <Text
+            size="xs"
+            fw={700}
+            tt="uppercase"
+            c="dimmed"
+            mb="md"
+            style={{ letterSpacing: '1px' }}
+          >
+            Menu de Navegação
+          </Text>
           {navLinks.map((link) => {
             const hasChildren = Array.isArray(link.children) && link.children.length > 0;
             if (!hasChildren) {
@@ -239,7 +390,11 @@ function AppContent() {
                   to={link.path}
                   active={location.pathname === link.path}
                   onClick={() => opened && toggle()}
-                  style={{ borderRadius: '6px', marginBottom: '4px' }}
+                  className="nav-link-item"
+                  data-active={location.pathname === link.path}
+                  style={{
+                    fontWeight: location.pathname === link.path ? 700 : 500,
+                  }}
                 />
               );
             }
@@ -252,7 +407,11 @@ function AppContent() {
                 leftSection={link.icon}
                 active={childActive}
                 defaultOpened={childActive}
-                style={{ borderRadius: '6px', marginBottom: '4px' }}
+                className="nav-link-item"
+                data-active={childActive}
+                style={{
+                  fontWeight: childActive ? 700 : 500,
+                }}
               >
                 {link.children.map((child) => (
                   <NavLink
@@ -263,7 +422,12 @@ function AppContent() {
                     to={child.path}
                     active={location.pathname === child.path}
                     onClick={() => opened && toggle()}
-                    style={{ borderRadius: '6px', marginBottom: '4px' }}
+                    className="nav-link-item"
+                    data-active={location.pathname === child.path}
+                    style={{
+                      fontWeight: location.pathname === child.path ? 700 : 500,
+                      marginLeft: '12px',
+                    }}
                   />
                 ))}
               </NavLink>
@@ -272,33 +436,35 @@ function AppContent() {
         </ScrollArea>
       </AppShell.Navbar>
 
-      <AppShell.Main>
-        <Suspense fallback={<Center style={{ padding: '2rem' }}><Loader /></Center>}>
-          <SyncStatus />
-          <OfflineIndicator />
-          <Routes>
-            <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/alertas" element={<PrivateRoute><Alertas /></PrivateRoute>} />
-            <Route path="/pdv" element={<PrivateRoute><PDV /></PrivateRoute>} />
-            <Route path="/estoque" element={<PrivateRoute><Estoque /></PrivateRoute>} />
-            <Route path="/estoque/inventario" element={<PrivateRoute><Inventario /></PrivateRoute>} />
-            <Route path="/estoque/inventario/:id" element={<PrivateRoute><InventarioDetalhe /></PrivateRoute>} />
-            <Route path="/produtos" element={<Navigate to="/estoque" replace />} />
-            <Route path="/estoque/entrada" element={<Navigate to="/estoque/notas" replace />} />
-            <Route path="/estoque/conferencia" element={<PrivateRoute><ConferenciaLotes /></PrivateRoute>} />
-            <Route path="/estoque/notas" element={<PrivateRoute><NotasFiscais /></PrivateRoute>} />
-            <Route path="/fornecedores" element={<PrivateRoute><Fornecedores /></PrivateRoute>} />
-            <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
-            <Route path="/contas-receber" element={<PrivateRoute><ContasReceber /></PrivateRoute>} />
-            <Route path="/vendas/historico" element={<PrivateRoute><HistoricoVendas /></PrivateRoute>} />
-            <Route path="/estoque/giro" element={<PrivateRoute><GiroEstoque /></PrivateRoute>} />
-            <Route path="/caixa" element={<PrivateRoute><Caixa /></PrivateRoute>} />
-            <Route path="/caixa/historico" element={<PrivateRoute><HistoricoCaixa /></PrivateRoute>} />
-            <Route path="/relatorios/lucro" element={<PrivateRoute><RelatorioLucro /></PrivateRoute>} />
-            <Route path="/relatorios/fornecedores" element={<PrivateRoute><RelatorioFornecedores /></PrivateRoute>} />
-            <Route path="/categorias" element={<PrivateRoute><Categorias /></PrivateRoute>} />
-            <Route path="/setup/empresa" element={<PrivateRoute><EmpresaSetup onSuccess={handleEmpresaSaved} /></PrivateRoute>} />
-          </Routes>
+      <AppShell.Main className="app-main-content">
+        <Suspense fallback={<Center style={{ padding: '2rem' }}><Loader size="xl" variant="bars" /></Center>}>
+          <div className="route-enter">
+            <SyncStatus />
+            <OfflineIndicator />
+            <Routes>
+              <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              <Route path="/alertas" element={<PrivateRoute><Alertas /></PrivateRoute>} />
+              <Route path="/pdv" element={<PrivateRoute><PDV /></PrivateRoute>} />
+              <Route path="/estoque" element={<PrivateRoute><Estoque /></PrivateRoute>} />
+              <Route path="/estoque/inventario" element={<PrivateRoute><Inventario /></PrivateRoute>} />
+              <Route path="/estoque/inventario/:id" element={<PrivateRoute><InventarioDetalhe /></PrivateRoute>} />
+              <Route path="/produtos" element={<Navigate to="/estoque" replace />} />
+              <Route path="/estoque/entrada" element={<Navigate to="/estoque/notas" replace />} />
+              <Route path="/estoque/conferencia" element={<PrivateRoute><ConferenciaLotes /></PrivateRoute>} />
+              <Route path="/estoque/notas" element={<PrivateRoute><NotasFiscais /></PrivateRoute>} />
+              <Route path="/fornecedores" element={<PrivateRoute><Fornecedores /></PrivateRoute>} />
+              <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
+              <Route path="/contas-receber" element={<PrivateRoute><ContasReceber /></PrivateRoute>} />
+              <Route path="/vendas/historico" element={<PrivateRoute><HistoricoVendas /></PrivateRoute>} />
+              <Route path="/estoque/giro" element={<PrivateRoute><GiroEstoque /></PrivateRoute>} />
+              <Route path="/caixa" element={<PrivateRoute><Caixa /></PrivateRoute>} />
+              <Route path="/caixa/historico" element={<PrivateRoute><HistoricoCaixa /></PrivateRoute>} />
+              <Route path="/relatorios/lucro" element={<PrivateRoute><RelatorioLucro /></PrivateRoute>} />
+              <Route path="/relatorios/fornecedores" element={<PrivateRoute><RelatorioFornecedores /></PrivateRoute>} />
+              <Route path="/categorias" element={<PrivateRoute><Categorias /></PrivateRoute>} />
+              <Route path="/setup/empresa" element={<PrivateRoute><EmpresaSetup onSuccess={handleEmpresaSaved} /></PrivateRoute>} />
+            </Routes>
+          </div>
         </Suspense>
       </AppShell.Main>
     </AppShell>
