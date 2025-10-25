@@ -839,6 +839,7 @@ function PDV() {
           <div className="pdv-content">
             {isMobile ? (
               <Stack gap="lg" className="pdv-mobile-stack">
+              <Stack gap="md">
                 <Button
                   leftSection={<FaSearch size={18} />}
                   variant="gradient"
@@ -851,6 +852,7 @@ function PDV() {
               </Stack>
             ) : (
               <Grid columns={12} gutter="xl" className="pdv-grid">
+              <Grid columns={12} gutter="xl">
                 <Grid.Col span={{ base: 12, lg: 7 }}>{renderProductSearch()}</Grid.Col>
                 <Grid.Col span={{ base: 12, lg: 5 }}>{renderCart()}</Grid.Col>
               </Grid>
