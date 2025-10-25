@@ -105,6 +105,9 @@ export const abrirCaixa = (data) => api.post('/caixa/abrir/', data);
 export const fecharCaixa = (id, data) => api.post(`/caixa/${id}/fechar/`, data);
 export const adicionarMovimentacao = (id, data) => api.post(`/caixa/${id}/movimentar/`, data);
 export const getHistoricoCaixa = () => api.get('/caixa/historico/');
+export const deletarCaixa = (id) => api.delete(`/caixa/${id}/deletar/`);
+export const deletarCaixaPeriodo = (data) => api.post('/caixa/deletar_periodo/', data);
+export const deletarTodosCaixas = () => api.post('/caixa/deletar_todos/', { confirmar: 'SIM_DELETAR_TODOS' });
 
 // Autenticação
 export const login = (username, password) => api.post('/auth/login/', { username, password });
