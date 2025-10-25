@@ -969,6 +969,74 @@ class CaixaViewSet(viewsets.ViewSet):
         serializer = CaixaSerializer(caixa)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=["get"])
+    def preview(self, request, pk=None):
+        """Retorna prévia do fechamento com totais por forma de pagamento"""
+        try:
+            caixa = Caixa.objects.get(pk=pk, status="ABERTO")
+        except Caixa.DoesNotExist:
+            return Response(
+                {"error": "Caixa não encontrado ou já está fechado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Calcula vendas por forma de pagamento (mesmo cálculo do fechamento)
+        vendas_periodo = Venda.objects.filter(
+            created_at__gte=caixa.data_abertura, status="FINALIZADA"
+        )
+
+        total_dinheiro = vendas_periodo.filter(forma_pagamento="DINHEIRO").aggregate(
+            total=Sum("total")
+        )["total"] or Decimal(0)
+
+        total_debito = vendas_periodo.filter(forma_pagamento="DEBITO").aggregate(
+            total=Sum("total")
+        )["total"] or Decimal(0)
+
+        total_credito = vendas_periodo.filter(forma_pagamento="CREDITO").aggregate(
+            total=Sum("total")
+        )["total"] or Decimal(0)
+
+        total_pix = vendas_periodo.filter(forma_pagamento="PIX").aggregate(
+            total=Sum("total")
+        )["total"] or Decimal(0)
+
+        total_fiado = vendas_periodo.filter(forma_pagamento="FIADO").aggregate(
+            total=Sum("total")
+        )["total"] or Decimal(0)
+
+        total_vendas = (
+            total_dinheiro + total_debito + total_credito + total_pix + total_fiado
+        )
+
+        # Movimentações
+        movimentacoes = caixa.movimentacoes.aggregate(
+            sangrias=Sum("valor", filter=Q(tipo="SANGRIA")),
+            suprimentos=Sum("valor", filter=Q(tipo="SUPRIMENTO")),
+        )
+        total_sangrias = movimentacoes["sangrias"] or Decimal(0)
+        total_suprimentos = movimentacoes["suprimentos"] or Decimal(0)
+
+        # Valor esperado em caixa (físico)
+        valor_esperado = (
+            caixa.valor_inicial + total_dinheiro + total_suprimentos - total_sangrias
+        )
+
+        return Response({
+            "caixa_id": caixa.id,
+            "data_abertura": caixa.data_abertura,
+            "valor_inicial": caixa.valor_inicial,
+            "total_dinheiro": total_dinheiro,
+            "total_debito": total_debito,
+            "total_credito": total_credito,
+            "total_pix": total_pix,
+            "total_fiado": total_fiado,
+            "total_vendas": total_vendas,
+            "total_sangrias": total_sangrias,
+            "total_suprimentos": total_suprimentos,
+            "valor_esperado_caixa": valor_esperado,
+        })
+
     @action(detail=True, methods=["post"])
     @transaction.atomic
     def fechar(self, request, pk=None):
@@ -998,14 +1066,38 @@ class CaixaViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Calcula vendas em dinheiro desde a abertura
-        vendas_dinheiro = Venda.objects.filter(
-            created_at__gte=caixa.data_abertura,
-            forma_pagamento="DINHEIRO",
-            status="FINALIZADA",
-        ).aggregate(total=Sum("total"))["total"] or Decimal(0)
+        # Calcula vendas por forma de pagamento desde a abertura
+        vendas_periodo = Venda.objects.filter(
+            created_at__gte=caixa.data_abertura, status="FINALIZADA"
+        )
 
-        # Calcula movimentações
+        # Totaliza por cada forma de pagamento
+        total_dinheiro = vendas_periodo.filter(forma_pagamento="DINHEIRO").aggregate(
+            total=Sum("total")
+        )["total"] or Decimal(0)
+
+        total_debito = vendas_periodo.filter(forma_pagamento="DEBITO").aggregate(
+            total=Sum("total")
+        )["total"] or Decimal(0)
+
+        total_credito = vendas_periodo.filter(forma_pagamento="CREDITO").aggregate(
+            total=Sum("total")
+        )["total"] or Decimal(0)
+
+        total_pix = vendas_periodo.filter(forma_pagamento="PIX").aggregate(
+            total=Sum("total")
+        )["total"] or Decimal(0)
+
+        total_fiado = vendas_periodo.filter(forma_pagamento="FIADO").aggregate(
+            total=Sum("total")
+        )["total"] or Decimal(0)
+
+        # Total geral de vendas (todas as formas)
+        total_vendas = (
+            total_dinheiro + total_debito + total_credito + total_pix + total_fiado
+        )
+
+        # Calcula movimentações de caixa (sangria/suprimento)
         movimentacoes = caixa.movimentacoes.aggregate(
             sangrias=Sum("valor", filter=Q(tipo="SANGRIA")),
             suprimentos=Sum("valor", filter=Q(tipo="SUPRIMENTO")),
@@ -1013,18 +1105,31 @@ class CaixaViewSet(viewsets.ViewSet):
         total_sangrias = movimentacoes["sangrias"] or Decimal(0)
         total_suprimentos = movimentacoes["suprimentos"] or Decimal(0)
 
-        # Calcula valor final do sistema
+        # Valor final do sistema considera:
+        # - Valor inicial
+        # + Vendas em DINHEIRO (outras formas não entram no caixa físico)
+        # + Suprimentos
+        # - Sangrias
         valor_final_sistema = (
-            caixa.valor_inicial + vendas_dinheiro + total_suprimentos - total_sangrias
+            caixa.valor_inicial + total_dinheiro + total_suprimentos - total_sangrias
         )
 
-        # Atualiza o caixa
+        # Atualiza o caixa com todos os totais
         caixa.data_fechamento = timezone.now()
         caixa.valor_final_sistema = valor_final_sistema
         caixa.valor_final_informado = valor_final_informado
         caixa.diferenca = valor_final_informado - valor_final_sistema
         caixa.status = "FECHADO"
         caixa.observacoes = request.data.get("observacoes", "")
+
+        # Salva detalhamento por forma de pagamento
+        caixa.total_dinheiro = total_dinheiro
+        caixa.total_debito = total_debito
+        caixa.total_credito = total_credito
+        caixa.total_pix = total_pix
+        caixa.total_fiado = total_fiado
+        caixa.total_vendas = total_vendas
+
         caixa.save()
 
         # Log de auditoria

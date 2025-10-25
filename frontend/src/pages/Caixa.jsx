@@ -1,8 +1,23 @@
 import { useState, useEffect } from 'react';
-import { getCaixaStatus, abrirCaixa, fecharCaixa, adicionarMovimentacao } from '../services/api';
-import { Card, Button, Modal, NumberInput, Group, Title, Text, Stack, Textarea, Select, TextInput } from '@mantine/core';
+import { getCaixaStatus, abrirCaixa, getCaixaPreview, fecharCaixa, adicionarMovimentacao } from '../services/api';
+import {
+  Card,
+  Button,
+  Modal,
+  NumberInput,
+  Group,
+  Title,
+  Text,
+  Stack,
+  Textarea,
+  Select,
+  TextInput,
+  Paper,
+  Divider,
+  Badge
+} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { FaFolder, FaFolderOpen, FaExchangeAlt, FaLock } from 'react-icons/fa';
+import { FaFolder, FaFolderOpen, FaExchangeAlt, FaLock, FaMoneyBill, FaCreditCard, FaQrcode, FaFileInvoice } from 'react-icons/fa';
 
 function Caixa() {
   const [caixa, setCaixa] = useState(null);
@@ -11,6 +26,8 @@ function Caixa() {
   const [valorFinal, setValorFinal] = useState(0);
   const [observacoes, setObservacoes] = useState('');
   const [movimentacao, setMovimentacao] = useState({ tipo: 'SANGRIA', valor: 0, descricao: '' });
+  const [preview, setPreview] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   const [fecharModalOpened, { open: openFecharModal, close: closeFecharModal }] = useDisclosure(false);
   const [movModalOpened, { open: openMovModal, close: closeMovModal }] = useDisclosure(false);
@@ -42,6 +59,22 @@ function Caixa() {
     }
   };
 
+  const handleOpenFecharModal = async () => {
+    setLoadingPreview(true);
+    openFecharModal();
+    try {
+      const response = await getCaixaPreview(caixa.id);
+      setPreview(response.data);
+      // Pre-preenche com o valor esperado
+      setValorFinal(Number(response.data.valor_esperado_caixa));
+    } catch (error) {
+      console.error('Erro ao carregar preview:', error);
+      setPreview(null);
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
   const handleFecharCaixa = async (e) => {
     e.preventDefault();
     try {
@@ -49,6 +82,7 @@ function Caixa() {
       closeFecharModal();
       setValorFinal(0);
       setObservacoes('');
+      setPreview(null);
       loadCaixaStatus();
     } catch (error) {
       alert('Erro ao fechar o caixa.');
@@ -65,6 +99,11 @@ function Caixa() {
     } catch (error) {
       alert('Erro ao registrar movimentação.');
     }
+  };
+
+  const formatCurrency = (value) => {
+    const num = Number(value) || 0;
+    return `R$ ${num.toFixed(2)}`;
   };
 
   if (loading) return <Text>Carregando...</Text>;
@@ -100,7 +139,7 @@ function Caixa() {
           <Button variant="outline" leftSection={<FaExchangeAlt />} onClick={openMovModal} size="sm">
             Nova Movimentação
           </Button>
-          <Button color="red" leftSection={<FaLock />} onClick={openFecharModal} size="sm">
+          <Button color="red" leftSection={<FaLock />} onClick={handleOpenFecharModal} size="sm">
             Fechar Caixa
           </Button>
         </Group>
@@ -117,16 +156,127 @@ function Caixa() {
         </Stack>
       </Card>
 
-      {/* Modal Fechar Caixa */}
-      <Modal opened={fecharModalOpened} onClose={closeFecharModal} title="Fechar Caixa" size="md">
+      {/* Modal Fechar Caixa com Preview */}
+      <Modal opened={fecharModalOpened} onClose={closeFecharModal} title="Fechar Caixa" size="lg">
         <form onSubmit={handleFecharCaixa}>
-          <Stack gap="sm">
-            <Text size="sm">Conte todo o dinheiro em caixa e insira o valor total abaixo.</Text>
-            <NumberInput label="Valor Total Contado" required value={valorFinal} onChange={setValorFinal} precision={2} min={0} size="md" autoFocus />
-            <Textarea label="Observações" placeholder="Alguma observação sobre o fechamento" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} size="md" />
+          <Stack gap="md">
+            {loadingPreview ? (
+              <Text ta="center" c="dimmed">Carregando resumo...</Text>
+            ) : preview ? (
+              <>
+                {/* Resumo de Vendas */}
+                <Paper withBorder p="md" radius="md">
+                  <Text fw={700} size="lg" mb="md">📊 Resumo de Vendas</Text>
+                  <Stack gap="xs">
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <FaMoneyBill color="green" />
+                        <Text>Dinheiro</Text>
+                      </Group>
+                      <Text fw={600}>{formatCurrency(preview.total_dinheiro)}</Text>
+                    </Group>
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <FaCreditCard color="blue" />
+                        <Text>Débito</Text>
+                      </Group>
+                      <Text fw={600}>{formatCurrency(preview.total_debito)}</Text>
+                    </Group>
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <FaCreditCard color="purple" />
+                        <Text>Crédito</Text>
+                      </Group>
+                      <Text fw={600}>{formatCurrency(preview.total_credito)}</Text>
+                    </Group>
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <FaQrcode color="teal" />
+                        <Text>PIX</Text>
+                      </Group>
+                      <Text fw={600}>{formatCurrency(preview.total_pix)}</Text>
+                    </Group>
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <FaFileInvoice color="orange" />
+                        <Text>Fiado</Text>
+                      </Group>
+                      <Text fw={600}>{formatCurrency(preview.total_fiado)}</Text>
+                    </Group>
+                    <Divider my="sm" />
+                    <Group justify="space-between">
+                      <Text fw={700} size="lg">TOTAL DE VENDAS</Text>
+                      <Badge size="xl" color="blue">{formatCurrency(preview.total_vendas)}</Badge>
+                    </Group>
+                  </Stack>
+                </Paper>
+
+                {/* Movimentações */}
+                {(preview.total_sangrias > 0 || preview.total_suprimentos > 0) && (
+                  <Paper withBorder p="md" radius="md">
+                    <Text fw={700} size="md" mb="md">💸 Movimentações</Text>
+                    <Stack gap="xs">
+                      {preview.total_suprimentos > 0 && (
+                        <Group justify="space-between">
+                          <Text c="green">+ Suprimentos</Text>
+                          <Text c="green" fw={600}>{formatCurrency(preview.total_suprimentos)}</Text>
+                        </Group>
+                      )}
+                      {preview.total_sangrias > 0 && (
+                        <Group justify="space-between">
+                          <Text c="red">- Sangrias</Text>
+                          <Text c="red" fw={600}>{formatCurrency(preview.total_sangrias)}</Text>
+                        </Group>
+                      )}
+                    </Stack>
+                  </Paper>
+                )}
+
+                {/* Valor Esperado em Caixa */}
+                <Paper withBorder p="md" radius="md" bg="blue.0">
+                  <Group justify="space-between" align="center">
+                    <div>
+                      <Text fw={700} size="lg">💵 Valor Esperado em Caixa</Text>
+                      <Text size="xs" c="dimmed">
+                        (Inicial + Dinheiro + Suprimentos - Sangrias)
+                      </Text>
+                    </div>
+                    <Badge size="xl" color="blue">{formatCurrency(preview.valor_esperado_caixa)}</Badge>
+                  </Group>
+                </Paper>
+
+                <Divider />
+
+                {/* Formulário de Fechamento */}
+                <Text size="sm" fw={500}>
+                  Agora conte todo o dinheiro físico em caixa e confirme o valor abaixo:
+                </Text>
+              </>
+            ) : null}
+
+            <NumberInput
+              label="Valor Total Contado (Dinheiro em Caixa)"
+              description="Conte todo o dinheiro físico e insira o total"
+              required
+              value={valorFinal}
+              onChange={setValorFinal}
+              precision={2}
+              min={0}
+              size="lg"
+              autoFocus
+            />
+
+            <Textarea
+              label="Observações"
+              placeholder="Alguma observação sobre o fechamento"
+              value={observacoes}
+              onChange={(e) => setObservacoes(e.target.value)}
+              size="md"
+            />
+
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={closeFecharModal}>Cancelar</Button>
-              <Button type="submit" color="red">Confirmar Fechamento</Button>
+              <Button type="submit" color="red" size="lg">Confirmar Fechamento</Button>
             </Group>
           </Stack>
         </form>

@@ -102,6 +102,7 @@ export const getDashboard = () => api.get('/vendas/dashboard/');
 // Caixa
 export const getCaixaStatus = () => api.get('/caixa/status/');
 export const abrirCaixa = (data) => api.post('/caixa/abrir/', data);
+export const getCaixaPreview = (id) => api.get(`/caixa/${id}/preview/`);
 export const fecharCaixa = (id, data) => api.post(`/caixa/${id}/fechar/`, data);
 export const adicionarMovimentacao = (id, data) => api.post(`/caixa/${id}/movimentar/`, data);
 export const getHistoricoCaixa = () => api.get('/caixa/historico/');

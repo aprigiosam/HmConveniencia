@@ -491,6 +491,33 @@ class Caixa(models.Model):
         "Status", max_length=10, choices=STATUS_CHOICES, default="ABERTO"
     )
     observacoes = models.TextField("Observações", blank=True)
+
+    # Detalhamento por forma de pagamento (calculado no fechamento)
+    total_dinheiro = models.DecimalField(
+        "Total Dinheiro", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Total de vendas em dinheiro"
+    )
+    total_debito = models.DecimalField(
+        "Total Débito", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Total de vendas no débito"
+    )
+    total_credito = models.DecimalField(
+        "Total Crédito", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Total de vendas no crédito"
+    )
+    total_pix = models.DecimalField(
+        "Total PIX", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Total de vendas via PIX"
+    )
+    total_fiado = models.DecimalField(
+        "Total Fiado", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Total de vendas fiado"
+    )
+    total_vendas = models.DecimalField(
+        "Total de Vendas", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Total geral de vendas (todas as formas)"
+    )
+
     empresa = models.ForeignKey(
         "fiscal.Empresa",
         on_delete=models.CASCADE,
