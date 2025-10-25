@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getProdutos, getVendas } from '../services/api';
-import { Card, Grid, Title, Stack, Text, Badge, Table, ScrollArea, Group, Select, Paper, RingProgress, Center } from '@mantine/core';
+import { Card, Grid, Title, Stack, Text, Badge, Table, ScrollArea, Group, Select, Paper, Center } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { FaBox, FaExclamationTriangle, FaClock, FaChartLine, FaTimes, FaFire, FaTachometerAlt } from 'react-icons/fa';
+import { FaBox, FaExclamationTriangle, FaClock, FaTimes, FaFire } from 'react-icons/fa';
 
 function GiroEstoque() {
   const [produtos, setProdutos] = useState([]);
@@ -11,17 +11,7 @@ function GiroEstoque() {
   const [periodo, setPeriodo] = useState('30'); // Dias para análise
   const [analise, setAnalise] = useState([]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (produtos.length > 0 && vendas.length > 0) {
-      calcularGiro();
-    }
-  }, [produtos, vendas, periodo]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [produtosRes, vendasRes] = await Promise.all([
@@ -45,9 +35,9 @@ function GiroEstoque() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const calcularGiro = () => {
+  const calcularGiro = useCallback(() => {
     const diasAnalise = parseInt(periodo);
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - diasAnalise);
@@ -135,7 +125,17 @@ function GiroEstoque() {
     analiseData.sort((a, b) => b.velocidade - a.velocidade);
 
     setAnalise(analiseData);
-  };
+  }, [periodo, produtos, vendas]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    if (produtos.length > 0 && vendas.length > 0) {
+      calcularGiro();
+    }
+  }, [produtos.length, vendas.length, calcularGiro]);
 
   const formatDate = (date) => {
     if (!date) return 'Nunca';

@@ -20,13 +20,10 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useDisclosure } from '@mantine/hooks';
 import {
-  FaFileInvoice,
   FaTrash,
   FaEye,
   FaSearch,
   FaBuilding,
-  FaCalendar,
-  FaMoneyBillWave,
   FaFileUpload,
   FaCheck,
   FaTimes,

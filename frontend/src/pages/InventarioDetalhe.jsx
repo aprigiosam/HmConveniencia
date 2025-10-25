@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ActionIcon,
@@ -60,39 +60,7 @@ function InventarioDetalhe() {
   });
   const [buscandoSugestao, setBuscandoSugestao] = useState(false);
 
-  useEffect(() => {
-    carregarDados();
-
-    // Inicia sincronização automática
-    inventarioSyncManager.startAutoSync(30000); // A cada 30s
-
-    // Listeners para mudanças de conexão
-    const handleOnline = () => {
-      setIsOnline(true);
-      inventarioSyncManager.syncAll(); // Sincroniza ao voltar online
-    };
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Atualiza contador de itens pendentes
-    const updatePending = async () => {
-      const count = await localDB.countInventarioItensPendentes();
-      setItensPendentes(count);
-    };
-    updatePending();
-    const interval = setInterval(updatePending, 10000); // A cada 10s
-
-    return () => {
-      inventarioSyncManager.stopAutoSync();
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      clearInterval(interval);
-    };
-  }, [id]);
-
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     setLoading(true);
     try {
       const [sessaoRes, produtosRes] = await Promise.all([
@@ -115,7 +83,36 @@ function InventarioDetalhe() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    carregarDados();
+
+    inventarioSyncManager.startAutoSync(30000);
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      inventarioSyncManager.syncAll();
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    const updatePending = async () => {
+      const count = await localDB.countInventarioItensPendentes();
+      setItensPendentes(count);
+    };
+    updatePending();
+    const interval = setInterval(updatePending, 10000);
+
+    return () => {
+      inventarioSyncManager.stopAutoSync();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
+    };
+  }, [carregarDados]);
 
   const produtoOptions = useMemo(
     () =>
@@ -127,7 +124,7 @@ function InventarioDetalhe() {
     [produtos]
   );
 
-  const itens = sessao?.itens || [];
+  const itens = useMemo(() => sessao?.itens || [], [sessao]);
 
   const toDecimalString = (value) => {
     if (value === '' || value === null || typeof value === 'undefined') {

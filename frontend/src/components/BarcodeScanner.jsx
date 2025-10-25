@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Modal, Button, Group, Text, Stack, Alert } from '@mantine/core';
 import { FaCamera, FaTimes, FaCheckCircle } from 'react-icons/fa';
@@ -11,24 +11,59 @@ function BarcodeScanner({ opened, onClose, onScan, title = "Scanner de Código d
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState(null);
   const [lastScanned, setLastScanned] = useState(null);
+  const lastScannedRef = useRef(null);
   // eslint-disable-next-line no-unused-vars
   const scannerRef = useRef(null);
   const html5QrCodeRef = useRef(null);
 
-  useEffect(() => {
-    if (opened) {
-      const timer = setTimeout(() => {
-        startScanner();
-      }, 150); // Delay to ensure modal is rendered
-
-      return () => {
-        clearTimeout(timer);
-        stopScanner();
-      };
+  const stopScanner = useCallback(async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        if (html5QrCodeRef.current.isScanning) {
+          await html5QrCodeRef.current.stop();
+        }
+        html5QrCodeRef.current.clear();
+      } catch (err) {
+        console.error("Erro ao parar scanner:", err);
+      }
+      html5QrCodeRef.current = null;
     }
-  }, [opened]);
+    setScanning(false);
+  }, []);
 
-  const startScanner = async () => {
+  const handleClose = useCallback(async () => {
+    await stopScanner();
+    setLastScanned(null);
+    lastScannedRef.current = null;
+    setError(null);
+    onClose();
+  }, [stopScanner, onClose]);
+
+  const onScanSuccess = useCallback((decodedText) => {
+    console.log("Código detectado:", decodedText);
+
+    // Evita scans duplicados rápidos
+    if (decodedText === lastScannedRef.current) {
+      return;
+    }
+
+    setLastScanned(decodedText);
+    lastScannedRef.current = decodedText;
+
+    if (navigator.vibrate) {
+      navigator.vibrate(200);
+    }
+
+    if (onScan) {
+      onScan(decodedText);
+    }
+
+    setTimeout(() => {
+      handleClose();
+    }, 500);
+  }, [handleClose, onScan]);
+
+  const startScanner = useCallback(async () => {
     try {
       setError(null);
       setScanning(true);
@@ -61,48 +96,7 @@ function BarcodeScanner({ opened, onClose, onScan, title = "Scanner de Código d
       );
       setScanning(false);
     }
-  };
-
-  const stopScanner = async () => {
-    if (html5QrCodeRef.current) {
-      try {
-        if (html5QrCodeRef.current.isScanning) {
-          await html5QrCodeRef.current.stop();
-        }
-        html5QrCodeRef.current.clear();
-      } catch (err) {
-        console.error("Erro ao parar scanner:", err);
-      }
-      html5QrCodeRef.current = null;
-    }
-    setScanning(false);
-  };
-
-  const onScanSuccess = (decodedText, decodedResult) => {
-    console.log("Código detectado:", decodedText);
-
-    // Evita scans duplicados rápidos
-    if (decodedText === lastScanned) {
-      return;
-    }
-
-    setLastScanned(decodedText);
-
-    // Vibra o dispositivo (se disponível)
-    if (navigator.vibrate) {
-      navigator.vibrate(200);
-    }
-
-    // Chama callback com o código escaneado
-    if (onScan) {
-      onScan(decodedText);
-    }
-
-    // Para o scanner após sucesso
-    setTimeout(() => {
-      handleClose();
-    }, 500);
-  };
+  }, [onScanSuccess]);
 
   const onScanError = (errorMessage) => {
     // Ignora erros de "not found" que são normais durante o scan
@@ -111,12 +105,19 @@ function BarcodeScanner({ opened, onClose, onScan, title = "Scanner de Código d
     }
   };
 
-  const handleClose = async () => {
-    await stopScanner();
-    setLastScanned(null);
-    setError(null);
-    onClose();
-  };
+  useEffect(() => {
+    if (opened) {
+      const timer = setTimeout(() => {
+        startScanner();
+      }, 150);
+
+      return () => {
+        clearTimeout(timer);
+        stopScanner();
+      };
+    }
+    return undefined;
+  }, [opened, startScanner, stopScanner]);
 
   return (
     <Modal

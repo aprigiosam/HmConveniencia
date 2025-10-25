@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getFornecedores, getFornecedorLotes, getFornecedorEstatisticas } from '../services/api';
 import {
   Container,
@@ -11,7 +11,6 @@ import {
   LoadingOverlay,
   Select,
   Stack,
-  Grid,
   Card,
   SimpleGrid,
   ScrollArea,
@@ -30,11 +29,6 @@ const RelatorioFornecedores = () => {
     carregarFornecedores();
   }, []);
 
-  useEffect(() => {
-    if (fornecedorSelecionado) {
-      carregarDadosFornecedor();
-    }
-  }, [fornecedorSelecionado]);
 
   const carregarFornecedores = async () => {
     try {
@@ -59,7 +53,7 @@ const RelatorioFornecedores = () => {
     }
   };
 
-  const carregarDadosFornecedor = async () => {
+const carregarDadosFornecedor = useCallback(async () => {
     if (!fornecedorSelecionado) return;
 
     try {
@@ -81,7 +75,11 @@ const RelatorioFornecedores = () => {
     } finally {
       setLoading(false);
     }
-  };
+}, [fornecedorSelecionado]);
+
+  useEffect(() => {
+    carregarDadosFornecedor();
+  }, [carregarDadosFornecedor]);
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';

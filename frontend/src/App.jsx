@@ -2,7 +2,7 @@ import { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { AppShell, Text, Burger, Group, NavLink, Button, Menu, Center, Loader, ScrollArea } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBell, FaBuilding, FaClipboardList, FaCheckCircle } from 'react-icons/fa';
+import { FaTachometerAlt, FaShoppingCart, FaBoxOpen, FaUsers, FaFileInvoiceDollar, FaCashRegister, FaHistory, FaChartBar, FaSignOutAlt, FaUserCircle, FaListAlt, FaSyncAlt, FaBuilding, FaClipboardList, FaCheckCircle } from 'react-icons/fa';
 import { localDB } from './utils/db';
 import { syncManager } from './utils/syncManager';
 import { notificationManager } from './utils/notifications';

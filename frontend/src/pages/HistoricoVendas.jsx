@@ -9,7 +9,6 @@ import Comprovante from '../components/Comprovante';
 function HistoricoVendas() {
   const [vendas, setVendas] = useState([]);
   const [vendaDetalhe, setVendaDetalhe] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [comprovanteAberto, setComprovanteAberto] = useState(false);
 
   // Filtros
@@ -23,7 +22,6 @@ function HistoricoVendas() {
   }, []);
 
   const loadVendas = async () => {
-    setLoading(true);
     try {
       const response = await getVendas();
       const vendasData = response.data.results || response.data;
@@ -36,8 +34,6 @@ function HistoricoVendas() {
         color: 'red',
         icon: <FaTimes />,
       });
-    } finally {
-      setLoading(false);
     }
   };
 

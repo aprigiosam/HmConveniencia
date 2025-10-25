@@ -4,7 +4,6 @@ import { Table, Title, Text, Card } from '@mantine/core';
 
 function RelatorioLucro() {
   const [produtos, setProdutos] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadProdutosLucrativos();
@@ -16,8 +15,6 @@ function RelatorioLucro() {
       setProdutos(response.data);
     } catch (error) {
       console.error('Erro ao carregar relatório de lucro:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
