@@ -30,8 +30,10 @@ function PDV() {
   const [verificandoCaixa, setVerificandoCaixa] = useState(true);
   const [caixaAberto, setCaixaAberto] = useState(false);
   const [caixaStatus, setCaixaStatus] = useState(null);
+  const [ultimoProdutoAdicionado, setUltimoProdutoAdicionado] = useState(null);
   const buscaRef = useRef(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
+  const feedbackTimeoutRef = useRef(null);
 
   useHotkeys([
     ['F2', () => buscaRef.current?.focus()],
@@ -48,6 +50,14 @@ function PDV() {
 
   useEffect(() => {
     verificarCaixa();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -131,6 +141,14 @@ function PDV() {
       icon: <FaCheck />,
       autoClose: 2000,
     });
+
+    setUltimoProdutoAdicionado(produto.id);
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setUltimoProdutoAdicionado(null);
+    }, 1200);
 
     setBusca('');
     buscaRef.current?.focus();
@@ -378,12 +396,18 @@ function PDV() {
     const troco = calcularTroco();
 
     return (
-      <Card withBorder shadow="sm" radius="md" padding="md">
+      <Card
+        withBorder
+        shadow="xl"
+        radius="lg"
+        padding="lg"
+        className="glass-card elevated-card cart-card"
+      >
         <Stack gap="md">
           <Group justify="space-between" align="flex-start">
             <div>
-              <Title order={4}>Carrinho</Title>
-              <Text size="sm" c="dimmed">
+              <Title order={4} className="section-title">Carrinho</Title>
+              <Text size="sm" c="dimmed" className="section-subtitle">
                 {totalItens === 0 ? 'Nenhum item selecionado' : `${totalItens} ${totalItens === 1 ? 'item' : 'itens'} no carrinho`}
               </Text>
             </div>
@@ -393,6 +417,7 @@ function PDV() {
                 color="red"
                 size="xs"
                 onClick={limparCarrinho}
+                className="ghost-button"
               >
                 Limpar (Esc)
               </Button>
@@ -403,17 +428,23 @@ function PDV() {
             {carrinho.length > 0 ? (
               <Stack gap="sm">
                 {carrinho.map((item) => (
-                  <Paper withBorder p="sm" radius="sm" key={item.produto.id}>
+                  <Paper
+                    withBorder
+                    p="sm"
+                    radius="md"
+                    key={item.produto.id}
+                    className="glass-card cart-item"
+                  >
                     <Group justify="space-between" align="flex-start" wrap="nowrap">
                       <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-                        <Text size="sm" fw={600} truncate>
+                        <Text size="sm" fw={600} truncate className="item-title">
                           {item.produto.nome}
                         </Text>
                         <Group gap="xs">
-                          <Badge color="gray" variant="light" size="sm">
+                          <Badge color="gray" variant="light" size="sm" className="badge-soft">
                             R$ {parseFloat(item.produto.preco).toFixed(2)} un
                           </Badge>
-                          <Badge color="blue" variant="light" size="sm">
+                          <Badge color="blue" variant="light" size="sm" className="badge-soft">
                             Estoque: {parseFloat(item.produto.estoque).toFixed(0)}
                           </Badge>
                         </Group>
@@ -443,8 +474,9 @@ function PDV() {
                           variant="subtle"
                           size="lg"
                           onClick={() => removerDoCarrinho(item.produto.id)}
+                          className="icon-action"
                         >
-                          <FaTrash size={14} />
+                          <FaTrash size={16} />
                         </ActionIcon>
                       </Group>
                     </Group>
@@ -454,8 +486,8 @@ function PDV() {
             ) : (
               <Center h={isMobile ? 220 : 340}>
                 <Stack align="center" gap="xs">
-                  <FaShoppingCart size={40} color="#adb5bd" />
-                  <Text c="dimmed" size="sm">
+                  <FaShoppingCart size={52} className="empty-icon" />
+                  <Text c="dimmed" size="sm" className="empty-text">
                     Busque um produto e adicione ao carrinho.
                   </Text>
                 </Stack>
@@ -463,7 +495,7 @@ function PDV() {
             )}
           </ScrollArea>
 
-          <Divider />
+          <Divider className="divider-glow" />
 
           {carrinho.length > 0 ? (
             <Stack gap="md">
@@ -611,7 +643,7 @@ function PDV() {
               </Button>
             </Stack>
           ) : (
-            <Alert color="gray" variant="light" title="Carrinho vazio">
+            <Alert color="gray" variant="light" title="Carrinho vazio" className="glass-card shortcut-alert">
               Use <strong>F2</strong> para buscar ou o botão acima para abrir a lista
               de produtos.
             </Alert>
@@ -622,16 +654,24 @@ function PDV() {
   };
 
   const renderProductSearch = () => (
-    <Card withBorder shadow="sm" radius="md" padding="md">
+    <Card
+      withBorder
+      shadow="xl"
+      radius="lg"
+      padding="lg"
+      className="glass-card elevated-card products-card"
+    >
       <Stack gap="md">
         <Group justify="space-between" align="center">
           <div>
-            <Title order={4}>Produtos</Title>
-            <Text size="sm" c="dimmed">
+            <Title order={4} className="section-title">
+              Produtos
+            </Title>
+            <Text size="sm" c="dimmed" className="section-subtitle">
               {produtosFiltrados.length} encontrados
             </Text>
           </div>
-          <Badge color="orange" variant="light">
+          <Badge color="orange" variant="light" className="badge-pill">
             F4 para leitor
           </Badge>
         </Group>
@@ -646,50 +686,54 @@ function PDV() {
             size="md"
             autoFocus={!isMobile}
             style={{ flex: 1 }}
+            className="search-input"
           />
           <ActionIcon
-            size={44}
+            size={48}
             color="orange"
             variant="filled"
             onClick={abrirScanner}
             title="Ler código de barras (F4)"
+            className="icon-action"
           >
-            <FaBarcode size={20} />
+            <FaBarcode size={22} />
           </ActionIcon>
         </Group>
 
         <ScrollArea h={isMobile ? 300 : 520} offsetScrollbars>
           {produtosFiltrados.length > 0 ? (
-            <Stack gap="xs">
+            <Stack gap="sm">
               {produtosFiltrados.slice(0, 20).map((produto) => (
                 <Paper
-                  shadow="xs"
-                  p="sm"
+                  shadow="xl"
+                  p="md"
                   withBorder
                   key={produto.id}
                   onClick={() => {
                     adicionarAoCarrinho(produto);
                     if (isMobile) setSearchModalOpen(false);
                   }}
-                  style={{ cursor: 'pointer', transition: 'transform 0.1s ease' }}
+                  className={`glass-card produto-card ${
+                    ultimoProdutoAdicionado === produto.id ? 'produto-card--added' : ''
+                  }`}
                 >
                   <Group justify="space-between" align="center">
-                    <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
-                      <Text size="sm" fw={600} truncate>
+                    <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                      <Text size="sm" fw={600} truncate className="item-title">
                         {produto.nome}
                       </Text>
                       <Group gap="xs">
-                        <Badge color="green" variant="light" size="sm">
+                        <Badge color="green" variant="light" size="sm" className="badge-soft">
                           R$ {parseFloat(produto.preco).toFixed(2)}
                         </Badge>
                         {produto.estoque !== undefined && (
-                          <Badge color="blue" variant="light" size="sm">
+                          <Badge color="blue" variant="light" size="sm" className="badge-soft">
                             Estoque: {parseFloat(produto.estoque).toFixed(0)}
                           </Badge>
                         )}
                       </Group>
                     </Stack>
-                    <Button variant="light" size="xs">
+                    <Button variant="gradient" size="sm" className="ghost-button">
                       Adicionar
                     </Button>
                   </Group>
@@ -698,7 +742,9 @@ function PDV() {
             </Stack>
           ) : (
             <Center h={isMobile ? 280 : 500}>
-              <Text c="dimmed">Nenhum produto encontrado.</Text>
+              <Text c="dimmed" className="empty-text">
+                Nenhum produto encontrado.
+              </Text>
             </Center>
           )}
         </ScrollArea>
@@ -706,8 +752,9 @@ function PDV() {
         <Alert
           color="orange"
           variant="light"
-          icon={<FaKeyboard size={16} />}
+          icon={<FaKeyboard size={20} />}
           title="Atalhos rápidos"
+          className="glass-card shortcut-alert"
         >
           F2: buscar produto • F4: leitor de código de barras • F9: finalizar venda
         </Alert>
@@ -747,21 +794,28 @@ function PDV() {
   }
 
   return (
-    <AppShell header={{ height: 60 }} padding="md">
-      <AppShell.Header>
+    <AppShell header={{ height: 70 }} padding="xl" className="pdv-appshell">
+      <AppShell.Header className="pdv-header">
         <Group
           h="100%"
-          px={{ base: 'sm', sm: 'md' }}
+          px={{ base: 'md', sm: 'xl' }}
           justify="space-between"
           align="center"
         >
-          <Title order={3}>PDV</Title>
+          <Group gap="sm" align="center">
+            <div className="header-icon">
+              <FaShoppingCart size={22} />
+            </div>
+            <Title order={2} className="pdv-title">
+              PDV
+            </Title>
+          </Group>
           <Group gap="lg" align="center">
             <Stack gap={2} align="flex-end">
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="dimmed" className="section-subtitle">
                 Total atual
               </Text>
-              <Title order={3} c="orange">
+              <Title order={2} className="total-amount">
                 R$ {calcularTotal().toFixed(2)}
               </Title>
             </Stack>
@@ -771,6 +825,7 @@ function PDV() {
                 size="lg"
                 variant="filled"
                 color="blue"
+                className="icon-action"
               >
                 <FaSearch />
               </ActionIcon>
@@ -779,24 +834,29 @@ function PDV() {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Main>
-        {isMobile ? (
-          <Stack gap="md">
-            <Button
-              leftSection={<FaSearch size={14} />}
-              variant="light"
-              onClick={() => setSearchModalOpen(true)}
-            >
-              Buscar produtos
-            </Button>
-            {renderCart()}
-          </Stack>
-        ) : (
-          <Grid columns={12} gutter="xl">
-            <Grid.Col span={{ base: 12, lg: 7 }}>{renderProductSearch()}</Grid.Col>
-            <Grid.Col span={{ base: 12, lg: 5 }}>{renderCart()}</Grid.Col>
-          </Grid>
-        )}
+      <AppShell.Main className="pdv-main">
+        <div className="pdv-immersive-bg">
+          <div className="pdv-content">
+            {isMobile ? (
+              <Stack gap="lg" className="pdv-mobile-stack">
+                <Button
+                  leftSection={<FaSearch size={18} />}
+                  variant="gradient"
+                  onClick={() => setSearchModalOpen(true)}
+                  className="primary-action"
+                >
+                  Buscar produtos
+                </Button>
+                {renderCart()}
+              </Stack>
+            ) : (
+              <Grid columns={12} gutter="xl" className="pdv-grid">
+                <Grid.Col span={{ base: 12, lg: 7 }}>{renderProductSearch()}</Grid.Col>
+                <Grid.Col span={{ base: 12, lg: 5 }}>{renderCart()}</Grid.Col>
+              </Grid>
+            )}
+          </div>
+        </div>
       </AppShell.Main>
 
       <Modal
