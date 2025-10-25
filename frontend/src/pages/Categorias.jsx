@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getCategorias, createCategoria, updateCategoria, deleteCategoria } from '../services/api';
 import { localDB } from '../utils/db';
-import { Table, Button, Modal, TextInput, Group, Title, ActionIcon, Stack, Text, Switch, Badge, ScrollArea } from '@mantine/core';
+import { Table, Button, Modal, TextInput, Group, Title, ActionIcon, Stack, Text, Switch, Badge, ScrollArea, NumberInput } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus, FaCalendar } from 'react-icons/fa';
 
 function Categorias() {
   const [categorias, setCategorias] = useState([]);
@@ -11,7 +11,7 @@ function Categorias() {
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [deletingCategory, setDeletingCategory] = useState(null);
-  const [formData, setFormData] = useState({ nome: '', ativo: true });
+  const [formData, setFormData] = useState({ nome: '', ativo: true, validade_dias_padrao: null });
 
   useEffect(() => {
     loadCategorias();
@@ -36,14 +36,18 @@ function Categorias() {
   };
 
   const resetForm = () => {
-    setFormData({ nome: '', ativo: true });
+    setFormData({ nome: '', ativo: true, validade_dias_padrao: null });
     setEditingCategory(null);
   };
 
   const handleOpenModal = (categoria = null) => {
     if (categoria) {
       setEditingCategory(categoria);
-      setFormData({ nome: categoria.nome, ativo: categoria.ativo });
+      setFormData({
+        nome: categoria.nome,
+        ativo: categoria.ativo,
+        validade_dias_padrao: categoria.validade_dias_padrao
+      });
     } else {
       resetForm();
     }
@@ -96,6 +100,15 @@ function Categorias() {
     <Table.Tr key={categoria.id}>
       <Table.Td>{categoria.nome}</Table.Td>
       <Table.Td>
+        {categoria.validade_dias_padrao ? (
+          <Badge color="blue" variant="light" leftSection={<FaCalendar size={12} />}>
+            {categoria.validade_dias_padrao} dias
+          </Badge>
+        ) : (
+          <Text size="sm" c="dimmed">Não definido</Text>
+        )}
+      </Table.Td>
+      <Table.Td>
         <Badge color={categoria.ativo ? 'green' : 'red'} variant="light">
           {categoria.ativo ? 'Ativa' : 'Inativa'}
         </Badge>
@@ -131,6 +144,19 @@ function Categorias() {
               required
               value={formData.nome}
               onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+              size="md"
+            />
+            <NumberInput
+              label="Validade Padrão (dias)"
+              placeholder="Ex: 180 para refrigerantes"
+              description="Usado para calcular validade automaticamente ao importar XML"
+              leftSection={<FaCalendar />}
+              value={formData.validade_dias_padrao}
+              onChange={(value) => setFormData({ ...formData, validade_dias_padrao: value })}
+              min={1}
+              max={3650}
+              allowNegative={false}
+              allowDecimal={false}
               size="md"
             />
             <Switch
@@ -176,6 +202,7 @@ function Categorias() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Nome</Table.Th>
+              <Table.Th>Validade Padrão</Table.Th>
               <Table.Th>Status</Table.Th>
               <Table.Th style={{ width: '120px' }}>Ações</Table.Th>
             </Table.Tr>
@@ -183,7 +210,7 @@ function Categorias() {
           <Table.Tbody>
             {rows.length > 0 ? rows : (
               <Table.Tr>
-                <Table.Td colSpan={3}>
+                <Table.Td colSpan={4}>
                   <Text c="dimmed" ta="center">Nenhuma categoria cadastrada.</Text>
                 </Table.Td>
               </Table.Tr>

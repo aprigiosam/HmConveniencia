@@ -115,6 +115,12 @@ class Categoria(models.Model):
 
     nome = models.CharField("Nome", max_length=100)
     ativo = models.BooleanField("Ativo", default=True)
+    validade_dias_padrao = models.IntegerField(
+        "Validade Padrão (dias)",
+        null=True,
+        blank=True,
+        help_text="Dias de validade padrão para lotes desta categoria. Ex: 180 para refrigerantes",
+    )
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
     empresa = models.ForeignKey(
@@ -694,6 +700,19 @@ class Lote(models.Model):
     )
     observacoes = models.TextField("Observações", blank=True)
     ativo = models.BooleanField("Ativo", default=True)
+    validade_estimada = models.BooleanField(
+        "Validade Estimada",
+        default=False,
+        help_text="Indica se a data de validade foi calculada automaticamente (precisa conferir)",
+    )
+    conferido = models.BooleanField(
+        "Conferido",
+        default=False,
+        help_text="Indica se o lote foi conferido fisicamente",
+    )
+    conferido_em = models.DateTimeField(
+        "Conferido em", null=True, blank=True, help_text="Data/hora da conferência"
+    )
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
@@ -763,6 +782,15 @@ class Lote(models.Model):
         if self.quantidade == 0:
             self.ativo = False
         self.save(update_fields=["ativo", "updated_at"])
+
+    def marcar_conferido(self):
+        """Marca o lote como conferido"""
+        from django.utils import timezone
+
+        self.conferido = True
+        self.conferido_em = timezone.now()
+        self.validade_estimada = False  # Se conferiu, não é mais estimada
+        self.save(update_fields=["conferido", "conferido_em", "validade_estimada", "updated_at"])
 
 
 class InventarioSessao(models.Model):
