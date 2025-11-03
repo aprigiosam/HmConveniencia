@@ -94,4 +94,36 @@ describe('Página de Estoque', () => {
       }));
     });
   }, 10000);
+
+  test('Deve enviar lote inicial quando informado no cadastro', async () => {
+    const { user } = render(<Estoque />);
+
+    await user.click(screen.getByText('Novo Produto'));
+
+    const modal = await screen.findByRole('dialog');
+
+    await user.type(within(modal).getByPlaceholderText('Nome do produto'), 'Produto com lote');
+    await user.type(within(modal).getByPlaceholderText('9.99'), '19.90');
+
+    const loteQuantidadeInput = within(modal).getByLabelText('Quantidade do lote inicial');
+    await user.clear(loteQuantidadeInput);
+    await user.type(loteQuantidadeInput, '12');
+
+    const numeroLoteInput = within(modal).getByLabelText('Número do lote');
+    await user.type(numeroLoteInput, 'LOTE-123');
+
+    await user.click(within(modal).getByText('Criar'));
+
+    await waitFor(() => {
+      expect(api.createProduto).toHaveBeenCalledTimes(1);
+      expect(api.createProduto).toHaveBeenCalledWith(expect.objectContaining({
+        nome: 'Produto com lote',
+        lote_inicial: expect.objectContaining({
+          quantidade: 12,
+          numero_lote: 'LOTE-123',
+        }),
+        estoque: 12,
+      }));
+    });
+  });
 });

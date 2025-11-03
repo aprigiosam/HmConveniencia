@@ -257,6 +257,25 @@ class LoteSerializer(serializers.ModelSerializer):
             return super().update(instance, validated_data)
 
 
+class LoteCreateSerializer(serializers.Serializer):
+    """Serializer auxiliar para criar lote inicial junto ao produto."""
+
+    numero_lote = serializers.CharField(
+        required=False, allow_blank=True, max_length=100
+    )
+    quantidade = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0.01")
+    )
+    data_validade = serializers.DateField(required=False, allow_null=True)
+    preco_custo_lote = serializers.DecimalField(
+        max_digits=10, decimal_places=2, required=False, allow_null=True
+    )
+    observacoes = serializers.CharField(required=False, allow_blank=True)
+    fornecedor = serializers.PrimaryKeyRelatedField(
+        queryset=Fornecedor.objects.all(), required=False, allow_null=True
+    )
+
+
 class ProdutoSerializer(serializers.ModelSerializer):
     margem_lucro = serializers.SerializerMethodField()
     categoria_nome = serializers.CharField(source="categoria.nome", read_only=True)
@@ -270,6 +289,7 @@ class ProdutoSerializer(serializers.ModelSerializer):
     fornecedor = serializers.PrimaryKeyRelatedField(
         queryset=Fornecedor.objects.all(), allow_null=True, required=False
     )
+    lote_inicial = LoteCreateSerializer(write_only=True, required=False)
 
     class Meta:
         model = Produto
@@ -294,6 +314,7 @@ class ProdutoSerializer(serializers.ModelSerializer):
             "esta_vencido",
             "dias_para_vencer",
             "proximo_vencimento",
+            "lote_inicial",
             "lotes",
             "total_lotes",
             "estoque_lotes",
@@ -332,6 +353,46 @@ class ProdutoSerializer(serializers.ModelSerializer):
 
         total = obj.lotes.filter(ativo=True).aggregate(total=Sum("quantidade"))["total"]
         return float(total) if total else 0.0
+
+    def create(self, validated_data):
+        lote_data = validated_data.pop("lote_inicial", None)
+        produto = super().create(validated_data)
+
+        if lote_data:
+            quantidade = lote_data["quantidade"]
+            fornecedor = lote_data.get("fornecedor") or produto.fornecedor
+            preco_custo_lote = lote_data.get("preco_custo_lote")
+            data_validade = lote_data.get("data_validade")
+
+            Lote.objects.create(
+                produto=produto,
+                numero_lote=lote_data.get("numero_lote", ""),
+                quantidade=quantidade,
+                data_validade=data_validade,
+                fornecedor=fornecedor,
+                empresa=produto.empresa,
+                preco_custo_lote=preco_custo_lote,
+                observacoes=lote_data.get("observacoes", ""),
+            )
+
+            update_fields = ["estoque", "updated_at"]
+            produto.estoque = quantidade
+
+            if preco_custo_lote is not None:
+                produto.preco_custo = preco_custo_lote
+                update_fields.append("preco_custo")
+
+            if data_validade and not produto.data_validade:
+                produto.data_validade = data_validade
+                update_fields.append("data_validade")
+
+            produto.save(update_fields=update_fields)
+
+        return produto
+
+    def update(self, instance, validated_data):
+        validated_data.pop("lote_inicial", None)
+        return super().update(instance, validated_data)
 
 
 class OpenFoodFactsProductSerializer(serializers.Serializer):
