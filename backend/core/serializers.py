@@ -424,6 +424,31 @@ class InventarioItemSerializer(serializers.ModelSerializer):
             if produto:
                 data["quantidade_sistema"] = produto.estoque or Decimal("0")
 
+        lote = data.get("lote")
+        produto = data.get("produto")
+
+        if lote:
+            if produto and lote.produto_id != produto.id:
+                raise serializers.ValidationError(
+                    {"lote": "O lote selecionado pertence a outro produto."}
+                )
+
+            if not produto:
+                data["produto"] = lote.produto
+                produto = lote.produto
+
+            if not data.get("descricao") and produto:
+                data["descricao"] = produto.nome
+
+            if not data.get("codigo_barras") and produto:
+                data["codigo_barras"] = produto.codigo_barras or ""
+
+            if not data.get("quantidade_sistema"):
+                data["quantidade_sistema"] = lote.quantidade
+
+            if not data.get("validade_informada") and lote.data_validade:
+                data["validade_informada"] = lote.data_validade
+
         return data
 
 

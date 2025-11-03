@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 from rest_framework import status
-from core.models import Produto, InventarioSessao, InventarioItem
+from core.models import Produto, InventarioSessao, InventarioItem, Lote, Categoria
 from fiscal.models import Empresa
 
 
@@ -374,8 +374,6 @@ class InventarioNovosFieldsTestCase(TestCase):
     """Testes para novos campos: lote, categoria, marca, conteúdo"""
 
     def setUp(self):
-        from core.models import Categoria, Lote
-
         self.empresa = Empresa.objects.create(
             razao_social="Empresa Teste Ltda",
             nome_fantasia="Empresa Teste",
@@ -449,6 +447,51 @@ class InventarioNovosFieldsTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['categoria'], self.categoria.id)
         self.assertEqual(response.data['categoria_nome'], self.categoria.nome)
+
+    def test_adicionar_item_com_lote_de_outro_produto(self):
+        """Lote selecionado deve pertencer ao mesmo produto."""
+        outro_produto = Produto.objects.create(
+            nome="Suco Laranja",
+            preco=Decimal("4.00"),
+            estoque=Decimal("20"),
+            empresa=self.empresa
+        )
+        lote_diferente = Lote.objects.create(
+            produto=outro_produto,
+            numero_lote="OUTRO-123",
+            quantidade=Decimal("10"),
+            empresa=self.empresa
+        )
+
+        data = {
+            "produto": str(self.produto.id),
+            "lote": str(lote_diferente.id),
+            "quantidade_contada": "5"
+        }
+
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/adicionar-item/',
+            data=data
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("lote", response.data)
+
+    def test_adicionar_item_somente_com_lote(self):
+        """Quando apenas lote for informado, produto é inferido automaticamente."""
+        data = {
+            "lote": str(self.lote.id),
+            "quantidade_contada": "40"
+        }
+
+        response = self.client.post(
+            f'/api/estoque/inventarios/{self.sessao.id}/adicionar-item/',
+            data=data
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['produto'], self.produto.id)
+        self.assertEqual(response.data['lote'], self.lote.id)
 
     def test_adicionar_item_com_marca_e_conteudo(self):
         """Testa adicionar item com marca e conteúdo"""
