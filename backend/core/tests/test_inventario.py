@@ -493,6 +493,57 @@ class InventarioNovosFieldsTestCase(TestCase):
         self.assertEqual(response.data['produto'], self.produto.id)
         self.assertEqual(response.data['lote'], self.lote.id)
 
+    def test_editar_item_atualiza_quantidade(self):
+        """Editar item existente deve atualizar quantidade contada."""
+        item = InventarioItem.objects.create(
+            sessao=self.sessao,
+            produto=self.produto,
+            quantidade_sistema=Decimal("50"),
+            quantidade_contada=Decimal("45"),
+        )
+
+        url = f'/api/estoque/inventarios/{self.sessao.id}/itens/{item.id}/'
+        response = self.client.patch(
+            url,
+            data={"quantidade_contada": "55"},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        item.refresh_from_db()
+        self.assertEqual(item.quantidade_contada, Decimal("55"))
+
+    def test_editar_item_impede_produto_duplicado(self):
+        """Não deve permitir editar item trocando para produto já contado na sessão."""
+        outro_produto = Produto.objects.create(
+            nome="Água Mineral",
+            preco=Decimal("3.00"),
+            estoque=Decimal("20"),
+            empresa=self.empresa,
+        )
+        existente = InventarioItem.objects.create(
+            sessao=self.sessao,
+            produto=self.produto,
+            quantidade_sistema=Decimal("10"),
+            quantidade_contada=Decimal("12"),
+        )
+        segundo_item = InventarioItem.objects.create(
+            sessao=self.sessao,
+            produto=outro_produto,
+            quantidade_sistema=Decimal("5"),
+            quantidade_contada=Decimal("5"),
+        )
+
+        url = f'/api/estoque/inventarios/{self.sessao.id}/itens/{segundo_item.id}/'
+        response = self.client.patch(
+            url,
+            data={"produto": str(self.produto.id)},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('detail', response.data)
+
     def test_adicionar_item_com_marca_e_conteudo(self):
         """Testa adicionar item com marca e conteúdo"""
         data = {

@@ -14,6 +14,7 @@ from rest_framework.permissions import AllowAny
 from django.db.models import Sum, Count, Q, OuterRef, Subquery
 from django.utils import timezone
 from django.db import connection, transaction
+from django.shortcuts import get_object_or_404
 from datetime import timedelta
 from decimal import Decimal
 from django_ratelimit.decorators import ratelimit
@@ -295,6 +296,104 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
             InventarioItemSerializer(item).data,
             status=status.HTTP_201_CREATED,
         )
+
+    @action(
+        detail=True,
+        methods=["put", "patch"],
+        url_path=r"itens/(?P<item_id>[^/.]+)",
+    )
+    def atualizar_item(self, request, *args, **kwargs):
+        """
+        Atualiza um item existente do inventário.
+        Impede edições em sessões finalizadas e previne duplicidade de produtos.
+        """
+        sessao = self.get_object()
+
+        if sessao.status == "FINALIZADO":
+            return Response(
+                {"detail": "Sessão finalizada não permite editar itens."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        item_id = kwargs.get("item_id")
+        item = get_object_or_404(
+            InventarioItem.objects.select_related("sessao"), pk=item_id, sessao=sessao
+        )
+
+        dados = request.data.copy()
+        dados["sessao"] = str(sessao.id)
+
+        produto_id = dados.get("produto") or dados.get("produto_id")
+        if produto_id in ("", None):
+            produto_id = None
+
+        if produto_id:
+            try:
+                produto_id_int = int(produto_id)
+            except (TypeError, ValueError):
+                return Response(
+                    {"detail": "Produto informado é inválido."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if (
+                sessao.itens.exclude(id=item.id)
+                .filter(produto_id=produto_id_int)
+                .exists()
+            ):
+                return Response(
+                    {
+                        "detail": "Este produto já foi contado nesta sessão. Edite o item existente."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            dados["produto"] = produto_id_int
+        elif item.produto_id:
+            # Mantém produto atual se não foi enviado no payload
+            dados["produto"] = item.produto_id
+
+        lote_id = dados.get("lote")
+        if lote_id in ("", None):
+            dados["lote"] = None
+            lote_id = None
+        if lote_id:
+            try:
+                lote = Lote.objects.get(id=lote_id)
+            except Lote.DoesNotExist:
+                return Response(
+                    {"lote": ["Lote informado não encontrado."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if dados.get("produto") and lote.produto_id != dados["produto"]:
+                return Response(
+                    {"lote": ["O lote selecionado pertence a outro produto."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not dados.get("produto"):
+                dados["produto"] = lote.produto_id
+
+        serializer = InventarioItemSerializer(
+            item,
+            data=dados,
+            partial=request.method.lower() == "patch",
+        )
+
+        try:
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        except ValidationError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Erro ao atualizar item do inventário")
+            return Response(
+                {"detail": "Falha ao atualizar item do inventário.", "error": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="finalizar")
     def finalizar(self, request, *args, **kwargs):

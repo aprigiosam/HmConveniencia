@@ -33,9 +33,23 @@ import {
   deleteInventarioItem,
   getLotesPorProduto,
   getCategorias,
+  updateInventarioItem,
+  createLote,
+  getFornecedores,
 } from '../services/api';
 import BarcodeScanner from '../components/BarcodeScanner';
-import { FaArrowLeft, FaBarcode, FaCheck, FaClipboardList, FaSearch, FaTrash } from 'react-icons/fa';
+import {
+  FaArrowLeft,
+  FaBarcode,
+  FaCheck,
+  FaClipboardList,
+  FaSearch,
+  FaTrash,
+  FaEdit,
+  FaPlus,
+  FaTimes,
+  FaSync,
+} from 'react-icons/fa';
 import { localDB } from '../utils/db';
 import { inventarioSyncManager } from '../utils/inventarioSyncManager';
 import {
@@ -56,6 +70,18 @@ function InventarioDetalhe() {
   const [loading, setLoading] = useState(true);
   const [produtos, setProdutos] = useState([]);
   const [lotes, setLotes] = useState([]);
+  const [fornecedores, setFornecedores] = useState([]);
+  const [editingItem, setEditingItem] = useState(null);
+  const [loteModalOpened, setLoteModalOpened] = useState(false);
+  const [novoLoteForm, setNovoLoteForm] = useState({
+    numero_lote: '',
+    quantidade: '',
+    data_validade: null,
+    preco_custo_lote: '',
+    fornecedor: '',
+    observacoes: '',
+  });
+  const [salvandoLote, setSalvandoLote] = useState(false);
   const [scannerAberto, setScannerAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
@@ -98,19 +124,22 @@ function InventarioDetalhe() {
     });
 
     try {
-      const [sessaoRes, produtosRes, categoriasRes] = await Promise.all([
+      const [sessaoRes, produtosRes, categoriasRes, fornecedoresRes] = await Promise.all([
         getInventario(id),
         getProdutos({ ativo: true }),
         getCategorias({ ativo: true }),
+        getFornecedores({ ativo: true }),
       ]);
 
       const sessaoData = sessaoRes.data;
       const produtosData = produtosRes.data.results || produtosRes.data;
       const categoriasData = categoriasRes.data.results || categoriasRes.data;
+      const fornecedoresData = fornecedoresRes.data.results || fornecedoresRes.data;
 
       setSessao(sessaoData);
       setProdutos(Array.isArray(produtosData) ? produtosData : []);
       setCategorias(Array.isArray(categoriasData) ? categoriasData : []);
+      setFornecedores(Array.isArray(fornecedoresData) ? fornecedoresData : []);
 
       notifications.hide(loadingId);
     } catch (error) {
@@ -166,6 +195,20 @@ function InventarioDetalhe() {
     [produtos]
   );
 
+  const fornecedorOptions = useMemo(
+    () =>
+      fornecedores.map((fornecedor) => ({
+        value: fornecedor.id.toString(),
+        label: fornecedor.nome,
+      })),
+    [fornecedores]
+  );
+
+  const produtoSelecionado = useMemo(
+    () => produtos.find((produto) => produto.id.toString() === form.produto),
+    [form.produto, produtos]
+  );
+
   const loteOptions = useMemo(
     () =>
       lotes.map((lote) => ({
@@ -201,6 +244,53 @@ function InventarioDetalhe() {
 
   const sessaoFinalizada = sessao?.status === 'FINALIZADO';
 
+  const loadLotesForProduto = useCallback(
+    async (produtoId, { autoSelectSingle = false } = {}) => {
+      if (!produtoId) {
+        setLotes([]);
+        return [];
+      }
+
+      try {
+        const response = await getLotesPorProduto(produtoId);
+        const lotesEncontrados = response.data.results || response.data || [];
+        const listaNormalizada = Array.isArray(lotesEncontrados) ? lotesEncontrados : [];
+        setLotes(listaNormalizada);
+
+        if (autoSelectSingle && listaNormalizada.length === 1) {
+          const loteUnico = listaNormalizada[0];
+          setForm((prev) => ({
+            ...prev,
+            lote: loteUnico.id.toString(),
+            validade_informada: loteUnico.data_validade
+              ? dayjs(loteUnico.data_validade).toDate()
+              : prev.validade_informada,
+            quantidade_sistema:
+              loteUnico.quantidade != null
+                ? Number(loteUnico.quantidade).toString()
+                : prev.quantidade_sistema,
+            custo_informado:
+              loteUnico.preco_custo_lote != null
+                ? Number(loteUnico.preco_custo_lote).toString()
+                : prev.custo_informado,
+          }));
+        }
+
+        return listaNormalizada;
+      } catch (error) {
+        console.error('Erro ao buscar lotes do produto:', error);
+        setLotes([]);
+        notifications.show({
+          title: 'Erro ao buscar lotes',
+          message: 'Não foi possível carregar os lotes para este produto.',
+          color: 'red',
+        });
+        return [];
+      }
+    },
+    [notifications, setForm]
+  );
+
   const preencherComProduto = async (produtoId) => {
     const produto = produtos.find((p) => p.id.toString() === produtoId);
     if (!produto) return;
@@ -214,39 +304,7 @@ function InventarioDetalhe() {
       lote: '',
     }));
 
-    try {
-      const response = await getLotesPorProduto(produtoId);
-      const lotesEncontrados = response.data.results || response.data;
-      const listaNormalizada = Array.isArray(lotesEncontrados) ? lotesEncontrados : [];
-      setLotes(listaNormalizada);
-
-      if (listaNormalizada.length === 1) {
-        const loteUnico = listaNormalizada[0];
-        setForm((prev) => ({
-          ...prev,
-          lote: loteUnico.id.toString(),
-          validade_informada: loteUnico.data_validade
-            ? dayjs(loteUnico.data_validade).toDate()
-            : prev.validade_informada,
-          quantidade_sistema:
-            loteUnico.quantidade != null
-              ? Number(loteUnico.quantidade).toString()
-              : prev.quantidade_sistema,
-          custo_informado:
-            loteUnico.preco_custo_lote != null
-              ? Number(loteUnico.preco_custo_lote).toString()
-              : prev.custo_informado,
-        }));
-      }
-    } catch (error) {
-      console.error('Erro ao buscar lotes do produto:', error);
-      setLotes([]);
-      notifications.show({
-        title: 'Erro ao buscar lotes',
-        message: 'Não foi possível carregar os lotes para este produto.',
-        color: 'red',
-      });
-    }
+    await loadLotesForProduto(produtoId, { autoSelectSingle: true });
   };
 
   const handleProdutoChange = (value) => {
@@ -298,35 +356,7 @@ function InventarioDetalhe() {
           produto.estoque != null ? Number(produto.estoque).toString() : '',
         custo_informado: produto.preco_custo?.toString() || '',
       }));
-      getLotesPorProduto(produto.id)
-        .then((response) => {
-          const lotesEncontrados = response.data.results || response.data;
-          const listaNormalizada = Array.isArray(lotesEncontrados) ? lotesEncontrados : [];
-          setLotes(listaNormalizada);
-
-          if (listaNormalizada.length === 1) {
-            const loteUnico = listaNormalizada[0];
-            setForm((prev) => ({
-              ...prev,
-              lote: loteUnico.id.toString(),
-              validade_informada: loteUnico.data_validade
-                ? dayjs(loteUnico.data_validade).toDate()
-                : prev.validade_informada,
-              quantidade_sistema:
-                loteUnico.quantidade != null
-                  ? Number(loteUnico.quantidade).toString()
-                  : prev.quantidade_sistema,
-              custo_informado:
-                loteUnico.preco_custo_lote != null
-                  ? Number(loteUnico.preco_custo_lote).toString()
-                  : prev.custo_informado,
-            }));
-          }
-        })
-        .catch((error) => {
-          console.error('Erro ao buscar lotes do produto:', error);
-          setLotes([]);
-        });
+      loadLotesForProduto(produto.id, { autoSelectSingle: true });
     } else {
       notifications.show({
         message: `🔍 Produto não cadastrado! Buscando na internet... (${codigo})`,
@@ -502,9 +532,61 @@ function InventarioDetalhe() {
     setOpenFoodSelected(null);
     setCategoriaSugestao('');
     setNovaCategoriaNome('');
+    setEditingItem(null);
   };
 
-  const handleAdicionarItem = async () => {
+  const handleEditItem = async (item) => {
+    if (sessaoFinalizada) {
+      return;
+    }
+
+    setEditingItem(item);
+    setForm({
+      produto: item.produto ? item.produto.toString() : '',
+      codigo_barras: item.codigo_barras || '',
+      descricao: item.descricao || '',
+      marca: item.marca || '',
+      conteudo_valor:
+        item.conteudo_valor === null || typeof item.conteudo_valor === 'undefined'
+          ? ''
+          : item.conteudo_valor,
+      conteudo_unidade: item.conteudo_unidade || '',
+      categoria: item.categoria ? item.categoria.toString() : '',
+      quantidade_sistema:
+        item.quantidade_sistema === null || typeof item.quantidade_sistema === 'undefined'
+          ? ''
+          : item.quantidade_sistema,
+      quantidade_contada:
+        item.quantidade_contada === null || typeof item.quantidade_contada === 'undefined'
+          ? ''
+          : item.quantidade_contada,
+      custo_informado:
+        item.custo_informado === null || typeof item.custo_informado === 'undefined'
+          ? ''
+          : item.custo_informado,
+      validade_informada: item.validade_informada ? dayjs(item.validade_informada).toDate() : null,
+      observacao: item.observacao || '',
+      lote: item.lote ? item.lote.toString() : '',
+    });
+
+    if (item.produto) {
+      const lotesCarregados = await loadLotesForProduto(item.produto.toString(), { autoSelectSingle: false });
+      if (item.lote && lotesCarregados.some((lote) => lote.id === item.lote)) {
+        setForm((prev) => ({
+          ...prev,
+          lote: item.lote.toString(),
+        }));
+      }
+    } else {
+      setLotes([]);
+    }
+  };
+
+  const handleCancelarEdicao = () => {
+    resetForm();
+  };
+
+  const handleSalvarItem = async () => {
     // Validação: quantidade contada obrigatória
     if (!form.quantidade_contada) {
       notifications.show({
@@ -518,7 +600,9 @@ function InventarioDetalhe() {
     // Validação anti-duplicação: verifica se produto já foi contado nesta sessão
     if (form.produto) {
       const produtoJaContado = itens.find(item =>
-        item.produto && item.produto.toString() === form.produto.toString()
+        item.produto &&
+        item.produto.toString() === form.produto.toString() &&
+        item.id !== editingItem?.id
       );
 
       if (produtoJaContado) {
@@ -578,29 +662,64 @@ function InventarioDetalhe() {
       setSalvando(true);
 
       if (navigator.onLine) {
-        // Tenta salvar online primeiro
-        try {
-          await addInventarioItem(id, payload);
+        if (editingItem) {
+          try {
+            await updateInventarioItem(id, editingItem.id, payload);
+            notifications.update({
+              id: loadingId,
+              message: 'Item atualizado com sucesso!',
+              color: 'green',
+              loading: false,
+              autoClose: 3000,
+            });
+          } catch (error) {
+            console.warn('Falha ao atualizar item do inventário:', error);
+            const detail = error.response?.data?.detail || error.message;
+            notifications.update({
+              id: loadingId,
+              message: detail || errorMessages.inventario.erroSalvar,
+              color: 'red',
+              loading: false,
+              autoClose: 5000,
+            });
+            return;
+          }
+        } else {
+          // Tenta salvar online primeiro
+          try {
+            await addInventarioItem(id, payload);
+            notifications.update({
+              id: loadingId,
+              message: getRandomMessage(successMessages.inventario.itemAdicionado),
+              color: 'green',
+              loading: false,
+              autoClose: 3000,
+            });
+          } catch (error) {
+            // Se falhar online, salva offline
+            console.warn('Falha ao salvar online, salvando offline:', error);
+            await inventarioSyncManager.addItemOffline(id, payload);
+            notifications.update({
+              id: loadingId,
+              message: '📶 Salvo offline! Item será sincronizado quando a conexão retornar.',
+              color: 'yellow',
+              loading: false,
+              autoClose: 4000,
+            });
+          }
+        }
+      } else {
+        if (editingItem) {
           notifications.update({
             id: loadingId,
-            message: getRandomMessage(successMessages.inventario.itemAdicionado),
-            color: 'green',
-            loading: false,
-            autoClose: 3000,
-          });
-        } catch (error) {
-          // Se falhar online, salva offline
-          console.warn('Falha ao salvar online, salvando offline:', error);
-          await inventarioSyncManager.addItemOffline(id, payload);
-          notifications.update({
-            id: loadingId,
-            message: '📶 Salvo offline! Item será sincronizado quando a conexão retornar.',
-            color: 'yellow',
+            message: 'Edição offline indisponível. Conecte-se para atualizar este item.',
+            color: 'orange',
             loading: false,
             autoClose: 4000,
           });
+          return;
         }
-      } else {
+
         // Modo offline: salva localmente
         await inventarioSyncManager.addItemOffline(id, payload);
         notifications.update({
@@ -653,6 +772,9 @@ function InventarioDetalhe() {
     try {
       setExcluindoId(item.id);
       await deleteInventarioItem(id, item.id);
+      if (editingItem && editingItem.id === item.id) {
+        resetForm();
+      }
       notifications.update({
         id: loadingId,
         message: getRandomMessage(successMessages.inventario.itemRemovido),
@@ -673,6 +795,125 @@ function InventarioDetalhe() {
       });
     } finally {
       setExcluindoId(null);
+    }
+  };
+
+  const handleCriarLote = async () => {
+    if (!form.produto) {
+      notifications.show({
+        title: 'Selecione um produto',
+        message: 'Escolha o produto antes de criar um lote.',
+        color: 'orange',
+      });
+      return;
+    }
+
+    if (
+      novoLoteForm.quantidade === '' ||
+      novoLoteForm.quantidade === null ||
+      Number(novoLoteForm.quantidade) <= 0
+    ) {
+      notifications.show({
+        title: 'Informe a quantidade',
+        message: 'A quantidade do lote deve ser maior que zero.',
+        color: 'orange',
+      });
+      return;
+    }
+
+    if (!navigator.onLine) {
+      notifications.show({
+        title: 'Sem conexão',
+        message: 'Conecte-se à internet para criar um novo lote.',
+        color: 'orange',
+      });
+      return;
+    }
+
+    setSalvandoLote(true);
+
+    try {
+      const payload = {
+        produto: parseInt(form.produto, 10),
+        quantidade: Number(novoLoteForm.quantidade),
+        numero_lote: novoLoteForm.numero_lote || '',
+        observacoes: novoLoteForm.observacoes || '',
+      };
+
+      if (novoLoteForm.data_validade) {
+        payload.data_validade = dayjs(novoLoteForm.data_validade).format('YYYY-MM-DD');
+      }
+
+      if (
+        novoLoteForm.preco_custo_lote !== '' &&
+        novoLoteForm.preco_custo_lote !== null
+      ) {
+        payload.preco_custo_lote = Number(novoLoteForm.preco_custo_lote);
+      }
+
+      if (novoLoteForm.fornecedor) {
+        payload.fornecedor = parseInt(novoLoteForm.fornecedor, 10);
+      }
+
+      const response = await createLote(payload);
+
+      notifications.show({
+        title: 'Lote criado',
+        message: 'O lote inicial foi adicionado com sucesso!',
+        color: 'green',
+        icon: <FaCheck />,
+      });
+
+      setLoteModalOpened(false);
+      setNovoLoteForm({
+        numero_lote: '',
+        quantidade: '',
+        data_validade: null,
+        preco_custo_lote: '',
+        fornecedor: '',
+        observacoes: '',
+      });
+
+      const lotesAtualizados = await loadLotesForProduto(form.produto, { autoSelectSingle: false });
+      const novoLoteId = response.data?.id;
+
+      if (novoLoteId) {
+        setForm((prev) => ({
+          ...prev,
+          lote: novoLoteId.toString(),
+          quantidade_sistema:
+            response.data?.quantidade != null
+              ? Number(response.data.quantidade).toString()
+              : prev.quantidade_sistema,
+          custo_informado:
+            response.data?.preco_custo_lote != null
+              ? Number(response.data.preco_custo_lote).toString()
+              : prev.custo_informado,
+          validade_informada: response.data?.data_validade
+            ? dayjs(response.data.data_validade).toDate()
+            : prev.validade_informada,
+        }));
+      } else if (lotesAtualizados.length > 0) {
+        const ultimoLote = lotesAtualizados[lotesAtualizados.length - 1];
+        setForm((prev) => ({
+          ...prev,
+          lote: ultimoLote.id.toString(),
+        }));
+      }
+    } catch (error) {
+      console.error('Erro ao criar lote inicial:', error);
+      const detail =
+        error.response?.data?.detail ||
+        error.response?.data?.quantidade ||
+        error.response?.data?.numero_lote;
+      notifications.show({
+        title: 'Erro ao criar lote',
+        message: detail ? String(detail) : 'Não foi possível criar o lote inicial.',
+        color: 'red',
+        icon: <FaTimes />,
+      });
+    } finally {
+      setSalvandoLote(false);
     }
   };
 
@@ -856,20 +1097,68 @@ function InventarioDetalhe() {
               disabled={sessaoFinalizada}
             />
           </Grid.Col>
-          {lotes.length > 0 && (
-            <Grid.Col span={{ base: 12, md: 6 }}>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Stack gap="xs">
               <Select
                 label="Lote"
-                placeholder="Selecione um lote"
+                placeholder={form.produto ? 'Selecione um lote' : 'Escolha um produto primeiro'}
                 data={loteOptions}
                 value={form.lote}
                 onChange={handleLoteChange}
                 searchable
                 nothingFoundMessage="Nenhum lote disponível"
-                disabled={sessaoFinalizada}
+                disabled={sessaoFinalizada || !form.produto}
               />
-            </Grid.Col>
-          )}
+              <Group gap="xs">
+                <Button
+                  variant="light"
+                  size="xs"
+                  leftSection={<FaPlus size={10} />}
+                  onClick={() => {
+                    if (!form.produto) {
+                      notifications.show({
+                        title: 'Selecione um produto',
+                        message: 'Escolha o produto antes de criar um lote.',
+                        color: 'orange',
+                      });
+                      return;
+                    }
+                    setNovoLoteForm({
+                      numero_lote: '',
+                      quantidade: '',
+                      data_validade: null,
+                      preco_custo_lote: form.custo_informado || '',
+                      fornecedor: form.fornecedor || '',
+                      observacoes: '',
+                    });
+                    setLoteModalOpened(true);
+                  }}
+                  disabled={sessaoFinalizada}
+                >
+                  Criar lote
+                </Button>
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  leftSection={<FaSync size={10} />}
+                  onClick={() => {
+                    if (!form.produto) {
+                      notifications.show({
+                        title: 'Selecione um produto',
+                        message: 'Escolha o produto para recarregar os lotes.',
+                        color: 'orange',
+                      });
+                      return;
+                    }
+                    loadLotesForProduto(form.produto, { autoSelectSingle: false });
+                  }}
+                  disabled={sessaoFinalizada || !form.produto}
+                >
+                  Atualizar lotes
+                </Button>
+              </Group>
+            </Stack>
+          </Grid.Col>
           <Grid.Col span={{ base: 12, md: 6 }}>
             <TextInput
               label="Código de barras"
@@ -1100,11 +1389,33 @@ function InventarioDetalhe() {
           </Grid.Col>
         </Grid>
         <Group justify="flex-end" mt="md">
-          <Button variant="default" onClick={resetForm} disabled={sessaoFinalizada || salvando}>
-            Limpar
-          </Button>
-          <Button onClick={handleAdicionarItem} loading={salvando} disabled={sessaoFinalizada}>
-            Adicionar contagem
+          {editingItem && (
+            <Button
+              variant="light"
+              color="red"
+              leftSection={<FaTimes size={12} />}
+              onClick={handleCancelarEdicao}
+              disabled={salvando}
+            >
+              Cancelar edição
+            </Button>
+          )}
+          {!editingItem && (
+            <Button
+              variant="default"
+              onClick={resetForm}
+              disabled={sessaoFinalizada || salvando}
+            >
+              Limpar
+            </Button>
+          )}
+          <Button
+            onClick={handleSalvarItem}
+            loading={salvando}
+            disabled={sessaoFinalizada}
+            leftSection={editingItem ? <FaCheck size={12} /> : <FaPlus size={12} />}
+          >
+            {editingItem ? 'Salvar alterações' : 'Adicionar contagem'}
           </Button>
         </Group>
       </Card>
@@ -1155,7 +1466,10 @@ function InventarioDetalhe() {
                 </Table.Tr>
               ) : (
                 itens.map((item) => (
-                  <Table.Tr key={item.id}>
+                  <Table.Tr
+                    key={item.id}
+                    bg={editingItem && editingItem.id === item.id ? 'blue.0' : undefined}
+                  >
                     <Table.Td>
                       <Stack gap={2}>
                         <Text fw={500}>{item.produto_nome || item.descricao || '—'}</Text>
@@ -1222,14 +1536,24 @@ function InventarioDetalhe() {
                       </Stack>
                     </Table.Td>
                     <Table.Td ta="center">
-                      <ActionIcon
-                        color="red"
-                        variant="light"
-                        onClick={() => handleExcluirItem(item)}
-                        disabled={sessaoFinalizada || excluindoId === item.id}
-                      >
-                        {excluindoId === item.id ? <Loader size="xs" /> : <FaTrash size={14} />}
-                      </ActionIcon>
+                      <Group gap="xs" justify="center">
+                        <ActionIcon
+                          color="blue"
+                          variant="light"
+                          onClick={() => handleEditItem(item)}
+                          disabled={sessaoFinalizada}
+                        >
+                          <FaEdit size={14} />
+                        </ActionIcon>
+                        <ActionIcon
+                          color="red"
+                          variant="light"
+                          onClick={() => handleExcluirItem(item)}
+                          disabled={sessaoFinalizada || excluindoId === item.id}
+                        >
+                          {excluindoId === item.id ? <Loader size="xs" /> : <FaTrash size={14} />}
+                        </ActionIcon>
+                      </Group>
                     </Table.Td>
                   </Table.Tr>
                 ))
@@ -1245,6 +1569,103 @@ function InventarioDetalhe() {
         onScan={handleScan}
         title="Ler código do produto"
       />
+
+      <Modal
+        opened={loteModalOpened}
+        onClose={() => setLoteModalOpened(false)}
+        title="Criar novo lote"
+        size="md"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Produto selecionado:{' '}
+            <Text component="span" fw={600}>
+              {produtoSelecionado?.nome || '—'}
+            </Text>
+          </Text>
+          <TextInput
+            label="Número do lote"
+            placeholder="Ex.: LOTE-001"
+            value={novoLoteForm.numero_lote}
+            onChange={(e) =>
+              setNovoLoteForm((prev) => ({ ...prev, numero_lote: e.target.value }))
+            }
+          />
+          <NumberInput
+            label="Quantidade"
+            placeholder="Ex.: 12"
+            precision={2}
+            min={0}
+            value={
+              novoLoteForm.quantidade === '' || novoLoteForm.quantidade === null
+                ? ''
+                : Number(novoLoteForm.quantidade)
+            }
+            onChange={(value) =>
+              setNovoLoteForm((prev) => ({
+                ...prev,
+                quantidade: value === '' || value === null ? '' : value,
+              }))
+            }
+          />
+          <DatePickerInput
+            label="Validade"
+            placeholder="Selecione a data"
+            value={novoLoteForm.data_validade}
+            onChange={(value) =>
+              setNovoLoteForm((prev) => ({ ...prev, data_validade: value }))
+            }
+            clearable
+            minDate={new Date()}
+          />
+          <NumberInput
+            label="Custo do lote (opcional)"
+            placeholder="0.00"
+            precision={2}
+            value={
+              novoLoteForm.preco_custo_lote === '' ||
+              novoLoteForm.preco_custo_lote === null
+                ? ''
+                : Number(novoLoteForm.preco_custo_lote)
+            }
+            onChange={(value) =>
+              setNovoLoteForm((prev) => ({
+                ...prev,
+                preco_custo_lote: value === '' || value === null ? '' : value,
+              }))
+            }
+            leftSection="R$"
+          />
+          <Select
+            label="Fornecedor (opcional)"
+            placeholder="Selecione um fornecedor"
+            data={fornecedorOptions}
+            value={novoLoteForm.fornecedor}
+            onChange={(value) =>
+              setNovoLoteForm((prev) => ({ ...prev, fornecedor: value || '' }))
+            }
+            clearable
+            searchable
+          />
+          <Textarea
+            label="Observações"
+            minRows={2}
+            placeholder="Informações adicionais sobre este lote"
+            value={novoLoteForm.observacoes}
+            onChange={(e) =>
+              setNovoLoteForm((prev) => ({ ...prev, observacoes: e.target.value }))
+            }
+          />
+          <Group justify="flex-end" mt="sm">
+            <Button variant="default" onClick={() => setLoteModalOpened(false)} disabled={salvandoLote}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCriarLote} loading={salvandoLote}>
+              Salvar lote
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }
