@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import dayjs from 'dayjs';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getProdutos, createProduto, updateProduto, deleteProduto, getCategorias, searchOpenFoodProducts, createCategoria, getFornecedores, excluirTodosProdutos } from '../services/api';
 import { localDB } from '../utils/db';
@@ -24,6 +25,7 @@ import {
   Checkbox,
   Pagination,
   Center,
+  Divider,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
@@ -63,6 +65,10 @@ function Estoque() {
       conteudo_valor: '',
       conteudo_unidade: '',
       data_validade: null,
+      lote_quantidade: '',
+      lote_numero: '',
+      lote_data_validade: null,
+      lote_preco_custo: '',
     }),
     []
   );
@@ -196,12 +202,16 @@ function Estoque() {
           preco_custo: produto.preco_custo || '',
           estoque: produto.estoque,
           categoria: produto.categoria?.toString() || '',
-          fornecedor: produto.fornecedor ? produto.fornecedor.toString() : '',
-          codigo_barras: produto.codigo_barras || '',
-          conteudo_valor: produto.conteudo_valor ?? '',
-          conteudo_unidade: produto.conteudo_unidade || '',
-          data_validade: produto.data_validade ? new Date(produto.data_validade) : null,
-        });
+      fornecedor: produto.fornecedor ? produto.fornecedor.toString() : '',
+      codigo_barras: produto.codigo_barras || '',
+      conteudo_valor: produto.conteudo_valor ?? '',
+      conteudo_unidade: produto.conteudo_unidade || '',
+      data_validade: produto.data_validade ? new Date(produto.data_validade) : null,
+      lote_quantidade: '',
+      lote_numero: '',
+      lote_data_validade: null,
+      lote_preco_custo: '',
+    });
       } else {
         resetForm();
       }
@@ -223,6 +233,30 @@ function Estoque() {
   const handleCloseModal = () => {
     close();
     resetForm();
+  };
+
+  const handleLoteQuantidadeChange = (value) => {
+    setFormData((prev) => {
+      const quantidadeNormalizada =
+        value === '' || value === null || Number.isNaN(value) ? '' : value;
+
+      const updated = {
+        ...prev,
+        lote_quantidade: quantidadeNormalizada,
+      };
+
+      if (
+        !editingProduct &&
+        (prev.estoque === '' ||
+          prev.estoque === null ||
+          Number(prev.estoque) === 0)
+      ) {
+        updated.estoque =
+          quantidadeNormalizada === '' ? '' : quantidadeNormalizada;
+      }
+
+      return updated;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -279,6 +313,49 @@ function Estoque() {
       conteudo_unidade: formData.conteudo_unidade?.trim() || '',
       data_validade: dataValidadeFormatada,
     };
+
+    const loteQuantidade =
+      formData.lote_quantidade === '' || formData.lote_quantidade === null
+        ? null
+        : Number(formData.lote_quantidade);
+
+    if (!editingProduct && loteQuantidade && loteQuantidade > 0) {
+      const loteValidade = formData.lote_data_validade
+        ? dayjs(formData.lote_data_validade).format('YYYY-MM-DD')
+        : null;
+
+      const lotePayload = {
+        quantidade: loteQuantidade,
+      };
+
+      if (formData.lote_numero && formData.lote_numero.trim()) {
+        lotePayload.numero_lote = formData.lote_numero.trim();
+      }
+
+      if (loteValidade) {
+        lotePayload.data_validade = loteValidade;
+      }
+
+      if (
+        formData.lote_preco_custo !== '' &&
+        formData.lote_preco_custo !== null
+      ) {
+        lotePayload.preco_custo_lote = Number(formData.lote_preco_custo);
+      }
+
+      if (formData.fornecedor) {
+        lotePayload.fornecedor = parseInt(formData.fornecedor, 10);
+      }
+
+      dataToSend.estoque = loteQuantidade;
+
+      if (!dataToSend.data_validade && loteValidade) {
+        dataToSend.data_validade = loteValidade;
+      }
+
+      dataToSend.lote_inicial = lotePayload;
+    }
+
     try {
       if (editingProduct) {
         await updateProduto(editingProduct.id, dataToSend);
@@ -1065,6 +1142,69 @@ function Estoque() {
                 </Group>
               </Stack>
             </Card>
+            {!editingProduct && (
+              <>
+                <Divider label="Lote inicial (opcional)" labelPosition="center" my="sm" />
+                <Text size="xs" c="dimmed">
+                  Informe o primeiro lote para criar estoque já vinculado a lotes e facilitar o controle de validade.
+                </Text>
+                <Group grow align="flex-end" gap="xs">
+                  <NumberInput
+                    label="Quantidade do lote inicial"
+                    placeholder="Ex.: 12"
+                    precision={2}
+                    value={
+                      formData.lote_quantidade === '' || formData.lote_quantidade === null
+                        ? ''
+                        : Number(formData.lote_quantidade)
+                    }
+                    onChange={handleLoteQuantidadeChange}
+                    size="md"
+                    min={0}
+                  />
+                  <TextInput
+                    label="Número do lote"
+                    placeholder="Ex.: LOTE-001"
+                    value={formData.lote_numero}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, lote_numero: e.target.value }))
+                    }
+                    size="md"
+                  />
+                </Group>
+                <Group grow align="flex-end" gap="xs">
+                  <DatePickerInput
+                    label="Validade do lote"
+                    placeholder="Selecione a data"
+                    value={formData.lote_data_validade}
+                    onChange={(value) =>
+                      setFormData((prev) => ({ ...prev, lote_data_validade: value }))
+                    }
+                    clearable
+                    minDate={new Date()}
+                    size="md"
+                  />
+                  <NumberInput
+                    label="Custo do lote (opcional)"
+                    placeholder="0.00"
+                    precision={2}
+                    value={
+                      formData.lote_preco_custo === '' || formData.lote_preco_custo === null
+                        ? ''
+                        : Number(formData.lote_preco_custo)
+                    }
+                    onChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        lote_preco_custo: value === '' || value === null ? '' : value,
+                      }))
+                    }
+                    size="md"
+                    leftSection="R$"
+                  />
+                </Group>
+              </>
+            )}
             <DatePickerInput
               label="Data de Validade"
               placeholder="Selecione a data"

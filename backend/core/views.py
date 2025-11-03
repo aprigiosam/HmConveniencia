@@ -282,6 +282,8 @@ class InventarioSessaoViewSet(viewsets.ModelViewSet):
                 sessao.save(update_fields=["status", "iniciado_em"])
                 logger.info(f"Inventário {sessao.id} transicionado para EM_ANDAMENTO")
 
+        except ValidationError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Erro ao adicionar item ao inventário")
             return Response(
@@ -595,7 +597,11 @@ class FornecedorViewSet(viewsets.ModelViewSet):
 class ProdutoViewSet(viewsets.ModelViewSet):
     """ViewSet para Produtos"""
 
-    queryset = Produto.objects.select_related("categoria").all()
+    queryset = (
+        Produto.objects.select_related("categoria", "fornecedor")
+        .prefetch_related("lotes")
+        .all()
+    )
     serializer_class = ProdutoSerializer
 
     def get_queryset(self):

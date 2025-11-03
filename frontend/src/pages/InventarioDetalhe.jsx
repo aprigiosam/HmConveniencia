@@ -214,26 +214,69 @@ function InventarioDetalhe() {
       lote: '',
     }));
 
-    if (produto.lotes && produto.lotes.length > 0) {
-      try {
-        const response = await getLotesPorProduto(produtoId);
-        setLotes(response.data.results || response.data);
-      } catch (error) {
-        console.error('Erro ao buscar lotes do produto:', error);
-        notifications.show({
-          title: 'Erro ao buscar lotes',
-          message: 'Não foi possível carregar os lotes para este produto.',
-          color: 'red',
-        });
+    try {
+      const response = await getLotesPorProduto(produtoId);
+      const lotesEncontrados = response.data.results || response.data;
+      const listaNormalizada = Array.isArray(lotesEncontrados) ? lotesEncontrados : [];
+      setLotes(listaNormalizada);
+
+      if (listaNormalizada.length === 1) {
+        const loteUnico = listaNormalizada[0];
+        setForm((prev) => ({
+          ...prev,
+          lote: loteUnico.id.toString(),
+          validade_informada: loteUnico.data_validade
+            ? dayjs(loteUnico.data_validade).toDate()
+            : prev.validade_informada,
+          quantidade_sistema:
+            loteUnico.quantidade != null
+              ? Number(loteUnico.quantidade).toString()
+              : prev.quantidade_sistema,
+          custo_informado:
+            loteUnico.preco_custo_lote != null
+              ? Number(loteUnico.preco_custo_lote).toString()
+              : prev.custo_informado,
+        }));
       }
-    } else {
+    } catch (error) {
+      console.error('Erro ao buscar lotes do produto:', error);
       setLotes([]);
+      notifications.show({
+        title: 'Erro ao buscar lotes',
+        message: 'Não foi possível carregar os lotes para este produto.',
+        color: 'red',
+      });
     }
   };
 
   const handleProdutoChange = (value) => {
     setForm((prev) => ({ ...prev, produto: value || '' }));
     if (value) preencherComProduto(value);
+  };
+
+  const handleLoteChange = (value) => {
+    if (!value) {
+      setForm((prev) => ({ ...prev, lote: '', validade_informada: null }));
+      return;
+    }
+
+    const loteSelecionado = lotes.find((loteAtual) => loteAtual.id.toString() === value.toString());
+
+    setForm((prev) => ({
+      ...prev,
+      lote: value,
+      validade_informada: loteSelecionado?.data_validade
+        ? dayjs(loteSelecionado.data_validade).toDate()
+        : prev.validade_informada,
+      quantidade_sistema:
+        loteSelecionado?.quantidade != null
+          ? Number(loteSelecionado.quantidade).toString()
+          : prev.quantidade_sistema,
+      custo_informado:
+        loteSelecionado?.preco_custo_lote != null
+          ? Number(loteSelecionado.preco_custo_lote).toString()
+          : prev.custo_informado,
+    }));
   };
 
   const handleScan = (codigo) => {
@@ -255,11 +298,35 @@ function InventarioDetalhe() {
           produto.estoque != null ? Number(produto.estoque).toString() : '',
         custo_informado: produto.preco_custo?.toString() || '',
       }));
-      if (produto.lotes && produto.lotes.length > 0) {
-        getLotesPorProduto(produto.id).then((response) => {
-          setLotes(response.data.results || response.data);
+      getLotesPorProduto(produto.id)
+        .then((response) => {
+          const lotesEncontrados = response.data.results || response.data;
+          const listaNormalizada = Array.isArray(lotesEncontrados) ? lotesEncontrados : [];
+          setLotes(listaNormalizada);
+
+          if (listaNormalizada.length === 1) {
+            const loteUnico = listaNormalizada[0];
+            setForm((prev) => ({
+              ...prev,
+              lote: loteUnico.id.toString(),
+              validade_informada: loteUnico.data_validade
+                ? dayjs(loteUnico.data_validade).toDate()
+                : prev.validade_informada,
+              quantidade_sistema:
+                loteUnico.quantidade != null
+                  ? Number(loteUnico.quantidade).toString()
+                  : prev.quantidade_sistema,
+              custo_informado:
+                loteUnico.preco_custo_lote != null
+                  ? Number(loteUnico.preco_custo_lote).toString()
+                  : prev.custo_informado,
+            }));
+          }
+        })
+        .catch((error) => {
+          console.error('Erro ao buscar lotes do produto:', error);
+          setLotes([]);
         });
-      }
     } else {
       notifications.show({
         message: `🔍 Produto não cadastrado! Buscando na internet... (${codigo})`,
@@ -796,8 +863,9 @@ function InventarioDetalhe() {
                 placeholder="Selecione um lote"
                 data={loteOptions}
                 value={form.lote}
-                onChange={(value) => setForm((prev) => ({ ...prev, lote: value || '' }))}
+                onChange={handleLoteChange}
                 searchable
+                nothingFoundMessage="Nenhum lote disponível"
                 disabled={sessaoFinalizada}
               />
             </Grid.Col>

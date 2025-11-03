@@ -105,31 +105,47 @@ class InventarioSyncManager {
     try {
       console.log(`[InventarioSync] Sincronizando item:`, item)
 
-      // Prepara dados para envio
-      const itemData = {
-        produto: item.produto,
-        quantidade_contada: item.quantidade_contada,
-        custo_informado: item.custo_informado,
-        validade_informada: item.validade_informada,
-        observacao: item.observacao || ''
+      // Prepara dados para envio (remove campos internos do IndexedDB)
+      const localId = item.localId
+      const sessaoId = item.sessao_id
+      const {
+        localId: _ignoredLocal,
+        timestamp,
+        synced,
+        syncedAt,
+        sessao_id: _ignoredSessao,
+        ...itemData
+      } = item
+
+      if (!sessaoId) {
+        throw new Error('Sessão do inventário não informada para sincronização.')
+      }
+
+      // Normaliza campos opcionais
+      if (itemData.lote === '') {
+        itemData.lote = null
+      }
+      if (itemData.categoria === '') {
+        itemData.categoria = null
       }
 
       // Envia para o backend
-      await addInventarioItem(item.sessao_id, itemData)
+      await addInventarioItem(sessaoId, itemData)
 
       // Marca como sincronizado
-      await localDB.markInventarioItemSynced(item.localId)
+      await localDB.markInventarioItemSynced(localId)
 
       // Aguarda 500ms antes de deletar para garantir que foi salvo
       setTimeout(async () => {
-        await localDB.deleteInventarioItemSynced(item.localId)
+        await localDB.deleteInventarioItemSynced(localId)
       }, 500)
 
-      console.log(`[InventarioSync] Item ${item.localId} sincronizado e removido do cache`)
+      console.log(`[InventarioSync] Item ${localId} sincronizado e removido do cache`)
 
       return true
     } catch (error) {
-      console.error(`[InventarioSync] Falha ao sincronizar item ${item.localId}:`, error)
+      const fallbackId = item.localId ?? 'desconhecido'
+      console.error(`[InventarioSync] Falha ao sincronizar item ${fallbackId}:`, error)
       throw error
     }
   }
