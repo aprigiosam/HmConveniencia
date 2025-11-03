@@ -23,7 +23,6 @@ import {
   Image,
   Alert,
   Checkbox,
-  Pagination,
   Center,
   Divider,
 } from '@mantine/core';
@@ -41,9 +40,6 @@ function Estoque() {
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const [opened, { open, close }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [excluirTodosModalOpened, { open: openExcluirTodosModal, close: closeExcluirTodosModal }] = useDisclosure(false);
@@ -89,8 +85,8 @@ function Estoque() {
   }, []);
 
   useEffect(() => {
-    loadProdutos(page);
-  }, [page]);
+    loadProdutos();
+  }, [loadProdutos]);
 
   useEffect(() => {
     if (location.state?.editarProdutoId) {
@@ -115,38 +111,25 @@ function Estoque() {
     }
   };
 
-  const loadProdutos = async (pageNum = 1) => {
+  const loadProdutos = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    // Cache apenas para primeira página
-    if (pageNum === 1) {
-      const cachedProdutos = await localDB.getCachedProdutos();
-      if (cachedProdutos.length > 0) {
-        setProdutos(cachedProdutos);
-        setLoading(false);
-      }
+    const cachedProdutos = await localDB.getCachedProdutos();
+    if (cachedProdutos.length > 0) {
+      setProdutos(cachedProdutos);
+      setLoading(false);
     }
 
     try {
-      const response = await getProdutos({ page: pageNum });
+      const response = await getProdutos();
 
       if (response.data.results) {
         setProdutos(response.data.results);
-        setTotalCount(response.data.count);
-        setTotalPages(Math.ceil(response.data.count / 50));
-
-        if (pageNum === 1) {
-          await localDB.cacheProdutos(response.data.results);
-        }
+        await localDB.cacheProdutos(response.data.results);
       } else {
         setProdutos(response.data);
-        setTotalCount(response.data.length);
-        setTotalPages(1);
-
-        if (pageNum === 1) {
-          await localDB.cacheProdutos(response.data);
-        }
+        await localDB.cacheProdutos(response.data);
       }
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
@@ -171,7 +154,7 @@ function Estoque() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [produtos.length]);
 
   const resetForm = useCallback(() => {
     setFormData({ ...initialFormData });
@@ -375,7 +358,8 @@ function Estoque() {
         });
       }
       handleCloseModal();
-      loadInitialData();
+      await loadInitialData();
+      await loadProdutos();
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
       const errorMsg = error.response?.data?.codigo_barras?.[0]
@@ -402,7 +386,8 @@ function Estoque() {
       await deleteProduto(deletingProduct.id);
       closeDeleteModal();
       setDeletingProduct(null);
-      loadInitialData();
+      await loadInitialData();
+      await loadProdutos();
     } catch (error) {
       console.error('Erro ao excluir produto:', error);
       alert('Erro ao excluir produto');
@@ -439,6 +424,7 @@ function Estoque() {
       closeExcluirTodosModal();
       setConfirmacaoExcluirTodos(false);
       await loadInitialData();
+      await loadProdutos();
     } catch (error) {
       console.error('Erro ao excluir produtos:', error);
       notifications.show({
@@ -849,6 +835,22 @@ function Estoque() {
   const fornecedorOptions = fornecedores
     .filter((forn) => forn.ativo !== false)
     .map((forn) => ({ value: forn.id.toString(), label: forn.nome }));
+
+  if (loading) {
+    return (
+      <Center style={{ height: '100%' }}>
+        <Loader size="lg" />
+      </Center>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert color="red" title="Erro ao carregar">
+        {error}
+      </Alert>
+    );
+  }
 
   return (
     <>

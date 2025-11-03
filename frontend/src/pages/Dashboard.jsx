@@ -4,7 +4,6 @@ import { getDashboard } from '../services/api';
 import { Card, Text, Grid, Title, Group, Center, Loader, Badge, Stack, Paper, Divider, Box } from '@mantine/core';
 import {
   FaDollarSign,
-  FaExclamationTriangle,
   FaCashRegister,
   FaReceipt,
   FaChartLine,

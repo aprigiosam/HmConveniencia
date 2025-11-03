@@ -11,11 +11,8 @@ import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaKeybo
 import Comprovante from '../components/Comprovante';
 import BarcodeScanner from '../components/BarcodeScanner';
 import {
-  loadingMessages,
   successMessages,
   errorMessages,
-  warningMessages,
-  confirmMessages,
   getRandomMessage
 } from '../utils/messages';
 import './PDV.css';

@@ -9,6 +9,7 @@ import {
   Grid,
   Group,
   Loader,
+  Modal,
   NumberInput,
   Paper,
   Select,
@@ -59,7 +60,6 @@ import {
   warningMessages,
   confirmMessages,
   getRandomMessage,
-  showMessage
 } from '../utils/messages';
 
 function InventarioDetalhe() {
@@ -104,14 +104,11 @@ function InventarioDetalhe() {
     observacao: '',
     lote: '',
   });
-  const [buscandoSugestao, setBuscandoSugestao] = useState(false);
   const [openFoodQuery, setOpenFoodQuery] = useState('');
   const [openFoodResults, setOpenFoodResults] = useState([]);
   const [openFoodLoading, setOpenFoodLoading] = useState(false);
   const [openFoodSelected, setOpenFoodSelected] = useState(null);
   const [categoriaSugestao, setCategoriaSugestao] = useState('');
-  const [novaCategoriaNome, setNovaCategoriaNome] = useState('');
-  const [criandoCategoria, setCriandoCategoria] = useState(false);
 
 
   const carregarDados = useCallback(async () => {
@@ -288,7 +285,7 @@ function InventarioDetalhe() {
         return [];
       }
     },
-    [notifications, setForm]
+    [setLotes, setForm, setCategoriaSugestao]
   );
 
   const preencherComProduto = async (produtoId) => {
@@ -464,14 +461,11 @@ function InventarioDetalhe() {
       if (match) {
         categoriaSelecionada = match.id.toString();
         setCategoriaSugestao('');
-        setNovaCategoriaNome('');
       } else {
         setCategoriaSugestao(suggestionRaw);
-        setNovaCategoriaNome(suggestionRaw);
       }
     } else {
       setCategoriaSugestao('');
-      setNovaCategoriaNome('');
     }
 
     if ((quantityValue === null || typeof quantityValue === 'undefined') && product.quantity) {
@@ -531,7 +525,6 @@ function InventarioDetalhe() {
     setOpenFoodResults([]);
     setOpenFoodSelected(null);
     setCategoriaSugestao('');
-    setNovaCategoriaNome('');
     setEditingItem(null);
   };
 
