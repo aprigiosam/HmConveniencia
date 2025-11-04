@@ -379,9 +379,15 @@ function PDV() {
       notifications.show({
         message: getRandomMessage(successMessages.vendas.finalizada) + ` R$ ${calcularTotal().toFixed(2)}`,
         color: 'green',
-        icon: <FaCheck />,
+        icon: <FaCheck />, 
         autoClose: 4000,
       });
+
+      if (navigator.onLine) {
+        setTimeout(() => {
+          syncManager.syncAll();
+        }, 500);
+      }
 
       // Limpa carrinho e recarrega apenas em caso de sucesso
       setCarrinho([]);

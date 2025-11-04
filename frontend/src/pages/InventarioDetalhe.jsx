@@ -665,6 +665,9 @@ function InventarioDetalhe() {
               loading: false,
               autoClose: 3000,
             });
+            if (navigator.onLine) {
+              setTimeout(() => inventarioSyncManager.syncAll(), 500);
+            }
           } catch (error) {
             console.warn('Falha ao atualizar item do inventário:', error);
             const detail = error.response?.data?.detail || error.message;
@@ -699,6 +702,9 @@ function InventarioDetalhe() {
               loading: false,
               autoClose: 4000,
             });
+          }
+          if (navigator.onLine) {
+            setTimeout(() => inventarioSyncManager.syncAll(), 500);
           }
         }
       } else {
