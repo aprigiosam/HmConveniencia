@@ -80,37 +80,6 @@ function Estoque() {
   const navigate = useNavigate();
   const [pendingEditId, setPendingEditId] = useState(location.state?.editarProdutoId || null);
 
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  useEffect(() => {
-    loadProdutos();
-  }, [loadProdutos]);
-
-  useEffect(() => {
-    if (location.state?.editarProdutoId) {
-      setPendingEditId(location.state.editarProdutoId);
-      navigate('/estoque', { replace: true });
-    }
-  }, [location.state, navigate]);
-
-  const loadInitialData = async () => {
-    try {
-      const [categoriasRes, fornecedoresRes] = await Promise.all([
-        getCategorias(),
-        getFornecedores(),
-      ]);
-      const categoriasData = categoriasRes.data.results || categoriasRes.data;
-      const fornecedoresData = fornecedoresRes.data.results || fornecedoresRes.data;
-
-      setCategorias(categoriasData);
-      setFornecedores(fornecedoresData);
-    } catch (error) {
-      console.error('Erro ao carregar dados iniciais:', error);
-    }
-  };
-
   const loadProdutos = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -155,6 +124,37 @@ function Estoque() {
       setLoading(false);
     }
   }, [produtos.length]);
+
+  const loadInitialData = useCallback(async () => {
+    try {
+      const [categoriasRes, fornecedoresRes] = await Promise.all([
+        getCategorias(),
+        getFornecedores(),
+      ]);
+      const categoriasData = categoriasRes.data.results || categoriasRes.data;
+      const fornecedoresData = fornecedoresRes.data.results || fornecedoresRes.data;
+
+      setCategorias(categoriasData);
+      setFornecedores(fornecedoresData);
+    } catch (error) {
+      console.error('Erro ao carregar dados iniciais:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
+
+  useEffect(() => {
+    loadProdutos();
+  }, [loadProdutos]);
+
+  useEffect(() => {
+    if (location.state?.editarProdutoId) {
+      setPendingEditId(location.state.editarProdutoId);
+      navigate('/estoque', { replace: true });
+    }
+  }, [location.state, navigate]);
 
   const resetForm = useCallback(() => {
     setFormData({ ...initialFormData });
