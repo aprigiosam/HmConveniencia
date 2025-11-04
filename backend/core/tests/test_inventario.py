@@ -521,7 +521,7 @@ class InventarioNovosFieldsTestCase(TestCase):
             estoque=Decimal("20"),
             empresa=self.empresa,
         )
-        existente = InventarioItem.objects.create(
+        InventarioItem.objects.create(
             sessao=self.sessao,
             produto=self.produto,
             quantidade_sistema=Decimal("10"),
