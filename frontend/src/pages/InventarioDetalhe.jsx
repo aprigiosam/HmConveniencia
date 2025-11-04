@@ -82,6 +82,7 @@ function InventarioDetalhe() {
     observacoes: '',
   });
   const [salvandoLote, setSalvandoLote] = useState(false);
+  const [syncingInventario, setSyncingInventario] = useState(false);
   const [scannerAberto, setScannerAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
@@ -962,6 +963,56 @@ function InventarioDetalhe() {
     }
   };
 
+  const handleSyncInventario = async () => {
+    if (syncingInventario) {
+      return;
+    }
+
+    if (!navigator.onLine) {
+      notifications.show({
+        title: 'Sem conexão',
+        message: 'Conecte-se à internet para sincronizar os itens pendentes.',
+        color: 'orange',
+      });
+      return;
+    }
+
+    setSyncingInventario(true);
+    try {
+      const result = await inventarioSyncManager.syncAll();
+      const pendentesRestantes = await localDB.countInventarioItensPendentes();
+      setItensPendentes(pendentesRestantes);
+
+      if (result?.success) {
+        notifications.show({
+          message: `Sincronização concluída: ${result.success} item(ns) enviados, ${result.failed || 0} falha(s).`,
+          color: 'green',
+          icon: <FaCheck />,
+          autoClose: 4000,
+        });
+      } else {
+        notifications.show({
+          message: 'Nenhum item pendente para sincronizar no momento.',
+          color: 'blue',
+          icon: <FaSync />,
+          autoClose: 3000,
+        });
+      }
+
+      await carregarDados();
+    } catch (error) {
+      console.error('Erro ao sincronizar itens de inventário:', error);
+      notifications.show({
+        title: 'Erro ao sincronizar',
+        message: 'Não foi possível sincronizar agora. Tente novamente em instantes.',
+        color: 'red',
+        icon: <FaTimes />,
+      });
+    } finally {
+      setSyncingInventario(false);
+    }
+  };
+
   if (loading) {
     return (
       <Center style={{ height: '100%' }}>
@@ -1009,6 +1060,14 @@ function InventarioDetalhe() {
               {itensPendentes} {itensPendentes === 1 ? 'item pendente' : 'itens pendentes'}
             </Badge>
           )}
+          <Button
+            variant="light"
+            leftSection={<FaSync size={12} />}
+            onClick={handleSyncInventario}
+            loading={syncingInventario}
+          >
+            Sincronizar agora
+          </Button>
           <Badge
             size="lg"
             color={
