@@ -23,7 +23,6 @@ import {
   Image,
   Alert,
   Checkbox,
-  Center,
   Divider,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
@@ -143,12 +142,10 @@ function Estoque() {
 
   useEffect(() => {
     loadInitialData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     loadProdutos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -838,24 +835,21 @@ function Estoque() {
     .filter((forn) => forn.ativo !== false)
     .map((forn) => ({ value: forn.id.toString(), label: forn.nome }));
 
-  if (loading) {
-    return (
-      <Center style={{ height: '100%' }}>
-        <Loader size="lg" />
-      </Center>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert color="red" title="Erro ao carregar">
-        {error}
-      </Alert>
-    );
-  }
-
   return (
     <>
+      {error && (
+        <Alert color="red" title="Erro ao carregar" mb="md">
+          {error}
+        </Alert>
+      )}
+      {loading && (
+        <Group justify="flex-start" mb="md" gap="xs" align="center">
+          <Loader size="sm" />
+          <Text size="sm" c="dimmed">
+            Atualizando produtos...
+          </Text>
+        </Group>
+      )}
       <Group justify="space-between" mb="md" wrap="wrap" gap="xs">
         <Title order={2}>Estoque</Title>
         <Group gap="xs">
