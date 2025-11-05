@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getClientes, createCliente, updateCliente, deleteCliente } from '../services/api';
 import { localDB } from '../utils/db';
 import { Table, Button, Modal, TextInput, NumberInput, Group, Title, ActionIcon, Stack, Text, ScrollArea, Card, Loader, Center, Alert, Pagination } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { FaEdit, FaTrash, FaUserPlus, FaExclamationTriangle, FaCheck, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaUserPlus, FaExclamationTriangle, FaCheck, FaTimes } from 'react-icons/fa';
 import './Clientes.css'; // Importa o CSS
 
 function Clientes() {
@@ -21,11 +21,7 @@ function Clientes() {
   const [deletingCliente, setDeletingCliente] = useState(null);
   const [formData, setFormData] = useState({ nome: '', telefone: '', limite_credito: 0 });
 
-  useEffect(() => {
-    loadClientes(page);
-  }, [page]);
-
-  const loadClientes = async (pageNum = 1) => {
+  const loadClientes = useCallback(async (pageNum = 1) => {
     setLoading(true);
     setError(null);
 
@@ -90,7 +86,11 @@ function Clientes() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientes.length, notifications]);
+
+  useEffect(() => {
+    loadClientes(page);
+  }, [loadClientes, page]);
 
   const resetForm = () => {
     setFormData({ nome: '', telefone: '', limite_credito: 0 });

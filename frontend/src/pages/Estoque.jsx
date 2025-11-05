@@ -23,8 +23,6 @@ import {
   Image,
   Alert,
   Checkbox,
-  Pagination,
-  Center,
   Divider,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
@@ -41,9 +39,6 @@ function Estoque() {
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const [opened, { open, close }] = useDisclosure(false);
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [excluirTodosModalOpened, { open: openExcluirTodosModal, close: closeExcluirTodosModal }] = useDisclosure(false);
@@ -84,69 +79,25 @@ function Estoque() {
   const navigate = useNavigate();
   const [pendingEditId, setPendingEditId] = useState(location.state?.editarProdutoId || null);
 
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  useEffect(() => {
-    loadProdutos(page);
-  }, [page]);
-
-  useEffect(() => {
-    if (location.state?.editarProdutoId) {
-      setPendingEditId(location.state.editarProdutoId);
-      navigate('/estoque', { replace: true });
-    }
-  }, [location.state, navigate]);
-
-  const loadInitialData = async () => {
-    try {
-      const [categoriasRes, fornecedoresRes] = await Promise.all([
-        getCategorias(),
-        getFornecedores(),
-      ]);
-      const categoriasData = categoriasRes.data.results || categoriasRes.data;
-      const fornecedoresData = fornecedoresRes.data.results || fornecedoresRes.data;
-
-      setCategorias(categoriasData);
-      setFornecedores(fornecedoresData);
-    } catch (error) {
-      console.error('Erro ao carregar dados iniciais:', error);
-    }
-  };
-
-  const loadProdutos = async (pageNum = 1) => {
+  async function loadProdutos() {
     setLoading(true);
     setError(null);
 
-    // Cache apenas para primeira página
-    if (pageNum === 1) {
-      const cachedProdutos = await localDB.getCachedProdutos();
-      if (cachedProdutos.length > 0) {
-        setProdutos(cachedProdutos);
-        setLoading(false);
-      }
+    const cachedProdutos = await localDB.getCachedProdutos();
+    if (cachedProdutos.length > 0) {
+      setProdutos(cachedProdutos);
+      setLoading(false);
     }
 
     try {
-      const response = await getProdutos({ page: pageNum });
+      const response = await getProdutos();
 
       if (response.data.results) {
         setProdutos(response.data.results);
-        setTotalCount(response.data.count);
-        setTotalPages(Math.ceil(response.data.count / 50));
-
-        if (pageNum === 1) {
-          await localDB.cacheProdutos(response.data.results);
-        }
+        await localDB.cacheProdutos(response.data.results);
       } else {
         setProdutos(response.data);
-        setTotalCount(response.data.length);
-        setTotalPages(1);
-
-        if (pageNum === 1) {
-          await localDB.cacheProdutos(response.data);
-        }
+        await localDB.cacheProdutos(response.data);
       }
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
@@ -171,7 +122,38 @@ function Estoque() {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  async function loadInitialData() {
+    try {
+      const [categoriasRes, fornecedoresRes] = await Promise.all([
+        getCategorias(),
+        getFornecedores(),
+      ]);
+      const categoriasData = categoriasRes.data.results || categoriasRes.data;
+      const fornecedoresData = fornecedoresRes.data.results || fornecedoresRes.data;
+
+      setCategorias(categoriasData);
+      setFornecedores(fornecedoresData);
+    } catch (error) {
+      console.error('Erro ao carregar dados iniciais:', error);
+    }
+  }
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    loadProdutos();
+  }, []);
+
+  useEffect(() => {
+    if (location.state?.editarProdutoId) {
+      setPendingEditId(location.state.editarProdutoId);
+      navigate('/estoque', { replace: true });
+    }
+  }, [location.state, navigate]);
 
   const resetForm = useCallback(() => {
     setFormData({ ...initialFormData });
@@ -375,7 +357,8 @@ function Estoque() {
         });
       }
       handleCloseModal();
-      loadInitialData();
+      await loadInitialData();
+      await loadProdutos();
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
       const errorMsg = error.response?.data?.codigo_barras?.[0]
@@ -402,7 +385,8 @@ function Estoque() {
       await deleteProduto(deletingProduct.id);
       closeDeleteModal();
       setDeletingProduct(null);
-      loadInitialData();
+      await loadInitialData();
+      await loadProdutos();
     } catch (error) {
       console.error('Erro ao excluir produto:', error);
       alert('Erro ao excluir produto');
@@ -439,6 +423,7 @@ function Estoque() {
       closeExcluirTodosModal();
       setConfirmacaoExcluirTodos(false);
       await loadInitialData();
+      await loadProdutos();
     } catch (error) {
       console.error('Erro ao excluir produtos:', error);
       notifications.show({
@@ -852,6 +837,19 @@ function Estoque() {
 
   return (
     <>
+      {error && (
+        <Alert color="red" title="Erro ao carregar" mb="md">
+          {error}
+        </Alert>
+      )}
+      {loading && (
+        <Group justify="flex-start" mb="md" gap="xs" align="center">
+          <Loader size="sm" />
+          <Text size="sm" c="dimmed">
+            Atualizando produtos...
+          </Text>
+        </Group>
+      )}
       <Group justify="space-between" mb="md" wrap="wrap" gap="xs">
         <Title order={2}>Estoque</Title>
         <Group gap="xs">

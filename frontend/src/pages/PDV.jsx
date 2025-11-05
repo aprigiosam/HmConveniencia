@@ -7,15 +7,12 @@ import { AppShell, Card, TextInput, Stack, Paper, Group, Text, NumberInput, Acti
 import { DatePickerInput } from '@mantine/dates';
 import { useHotkeys, useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaKeyboard, FaCashRegister, FaClock } from 'react-icons/fa';
+import { FaSearch, FaTrash, FaShoppingCart, FaCheck, FaTimes, FaBarcode, FaKeyboard, FaCashRegister, FaClock, FaSync } from 'react-icons/fa';
 import Comprovante from '../components/Comprovante';
 import BarcodeScanner from '../components/BarcodeScanner';
 import {
-  loadingMessages,
   successMessages,
   errorMessages,
-  warningMessages,
-  confirmMessages,
   getRandomMessage
 } from '../utils/messages';
 import './PDV.css';
@@ -38,6 +35,7 @@ function PDV() {
   const [verificandoCaixa, setVerificandoCaixa] = useState(true);
   const [caixaAberto, setCaixaAberto] = useState(false);
   const [caixaStatus, setCaixaStatus] = useState(null);
+  const [syncingNow, setSyncingNow] = useState(false);
   const [ultimoProdutoAdicionado, setUltimoProdutoAdicionado] = useState(null);
   const buscaRef = useRef(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -382,9 +380,15 @@ function PDV() {
       notifications.show({
         message: getRandomMessage(successMessages.vendas.finalizada) + ` R$ ${calcularTotal().toFixed(2)}`,
         color: 'green',
-        icon: <FaCheck />,
+        icon: <FaCheck />, 
         autoClose: 4000,
       });
+
+      if (navigator.onLine) {
+        setTimeout(() => {
+          syncManager.syncAll();
+        }, 500);
+      }
 
       // Limpa carrinho e recarrega apenas em caso de sucesso
       setCarrinho([]);
@@ -439,6 +443,41 @@ function PDV() {
     } finally {
       setLoading(false);
       isProcessingRef.current = false; // Libera para nova venda
+    }
+  };
+
+  const handleSyncNow = async () => {
+    if (syncingNow) {
+      return;
+    }
+
+    if (!navigator.onLine) {
+      notifications.show({
+        message: '📡 Sem conexão. Conecte-se à internet para sincronizar.',
+        color: 'orange',
+        icon: <FaTimes />, 
+      });
+      return;
+    }
+
+    setSyncingNow(true);
+    try {
+      await syncManager.syncAll();
+      notifications.show({
+        message: '✅ Sincronização disparada. Verificando vendas pendentes...',
+        color: 'green',
+        icon: <FaCheck />, 
+        autoClose: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao sincronizar vendas:', error);
+      notifications.show({
+        message: 'Erro ao sincronizar. Tente novamente em instantes.',
+        color: 'red',
+        icon: <FaTimes />, 
+      });
+    } finally {
+      setSyncingNow(false);
     }
   };
 
@@ -933,6 +972,15 @@ function PDV() {
                 R$ {calcularTotal().toFixed(2)}
               </Title>
             </Stack>
+            <Button
+              variant="light"
+              size="sm"
+              leftSection={<FaSync size={12} />}
+              onClick={handleSyncNow}
+              loading={syncingNow}
+            >
+              Sincronizar agora
+            </Button>
             {isMobile && (
               <ActionIcon
                 onClick={() => setSearchModalOpen(true)}
