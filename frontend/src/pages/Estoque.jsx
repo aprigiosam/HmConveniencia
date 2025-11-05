@@ -80,7 +80,7 @@ function Estoque() {
   const navigate = useNavigate();
   const [pendingEditId, setPendingEditId] = useState(location.state?.editarProdutoId || null);
 
-  const loadProdutos = useCallback(async () => {
+  async function loadProdutos() {
     setLoading(true);
     setError(null);
 
@@ -123,9 +123,9 @@ function Estoque() {
     } finally {
       setLoading(false);
     }
-  }, [produtos.length]);
+  }
 
-  const loadInitialData = useCallback(async () => {
+  async function loadInitialData() {
     try {
       const [categoriasRes, fornecedoresRes] = await Promise.all([
         getCategorias(),
@@ -139,15 +139,17 @@ function Estoque() {
     } catch (error) {
       console.error('Erro ao carregar dados iniciais:', error);
     }
-  }, []);
+  }
 
   useEffect(() => {
     loadInitialData();
-  }, [loadInitialData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     loadProdutos();
-  }, [loadProdutos]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (location.state?.editarProdutoId) {
